@@ -1,0 +1,146 @@
+							  LOCAL-TIME
+
+See the "COPYING" file for information about legal issues of copying
+and using this library.
+
+See the "INSTALL" file for information about building and installing
+this library.
+
+The LOCAL-TIME library is a Common Lisp library for the manipulation
+of dates and times.  It is based almost entirely upon Erik Naggum's
+paper "The Long Painful History of Time" [1].  In that paper, Naggum
+outlined a system that here has been implemented, mostly.
+
+USAGE
+
+<> define-timezone zone-name zone-file &key (load nil)
+
+Define zone-name (a symbol or a string) as a new timezone, lazy-loaded
+from zone-file (a pathname designator relative to the
+zoneinfo directory on this system.  If load is true, load immediately.
+
+<> *default-timezone*
+
+The variable *default-timezone* contains the timezone that will be
+used by default if none is specified.  It is loaded from
+/etc/localtime when the library is loaded.
+
+<> local-time-day local-time
+
+Returns the day component of the time.  Although the paper specifies
+that the day should be a signed fixnum, it is left unbounded for
+flexibility reasons.
+
+<> local-time-sec local-time
+
+Returns the 'seconds' component of the time.  Valid values for the
+seconds range from 0 to 86399.
+
+<> local-time-msec local-time
+
+Returns the 'microseconds' component of the time.  Valid values for
+the microseconds range from 0 to 999999.
+
+<> unix-time local-time
+
+This function returns the date/time specified in LOCAL-TIME encoded as
+the number of seconds since January 1st, 1970 12:00am UTC.  It
+corresponds with the time received from the POSIX call time().
+
+<> timezone local-time &optional timezone
+
+Returns as multiple values the time zone as the number of seconds east
+of UTC, a boolean daylight-saving-p, the customary abbreviation of the
+timezone, the starting time of this timezone, and the ending time of
+this timezone.
+
+<> local-time-adjust source timezone &optional (destination nil)
+
+Returns two values, the values of new DAY and SEC slots, or, if
+DESTINATION is a LOCAL-TIME instance, fills the slots with the new
+values and returns the destination
+
+<> encode-local-time ms ss mm hh day month year &optional timezone
+
+Returns a new LOCAL-TIME instance corresponding to the specified time
+elements.
+
+<> local-time &key universal internal unix (msec 0) zone
+
+Produces a LOCAL-TIME instance from the provided numeric time
+representation.
+
+<> now
+
+This function returns a LOCAL-TIME corresponding to the current time.
+
+<> local-time< time-a time-b
+<> local-time<= time-a time-b
+<> local-time> time-a time-b
+<> local-time>= time-a time-b
+<> local-time= time-a time-b
+<> local-time/= time-a time-b
+
+These comparison functions act like their string and char counterparts.
+
+<> local-time-designator real-number
+
+This function returns NIL, as it has not yet been implemented.
+
+<> decode-local-time local-time
+
+Returns the decoded time as multiple values: ms, ss, mm, hh, day,
+month, year, day-of-week, daylight-saving-time-p, timezone, and the
+customary timezone abbreviation.
+
+<> parse-timestring timestring &key (start 0) (end nil)
+                    (junk-allowed nil)
+
+Parses a timestring and returns the corresponding LOCAL-TIME.  Parsing
+begins at START and stops at the END position.  If junk-allowed is t,
+ignores any invalid characters within the timestring.
+
+NOTE:  Right now, this function uses a very poor parsing strategy that
+fails to take into account missing values and relative time
+signifiers.  The junk-allowed keyword is currently ignored.
+
+<> format-timestring stream local-time universal-p timezone-p
+                     &optional date-elements time-elements
+                               date-separator time-separator
+                               internal-separator
+
+Produces on stream the timestring corresponding to the LOCAL-TIME with
+the given options.  If STREAM is NIL, returns a string containing what
+would have been the output.  If STREAM is T, prints the string to
+*standard-output*.
+
+<> universal-time local-time
+
+Returns the UNIVERSAL-TIME corresponding to the LOCAL-TIME.
+Microseconds are lost.
+
+<> internal-time local-time
+
+Returns the internal system time corresponding to the LOCAL-TIME.
+Currently unimplemented due to portability concerns.
+
+<> local-timezone adjusted-local-time &optional timezone
+
+Return the local timezone adjustment applicable at the already
+adjusted-local-time.  Used to reverse the effect of TIMEZONE and
+LOCAL-TIME-ADJUST.
+
+<> enable-read-macros
+
+Adds @TIMESTRING and #@UNIVERSAL-TIME as reader macros.
+
+CAVEATS
+
+This implementation assumes that time zone information is stored in
+the tzfile format.  The default timezone is loaded from
+/etc/localtime.  This will likely break on non-POSIX systems.
+
+REFERENCES
+
+[1] "The Long, Painful History of Time", Naggum E.
+    http://naggum.no/lugm-time.html
