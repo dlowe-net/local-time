@@ -1,0 +1,5 @@
+- Figure out what LOCAL-TIME-DESIGNATOR is supposed to do and
+  implement it
+
+- PARSE-TIMESTRING is currently a mess and needs to have a decent
+  parser
