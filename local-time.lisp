@@ -58,7 +58,8 @@
 		   timezone
 		   local-timezone
 		   define-timezone
-		   *default-timezone*))
+		   *default-timezone*
+           now))
 
 (in-package local-time)
 
