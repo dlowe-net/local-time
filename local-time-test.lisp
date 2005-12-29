@@ -216,6 +216,15 @@
 				 ,(nth-value 2 (timezone local-time)))))
   t)
 
+(deftest decode-local-time-2
+	(let ((local-time (encode-local-time 0 0 0 0 1 1 0)))
+	  (equal (multiple-value-list (decode-local-time local-time))
+			 `(0 0 0 0 1 1 0 5
+               ,*default-timezone*
+               ,(nth-value 2 (timezone local-time)))))
+  t)
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest format-timestring-1
@@ -287,5 +296,17 @@
                     (format-timestring nil local-time nil nil))
                    local-time))
   t)
-                   
+
+(deftest parse-timestring-2
+    (let ((local-time (encode-local-time 0 0 0 0 1 1 0)))
+      (local-time= (parse-timestring "0000-01-01T00:00:00,0")
+                   local-time))
+  t)
+
+(deftest parse-timestring-3
+    (let ((local-time (encode-local-time 0 0 0 0 1 1 2006)))
+      (local-time= (parse-timestring "2006-01-01T00:00:00,0")
+                   local-time))
+  t)
+
 (run-tests)
