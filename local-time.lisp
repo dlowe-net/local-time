@@ -167,7 +167,9 @@
        ,@(when load
            `((realize-timezone ,zone-sym))))))
 
-(define-timezone *default-timezone* #p"/etc/localtime")
+(defvar *default-timezone*)
+(eval-when (:load-toplevel :execute)
+  (define-timezone *default-timezone* #p"/etc/localtime"))
 
 (defstruct local-time
   (day 0)
@@ -368,38 +370,42 @@
 	   minutes
 	   hours
 	   (1+ day)
-	   (if (> int-month 10)
+	   (if (>= int-month 10)
 		   (- int-month 9)
 		   (+ int-month 3))
-	   (if (> int-month 10)
+	   (if (>= int-month 10)
 		   (+ int-year 2001)
 		   (+ int-year 2000))
 	   (local-time-day-of-week local-time)
 	   (local-time-zone local-time)
 	   abbreviation))))
 
+(defun split-timestring (timestring start end junk-allowed)
+  (multiple-value-bind (now-ms now-ss now-mm now-hh now-day now-month now-year)
+      (decode-local-time (now))
+    (let ((year (when (> end 4) (parse-integer timestring :start 0 :end 4)))
+          (month (when (> end 7) (parse-integer timestring :start 5 :end 7)))
+          (day (when (> end 10) (parse-integer timestring :start 8 :end 10)))
+          (hh (when (> end 13) (parse-integer timestring :start 11 :end 13)))
+          (mm (when (> end 17) (parse-integer timestring :start 14 :end 16)))
+          (ss (when (> end 19) (parse-integer timestring :start 17 :end 19)))
+          (ms (when (and (member (char timestring 19) '(#\. #\,)) (> end 20))
+                (parse-integer timestring :start 20 :junk-allowed t))))
+      (list
+       (or ms now-ms)
+       (or ss now-ss)
+       (or mm now-mm)
+       (or hh now-hh)
+       (or day now-day)
+       (or month now-month)
+       (or year now-year)))))
+
 (defun parse-timestring (timestring &key (start 0) (end nil) (junk-allowed nil))
   "Parse a timestring and return the corresponding LOCAL-TIME"
   (declare (ignorable junk-allowed))
   (let ((end (or end (1- (length timestring)))))
-    (multiple-value-bind (now-ms now-ss now-mm now-hh now-day now-month now-year)
-        (decode-local-time (now))
-      (let ((year (when (< end 4) (parse-integer timestring :start 0 :end 4)))
-            (month (when (< end 7) (parse-integer timestring :start 5 :end 7)))
-            (day (when (< end 10) (parse-integer timestring :start 8 :end 10)))
-            (hh (when (< end 13) (parse-integer timestring :start 11 :end 13)))
-            (mm (when (< end 16) (parse-integer timestring :start 14 :end 16)))
-            (ss (when (< end 19) (parse-integer timestring :start 17 :end 19)))
-            (ms (when (and (member (char timestring 19) '(#\. #\,)) (< end 20))
-                  (parse-integer timestring :start 19 :junk-allowed t))))
-        (encode-local-time
-         (or ms now-ms)
-         (or ss now-ss)
-         (or mm now-mm)
-         (or hh now-hh)
-         (or day now-day)
-         (or month now-month)
-         (or year now-year))))))
+    (apply #'encode-local-time
+             (split-timestring timestring start end junk-allowed))))
 
 (defun construct-timestring (local-time universal-p timezone-p
                              date-elements time-elements date-separator
