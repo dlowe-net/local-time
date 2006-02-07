@@ -8,7 +8,7 @@
 ;;;
 ;;; Authored by Daniel Lowe <dlowe@sanctuary.org>
 ;;;
-;;; Copyright (c) 2005 Daniel Lowe
+;;; Copyright (c) 2005-2006 Daniel Lowe
 ;;; 
 ;;; Permission is hereby granted, free of charge, to any person obtaining
 ;;; a copy of this software and associated documentation files (the
@@ -350,62 +350,85 @@
   "Convert a designator (real number) as a LOCAL-TIME instance"
   nil)
 
+(defun local-time-decoded-date (local-time)
+  (multiple-value-bind (leap-cycle year-days)
+      (floor (local-time-day local-time) 1461)
+    (multiple-value-bind (years month-days)
+        (floor year-days 365)
+      (let* ((month (decode-month month-days))
+             (day (1+ (- month-days (month-days month)))))
+        (values
+         (+ (* leap-cycle 4)
+            years
+            (if (>= month 10)
+                2001
+                2000))
+         (if (>= month 10)
+             (- month 9)
+             (+ month 3))
+         day)))))
+
+(defun local-time-decoded-time (local-time)
+  (multiple-value-bind (hours hour-remainder)
+      (floor (local-time-sec local-time) 3600)
+    (multiple-value-bind (minutes seconds)
+        (floor hour-remainder 60)
+      (values
+       hours
+       minutes
+       seconds))))
+
+(defparameter +leap-factor+ 1461)
+
 (defun decode-local-time (local-time)
   "Returns the decoded time as multiple values: ms, ss, mm, hh, day, month, year, day-of-week, daylight-saving-time-p, timezone, and the customary timezone abbreviation."
-  (let* ((hours (floor (local-time-sec local-time) 3600))
-		 (minutes (floor (- (local-time-sec local-time) (* hours 3600)) 60))
-		 (seconds (- (local-time-sec local-time) (* hours 3600) (* minutes 60)))
-		 (int-year (floor (* (local-time-day local-time) 4) 1461))
-		 (int-month (decode-month (- (local-time-day local-time)
-									 (floor (* int-year 1461) 4))))
-		 (day (- (local-time-day local-time)
-				 (month-days int-month)
-				 (floor (* int-year 1461) 4))))
-	(multiple-value-bind (offset daylight-p abbreviation)
-		(timezone local-time)
-	  (declare (ignore offset daylight-p))
-	  (values
-	   (local-time-msec local-time)
-	   seconds
-	   minutes
-	   hours
-	   (1+ day)
-	   (if (>= int-month 10)
-		   (- int-month 9)
-		   (+ int-month 3))
-	   (if (>= int-month 10)
-		   (+ int-year 2001)
-		   (+ int-year 2000))
-	   (local-time-day-of-week local-time)
-	   (local-time-zone local-time)
-	   abbreviation))))
+  (multiple-value-bind (hours minutes seconds)
+      (local-time-decoded-time local-time)
+    (multiple-value-bind (year month day)
+        (local-time-decoded-date local-time)
+      (values
+       (local-time-msec local-time)
+       seconds minutes hours
+       day month year
+       (local-time-day-of-week local-time)
+       (local-time-zone local-time)
+       (nth-value 2 (timezone local-time))))))
 
-(defun split-timestring (timestring start end junk-allowed)
-  (multiple-value-bind (now-ms now-ss now-mm now-hh now-day now-month now-year)
-      (decode-local-time (now))
-    (let ((year (when (> end 4) (parse-integer timestring :start 0 :end 4)))
-          (month (when (> end 7) (parse-integer timestring :start 5 :end 7)))
-          (day (when (> end 10) (parse-integer timestring :start 8 :end 10)))
-          (hh (when (> end 13) (parse-integer timestring :start 11 :end 13)))
-          (mm (when (> end 17) (parse-integer timestring :start 14 :end 16)))
-          (ss (when (> end 19) (parse-integer timestring :start 17 :end 19)))
-          (ms (when (and (member (char timestring 19) '(#\. #\,)) (> end 20))
-                (parse-integer timestring :start 20 :junk-allowed t))))
-      (list
-       (or ms now-ms)
-       (or ss now-ss)
-       (or mm now-mm)
-       (or hh now-hh)
-       (or day now-day)
-       (or month now-month)
-       (or year now-year)))))
+(defun split-timestring (raw-string start end junk-allowed)
+  (let ((timestring (subseq raw-string start end)))
+    (multiple-value-bind (now-ms now-ss now-mm now-hh now-day now-month now-year)
+        (decode-local-time (now))
+      (let ((year (when (> end 4)
+                    (parse-integer timestring :start 0 :end 4 :junk-allowed junk-allowed)))
+            (month (when (> end 7)
+                     (parse-integer timestring :start 5 :end 7 :junk-allowed junk-allowed)))
+            (day (when (> end 10)
+                   (parse-integer timestring :start 8 :end 10 :junk-allowed junk-allowed)))
+            (hh (when (> end 13)
+                  (parse-integer timestring :start 11 :end 13 :junk-allowed junk-allowed)))
+            (mm (when (> end 17)
+                  (parse-integer timestring :start 14 :end 16 :junk-allowed junk-allowed)))
+            (ss (when (> end 19)
+                  (parse-integer timestring :start 17 :end 19 :junk-allowed junk-allowed)))
+            (ms (when (and (member (char timestring 19) '(#\. #\,)) (> end 20))
+                  (parse-integer timestring :start 20 :junk-allowed t))))
+        (list
+         (or ms now-ms)
+         (or ss now-ss)
+         (or mm now-mm)
+         (or hh now-hh)
+         (or day now-day)
+         (or month now-month)
+         (or year now-year))))))
 
 (defun parse-timestring (timestring &key (start 0) (end nil) (junk-allowed nil))
   "Parse a timestring and return the corresponding LOCAL-TIME"
   (declare (ignorable junk-allowed))
-  (let ((end (or end (1- (length timestring)))))
-    (apply #'encode-local-time
-             (split-timestring timestring start end junk-allowed))))
+  (apply #'encode-local-time
+         (split-timestring timestring
+                           start
+                           (or end (1- (length timestring)))
+                           junk-allowed)))
 
 (defun construct-timestring (local-time universal-p timezone-p
                              date-elements time-elements date-separator
@@ -418,7 +441,10 @@
         (check-type time-elements (integer 0 4))
         (cond
           ((> date-elements 2)
-           (format str "~4,'0d~c" year date-separator))
+           (format str "~:[~;-~]~4,'0d~c"
+                   (minusp year)
+                   (abs year)
+                   date-separator))
           ((plusp date-elements)
            ;; if the year is not shown, but other parts of the date are,
            ;; the year is replaced with a hyphen
