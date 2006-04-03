@@ -394,32 +394,127 @@
        (local-time-zone local-time)
        (nth-value 2 (timezone local-time))))))
 
+(defun skip-timestring-junk (stream junk-allowed &rest expected)
+  ;; NOTE: this should honor junk-allowed sometime
+  (cond
+    (junk-allowed
+     ;; just skip non-digit characters
+     (loop for c = (read-char stream nil nil)
+           while (and c (not (digit-char-p c)))
+           finally (unread-char c stream)))
+    (t
+     ;; must have an expected character or the string end, then
+     ;; followed by a digit or the string end
+     (let ((c (read-char stream nil nil)))
+       (unless (or (null c) (member c expected :test 'eql))
+         (error
+          "Junk in timestring: expected ~:[(or ~{~s~^ ~})~;~{~s~}~], got ~s"
+          (= (length expected) 1)
+          expected
+          c)))
+     (let ((c (read-char stream nil nil)))
+       (if (or (null c) (digit-char-p c) (member c expected :test 'eql))
+           (when c
+             (unread-char c stream))
+           (error "Junk in timestring: expected digit, got ~s"  c))))))
+
+(defun read-integer-str (stream)
+  (loop for c = (read-char stream nil nil)
+        while (and c (digit-char-p c))
+        collect c into result
+        finally (progn
+                  (when c
+                    (unread-char c stream))
+                  (return
+                    (when result
+                      (parse-integer (coerce result 'string)))))))
+
+(defun read-millisecond-str (stream)
+  (loop for c = (read-char stream nil nil)
+        while (and c (digit-char-p c))
+        collect c into result
+        finally (progn
+                  (when c
+                    (unread-char c stream))
+                  (return
+                    (when result
+                      (* (expt 10 (- 3 (min (length result) 3)))
+                         (parse-integer (coerce result 'string)
+                                        :end (min (length result) 3))))))))
+
+;; YYYY-MM-DDThh:mm:ss,fffffff+zz:zz
+;; YYYY-MM-DDThh:mm:ss,fffffff
+;; YYYY-MM-DDThh:mm:ss
+;; YYYY-MM-DDThh:mm
+;; YYYY-MM-DDThh
+;; YYYY-MM-DD
+;; YYYY
+;; -MM-DDThh:mm:ss,fffffff+zz:zz
+;; --DDThh:mm:ss,fffffff+zz:zz
+;; hh:mm:ss,fffffff+zz:zz
+;; hh:mm:ss,fffffff
+;; hh:mm:ss
+;; hh:mm
+;; hh
+;; hh:mm:ss,fffffff+zz:zz
+
+(defun split-timestring-date (str junk-allowed now-year now-month now-day)
+  (let ((result nil))
+    (with-input-from-string (ins str)
+      ;; Retrieve the year
+      (push (read-integer-str ins) result)
+      (skip-timestring-junk ins junk-allowed #\-)
+      ;; Retrieve the month
+      (push (read-integer-str ins) result)
+      (skip-timestring-junk ins junk-allowed #\-)
+      ;; Retrieve the day
+      (push (read-integer-str ins) result))
+    (list
+     (or (first result) now-day)
+     (or (second result) now-month)
+     (or (third result) now-year))))
+
+(defun split-timestring-time (str junk-allowed now-hour now-minute now-second now-ms)
+    (let ((result nil))
+      (with-input-from-string (ins str)
+        ;; Retrieve the hour
+        (push (read-integer-str ins) result)
+        (skip-timestring-junk ins junk-allowed #\:)
+        ;; Retrieve the minute
+        (push (read-integer-str ins) result)
+        (skip-timestring-junk ins junk-allowed #\:)
+        ;; Retrieve the second
+        (push (read-integer-str ins) result)
+        (skip-timestring-junk ins junk-allowed #\. #\,)
+        ;; Retrieve the fractional second and convert to milliseconds
+        (push (read-millisecond-str ins) result))
+      (list
+       (or (first result) now-ms)
+       (or (second result) now-second)
+       (or (third result) now-minute)
+       (or (fourth result) now-hour))))
+
 (defun split-timestring (raw-string start end junk-allowed)
-  (let ((timestring (subseq raw-string start end)))
-    (multiple-value-bind (now-ms now-ss now-mm now-hh now-day now-month now-year)
+  (let* ((timestring (subseq raw-string start end))
+         (t-pos (position #\t timestring :test #'string-equal)))
+    (multiple-value-bind (now-ms now-second now-minute now-hour now-day now-month now-year)
         (decode-local-time (now))
-      (let ((year (when (> end 4)
-                    (parse-integer timestring :start 0 :end 4 :junk-allowed junk-allowed)))
-            (month (when (> end 7)
-                     (parse-integer timestring :start 5 :end 7 :junk-allowed junk-allowed)))
-            (day (when (> end 10)
-                   (parse-integer timestring :start 8 :end 10 :junk-allowed junk-allowed)))
-            (hh (when (> end 13)
-                  (parse-integer timestring :start 11 :end 13 :junk-allowed junk-allowed)))
-            (mm (when (> end 17)
-                  (parse-integer timestring :start 14 :end 16 :junk-allowed junk-allowed)))
-            (ss (when (> end 19)
-                  (parse-integer timestring :start 17 :end 19 :junk-allowed junk-allowed)))
-            (ms (when (and (member (char timestring 19) '(#\. #\,)) (> end 20))
-                  (parse-integer timestring :start 20 :junk-allowed t))))
-        (list
-         (or ms now-ms)
-         (or ss now-ss)
-         (or mm now-mm)
-         (or hh now-hh)
-         (or day now-day)
-         (or month now-month)
-         (or year now-year))))))
+    (cond
+      ((eql t-pos 0)
+       (append (split-timestring-time (subseq timestring 1)
+                                      junk-allowed
+                                      now-hour now-minute now-second now-ms)
+               (list now-year now-month now-day)))
+      ((null t-pos)
+       (append (list now-hour now-minute now-second now-ms)
+               (split-timestring-date timestring junk-allowed
+                                      now-year now-month now-day)))
+      (t
+       (append (split-timestring-time (subseq timestring (1+ t-pos))
+                                      junk-allowed
+                                      now-hour now-minute now-second now-ms)
+               (split-timestring-date (subseq timestring 0 t-pos) junk-allowed
+                                      now-year now-month now-day)))))))
 
 (defun parse-timestring (timestring &key (start 0) (end nil) (junk-allowed nil))
   "Parse a timestring and return the corresponding LOCAL-TIME"
@@ -427,7 +522,7 @@
   (apply #'encode-local-time
          (split-timestring timestring
                            start
-                           (or end (1- (length timestring)))
+                           (or end (length timestring))
                            junk-allowed)))
 
 (defun construct-timestring (local-time universal-p timezone-p
@@ -462,7 +557,7 @@
         (when (> time-elements 2)
           (format str "~c~2,'0d" time-separator sec))
         (when (> time-elements 3)
-          (format str ",~6,'0d" msec))
+          (format str ",~3,'0d" msec))
         (when timezone-p
           (let* ((zone (if universal-p +utc-zone+ zone))
                  (offset (local-timezone local-time zone)))
