@@ -279,23 +279,23 @@
 
 (deftest format-timestring-1 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil)
-  "2008-06-05T04:03:02,000001")
+  "2008-06-05T04:03:02,001")
 (deftest format-timestring-2 ()
     ;; This test only works on CDT (so far)
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil t)
-  "2008-06-05T04:03:02,000001-5:00")
+  "2008-06-05T04:03:02,001-5:00")
 (deftest format-timestring-3 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008 +utc-zone+) t t)
-  "2008-06-05T04:03:02,000001+0:00")
+  "2008-06-05T04:03:02,001+0:00")
 (deftest format-timestring-4 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 2)
-  "-06-05T04:03:02,000001")
+  "-06-05T04:03:02,001")
 (deftest format-timestring-5 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 1)
-  "-05T04:03:02,000001")
+  "-05T04:03:02,001")
 (deftest format-timestring-6 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 0)
-  "04:03:02,000001")
+  "04:03:02,001")
 (deftest format-timestring-7 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 0 3)
   "04:03:02")
@@ -310,7 +310,7 @@
   "")
 (deftest format-timestring-11 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 -5) nil nil)
-  "-0005-06-05T04:03:02,000001")
+  "-0005-06-05T04:03:02,001")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -361,5 +361,22 @@
       (local-time= (parse-timestring "2006-01-01T00:00:00,0")
                    local-time))
   t)
+
+(deftest parse-timestring-4 ()
+  (local-time-day (parse-timestring "xxxx 2006-01-01T00:00:00,0 xxxx"
+                                    :start 5
+                                    :end 15))
+  (local-time-day (encode-local-time 0 0 0 0 1 1 2006)))
+
+(deftest parse-timestring-5 ()
+  (parse-timestring "2008-07-06T05:04:03,02")
+  (encode-local-time 20 3 4 5 6 7 2008))
+
+(deftest parse-timestring-6 ()
+  (parse-timestring "--23T::02")
+  (multiple-value-bind (ms ss mm hh day mon year)
+      (decode-local-time (now))
+    (declare (ignore ms day))
+    (encode-local-time ms 02 mm hh 23 mon year)))
 
 (run-tests)
