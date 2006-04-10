@@ -59,9 +59,47 @@
 		   local-timezone
 		   define-timezone
 		   *default-timezone*
-           now))
+           now
+           +month-names+
+           +short-month-names+
+           +day-names+
+           +short-day-names+
+           astronomical-julian-date
+           modified-julian-date
+           astronomical-modified-julian-date))
 
 (in-package local-time)
+
+;;; Month information
+(defparameter +month-names+
+  '("" "January" "February" "March" "April" "May" "June" "July" "August"
+    "September" "October" "November" "December"))
+(defparameter +short-month-names+
+  '("" "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov"
+    "Dec"))
+
+(defparameter +month-days+
+  (make-array 12 :initial-contents
+			  (loop for length across #(0 31 30 31 30 31 31 30 31 30 31 31)
+				 as days = 0 then (+ days length)
+				 collect days)))
+
+;;; Day information
+(defparameter +day-names+
+  '("Sunday" "Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday"))
+
+(defparameter +short-day-names+
+  '("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat"))
+
+;; The astronomical julian date offset is the number of days between
+;; the current date and -4713-01-01T00:00:00+00:00
+(defparameter +astronomical-julian-date-offset+ -2451605)
+
+;; The modified julian date is the number of days between the current
+;; date and 1858-11-17T12:00:00+00:00.  For the sake of simplicity,
+;; we currently just do the date arithmetic and don't adjust for the
+;; time of day.
+(defparameter +modified-julian-date-offset+ -51604)
 
 (defstruct timezone
   (transitions nil)
@@ -219,6 +257,12 @@
 	(t
 	 (values new-day new-sec)))))
 
+(defun astronomical-julian-date (local-time)
+  (- (local-time-day local-time) +astronomical-julian-date-offset+))
+
+(defun modified-julian-date (local-time)
+  (- (local-time-day local-time) +modified-julian-date-offset+))
+
 (defun local-time-diff (time-a time-b)
   "Returns a new LOCAL-TIME containing the difference between TIME-A and TIME-B"
   (multiple-value-bind (day-a sec-a)
@@ -267,12 +311,6 @@
 	  ((< (local-time-msec time-a) (local-time-msec time-b)) '<)
 	  ((> (local-time-msec time-a) (local-time-msec time-b)) '>)
 	  (t                                                     '=))))
-
-(defparameter +month-days+
-  (make-array 12 :initial-contents
-			  (loop for length across #(0 31 30 31 30 31 31 30 31 30 31 31)
-				 as days = 0 then (+ days length)
-				 collect days)))
 
 (defun month-days (month)
   (aref +month-days+ month))
@@ -391,11 +429,11 @@
        seconds minutes hours
        day month year
        (local-time-day-of-week local-time)
+       (nth-value 1 (timezone local-time))
        (local-time-zone local-time)
        (nth-value 2 (timezone local-time))))))
 
 (defun skip-timestring-junk (stream junk-allowed &rest expected)
-  ;; NOTE: this should honor junk-allowed sometime
   (cond
     (junk-allowed
      ;; just skip non-digit characters
@@ -441,22 +479,6 @@
                       (* (expt 10 (- 3 (min (length result) 3)))
                          (parse-integer (coerce result 'string)
                                         :end (min (length result) 3))))))))
-
-;; YYYY-MM-DDThh:mm:ss,fffffff+zz:zz
-;; YYYY-MM-DDThh:mm:ss,fffffff
-;; YYYY-MM-DDThh:mm:ss
-;; YYYY-MM-DDThh:mm
-;; YYYY-MM-DDThh
-;; YYYY-MM-DD
-;; YYYY
-;; -MM-DDThh:mm:ss,fffffff+zz:zz
-;; --DDThh:mm:ss,fffffff+zz:zz
-;; hh:mm:ss,fffffff+zz:zz
-;; hh:mm:ss,fffffff
-;; hh:mm:ss
-;; hh:mm
-;; hh
-;; hh:mm:ss,fffffff+zz:zz
 
 (defun split-timestring-date (str junk-allowed now-year now-month now-day)
   (let ((result nil))
@@ -504,7 +526,7 @@
        (append (split-timestring-time (subseq timestring 1)
                                       junk-allowed
                                       now-hour now-minute now-second now-ms)
-               (list now-year now-month now-day)))
+               (list now-day now-month now-year)))
       ((null t-pos)
        (append (list now-hour now-minute now-second now-ms)
                (split-timestring-date timestring junk-allowed
@@ -529,7 +551,7 @@
                              date-elements time-elements date-separator
                              time-separator internal-separator)
   (with-output-to-string (str)
-      (multiple-value-bind (msec sec minute hour day month year day-of-week zone)
+      (multiple-value-bind (msec sec minute hour day month year day-of-week daylight-p zone)
           (decode-local-time local-time)
         (declare (ignore day-of-week))
         (check-type date-elements (integer 0 3))
@@ -557,7 +579,7 @@
         (when (> time-elements 2)
           (format str "~c~2,'0d" time-separator sec))
         (when (> time-elements 3)
-          (format str ",~3,'0d" msec))
+          (format str ".~3,'0d" msec))
         (when timezone-p
           (let* ((zone (if universal-p +utc-zone+ zone))
                  (offset (local-timezone local-time zone)))
@@ -639,7 +661,8 @@
 
 (defmethod print-object ((object local-time) stream)
   "Print the LOCAL-TIME object using the standard reader notation"
-  (princ "@" stream)
+  (when *print-escape*
+    (princ "@" stream))
   (format-timestring stream object nil nil))
 
 (defmethod print-object ((object timezone) stream)

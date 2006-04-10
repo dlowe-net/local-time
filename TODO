@@ -1,5 +1,23 @@
 - Figure out what LOCAL-TIME-DESIGNATOR is supposed to do and
   implement it
 
-- PARSE-TIMESTRING is currently a mess and needs to have a decent
-  parser
+- Support for intervals of time.  Naggum's paper specifies that in
+  timestrings, elements removed from the right produce an indeterminate
+  designation.  This could easily be considered an interval, with a
+  starting moment in time and a duration.  A simple duration could
+  be an interval of time without a starting moment.
+
+- Decide on microseconds or milliseconds.  Naggum's paper uses milliseconds,
+  but microseconds might be more useful.  It fits into a fixnum, at least.
+
+- Write a more flexible formatting function for times, perhaps something
+  like strftime() except lispy
+
+- PARSE-TIMESTRING works fine, but we need a more human-friendly parser that
+  can handle stuff like "08/03/2006 1:54pm CST"
+
+- Support for other notational systems than the Gregorian
+
+- Ideally, local-time should have everything that the ruby Date class does,
+  as well as the time functions in the venerable and honored clsql library.
+  This may be a tall order.

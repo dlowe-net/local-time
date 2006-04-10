@@ -97,12 +97,8 @@ customary timezone abbreviation.
                     (junk-allowed nil)
 
 Parses a timestring and returns the corresponding LOCAL-TIME.  Parsing
-begins at START and stops at the END position.  If junk-allowed is t,
+begins at START and stops at the END position.  If junk-allowed is T,
 ignores any invalid characters within the timestring.
-
-NOTE:  Right now, this function uses a very poor parsing strategy that
-fails to take into account missing values and relative time
-signifiers.  The junk-allowed keyword is currently ignored.
 
 <> format-timestring stream local-time universal-p timezone-p
                      &optional date-elements time-elements
@@ -133,6 +129,14 @@ LOCAL-TIME-ADJUST.
 <> enable-read-macros
 
 Adds @TIMESTRING and #@UNIVERSAL-TIME as reader macros.
+
+<> astronomical-julian-date local-time
+
+Returns the julian date of the date portion of LOCAL-TIME.
+
+<> modified-julian-date local-time
+
+Returns the modified julian date of the date portion of LOCAL-TIME.
 
 CAVEATS
 
