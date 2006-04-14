@@ -1,6 +1,12 @@
-2006-04-09    <dlowe@bitmuse.com>
-	* local-time-tests.lisp: Adjusted tests to pass with latest
-	  changes.
+2006-04-14    <dlowe@bitmuse.com> <svg@surnet.ru>
+	* local-time-tests.lisp: Added tests for LOCAL-TIME-ADJUST with
+	  negatively adjusting timezones
+	* local-time-tests.lisp: Test failure now mentions which value
+	  didn't match
+	* local-time-tests.lisp: Test compilation now results in fewer
+	  warnings
+	* local-time.lisp: LOCAL-TIME-ADJUST now works better with
+	  negatively adjusting timezones
 	
 2006-04-09    <svg@surnet.ru>
 	* local-time.lisp: According to draft
@@ -27,7 +33,7 @@
 	* local-time-test.lisp: More PARSE-TIMESTRING tests
 	* TODO: Added a bunch of wishlist items
 	* RELEASE: New release as local-time-0.8
-		
+	    
 2006-02-07    <dlowe@bitmuse.com>
 
 	* local-time.lisp: Fixed DECODE-LOCAL-TIME which calculated the leap

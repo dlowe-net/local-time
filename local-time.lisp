@@ -246,13 +246,20 @@
   (let* ((old-offset (nth-value 0 (timezone source (local-time-zone source))))
 		 (new-offset (nth-value 0 (timezone source timezone)))
 		 (offset-diff (- new-offset old-offset))
-		 (new-day (+ (local-time-day source) (floor offset-diff 86400)))
-		 (new-sec (+ (local-time-sec source) (mod offset-diff 86400))))
+         (offset-sign (signum offset-diff))
+		 (new-day (+ (local-time-day source)
+                     (* offset-sign (floor offset-diff 86400))))
+		 (new-sec (+ (local-time-sec source)
+                     (* offset-sign (mod offset-diff 86400)))))
+    (when (minusp new-sec)
+      (incf new-sec 86400)
+      (decf new-day))
   (cond
 	(destination
 	 (setf (local-time-msec destination) (local-time-msec source)
 		   (local-time-sec destination) new-sec
-		   (local-time-day destination) new-day)
+		   (local-time-day destination) new-day
+           (local-time-zone destination) timezone)
 	 destination)
 	(t
 	 (values new-day new-sec)))))
