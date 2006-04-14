@@ -243,26 +243,25 @@
   "Returns two values, the values of new DAY and SEC slots, or, if DESTINATION is a LOCAL-TIME instance, fills the slots with the new values and returns the destination"
   (realize-timezone (local-time-zone source))
   (realize-timezone timezone)
-  (let* ((old-offset (nth-value 0 (timezone source (local-time-zone source))))
-		 (new-offset (nth-value 0 (timezone source timezone)))
-		 (offset-diff (- new-offset old-offset))
-         (offset-sign (signum offset-diff))
-		 (new-day (+ (local-time-day source)
-                     (* offset-sign (floor offset-diff 86400))))
-		 (new-sec (+ (local-time-sec source)
-                     (* offset-sign (mod offset-diff 86400)))))
-    (when (minusp new-sec)
-      (incf new-sec 86400)
-      (decf new-day))
-  (cond
-	(destination
-	 (setf (local-time-msec destination) (local-time-msec source)
-		   (local-time-sec destination) new-sec
-		   (local-time-day destination) new-day
-           (local-time-zone destination) timezone)
-	 destination)
-	(t
-	 (values new-day new-sec)))))
+  (let* ((offset-diff (- (timezone source timezone) 
+                         (timezone source (local-time-zone source))))
+         (offset-sign (signum offset-diff)))
+    (multiple-value-bind (offset-day offset-sec)
+        (floor (abs offset-diff) 86400)
+      (let ((new-day (+ (local-time-day source) (* offset-sign offset-day)))
+            (new-sec (+ (local-time-sec source) (* offset-sign offset-sec))))
+        (when (minusp new-sec)
+          (incf new-sec 86400)
+          (decf new-day))
+        (cond
+          (destination
+           (setf (local-time-msec destination) (local-time-msec source)
+                 (local-time-sec destination) new-sec
+                 (local-time-day destination) new-day
+                 (local-time-zone destination) timezone)
+           destination)
+          (t
+           (values new-day new-sec)))))))
 
 (defun astronomical-julian-date (local-time)
   (- (local-time-day local-time) +astronomical-julian-date-offset+))
@@ -560,7 +559,7 @@
   (with-output-to-string (str)
       (multiple-value-bind (msec sec minute hour day month year day-of-week daylight-p zone)
           (decode-local-time local-time)
-        (declare (ignore day-of-week))
+        (declare (ignore day-of-week daylight-p))
         (check-type date-elements (integer 0 3))
         (check-type time-elements (integer 0 4))
         (cond

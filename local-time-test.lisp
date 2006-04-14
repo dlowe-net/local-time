@@ -386,13 +386,13 @@
     (declare (ignore ms ss mm hh))
     (encode-local-time 80 7 6 5 day mon year)))
 
-(deftest local-time-adjust-1 ()
-  (let ((test-zone (make-timezone :subzones '((-3600 NIL "UTC-1" T NIL))
-                                   :loaded t))
-         (epoch (local-time :unix 0 :zone +utc-zone+)))
+(deftest local-time-adjust-1 ((test-zone (make-timezone
+                                          :subzones '((-3600 NIL "UTC-1" T NIL))
+                                          :loaded t)))
+  (let ((epoch (local-time :unix 0 :zone +utc-zone+)))
     (decode-local-time (local-time-adjust epoch test-zone (make-local-time))))
-  ;; ms ss mm hh day mon year
-  00 00 00 23 31 12 1969)
+  ;; ms ss mm hh day mon year wday ds-p zone abbrev
+  00 00 00 23 31 12 1969 3 nil test-zone)
 
 (deftest local-time-adjust-2 ()
   (let ((test-zone (make-timezone :subzones '((-3600 NIL "UTC-1" T NIL))
