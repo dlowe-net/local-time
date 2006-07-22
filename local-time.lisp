@@ -60,6 +60,7 @@
 		   define-timezone
 		   *default-timezone*
            now
+           enable-read-macros
            +month-names+
            +short-month-names+
            +day-names+
