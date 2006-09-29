@@ -331,7 +331,7 @@
 (defun decode-month (day)
   (position day +month-days+ :from-end t :test #'>=))
 
-(defun epoch-day-of-of-week (local-time)
+(defun local-time-day-of-week (local-time)
   (mod (+ 3 (epoch-day-of local-time)) 7))
 
 (defun encode-local-time (us ss mm hh day month year &optional timezone)
