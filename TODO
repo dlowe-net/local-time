@@ -1,14 +1,10 @@
 - Figure out what LOCAL-TIME-DESIGNATOR is supposed to do and
   implement it
 
-- Support for intervals of time.  Naggum's paper specifies that in
-  timestrings, elements removed from the right produce an indeterminate
-  designation.  This could easily be considered an interval, with a
-  starting moment in time and a duration.  A simple duration could
-  be an interval of time without a starting moment.
-
-- Decide on microseconds or milliseconds.  Naggum's paper uses milliseconds,
-  but microseconds might be more useful.  It fits into a fixnum, at least.
+- Figure out a sane and unambiguous way to support intervals
+    The problem: years are not always 365 days, months may be 28-31 days,
+    and days may not be 24 hours long.  That leaves doing all intervals
+    in seconds, which sucks.
 
 - Write a more flexible formatting function for times, perhaps something
   like strftime() except lispy

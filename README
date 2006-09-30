@@ -25,21 +25,32 @@ The variable *default-timezone* contains the timezone that will be
 used by default if none is specified.  It is loaded from
 /etc/localtime when the library is loaded.
 
-<> local-time-day local-time
+<> +utc-time+
+
+The variable +utc-zone+ contains a timezone corresponding to UTC.
+
+<> day-of local-time
 
 Returns the day component of the time.  Although the paper specifies
 that the day should be a signed fixnum, it is left unbounded for
 flexibility reasons.
 
-<> local-time-sec local-time
+<> sec-of local-time
 
 Returns the 'seconds' component of the time.  Valid values for the
 seconds range from 0 to 86399.
 
-<> local-time-msec local-time
+<> usec-of local-time
 
 Returns the 'microseconds' component of the time.  Valid values for
 the microseconds range from 0 to 999999.
+
+<> local-time-day local-time
+<> local-time-sec local-time
+<> local-time-msec local-time
+
+These functions are deprecated, and are used for compatibility with
+older versions of the local-time library.
 
 <> unix-time local-time
 
