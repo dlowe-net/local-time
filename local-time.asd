@@ -15,12 +15,16 @@
   :version "0.9.1"
   :author "Daniel Lowe <dlowe@sanctuary.org>"
   :description "Testing code for the local-time library"
-  :depends-on (:local-time) 
+  :depends-on (:local-time :fiveam)
   :components ((:file "tests")))
 
 (defmethod perform ((op test-op) (system (eql (find-system :local-time))))
   (operate 'load-op '#:local-time.test)
   (funcall (read-from-string "local-time::run-tests")))
+
+;; this is not really nice to have it enabled by default
+#+nil(defmethod perform :after ((op load-op) (system (eql (find-system :local-time))))
+  (in-package :local-time))
 
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :local-time))))
   nil)
