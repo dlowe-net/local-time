@@ -12,9 +12,9 @@
 
 (defsystem #:local-time.test
   :name "local-time.test"
-  :version "0.5.0"
+  :version "0.9.1"
   :author "Daniel Lowe <dlowe@sanctuary.org>"
-  :description "Testing code for local-time library"
+  :description "Testing code for the local-time library"
   :depends-on (:local-time) 
   :components ((:file "tests")))
 

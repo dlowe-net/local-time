@@ -292,7 +292,7 @@
         (when (minusp seconds)
           (decf days)
           (incf seconds 86400))
-        (make-localtime :usec usec
+        (make-local-time :usec usec
                         :sec seconds
                         :day days))))
 
@@ -300,18 +300,18 @@
   "Returns a new LOCAL-TIME containing the sum of TIME-A and TIME-B"
   (multiple-value-bind (day-a sec-a)
 	  (local-time-adjust time-a (timezone-of time-b))
-	(let ((usec (+ (epoch-usec-of time-a) (epoch-usec-of time-b)))
-		  (sec (+ sec-a (epoch-sec-of time-b)))
-		  (day (+ day-a (epoch-day-of time-b))))
+	(let ((usec (+ (usec-of time-a) (usec-of time-b)))
+		  (sec (+ sec-a (sec-of time-b)))
+		  (day (+ day-a (day-of time-b))))
 	  (when (> usec 1000000)
 		(decf usec 1000000)
 		(incf sec))
 	  (when (> sec 86400)
 		(decf sec 86400)
 		(incf day))
-	  (make-local-time :epoch-usec usec
-					   :epoch-sec sec
-					   :epoch-day day
+	  (make-local-time :usec usec
+					   :sec sec
+					   :day day
 					   :timezone (timezone-of time-b)))))
 
 (defun local-time-compare (time-a time-b)
@@ -319,12 +319,12 @@
   (multiple-value-bind (day-a sec-a)
 	  (local-time-adjust time-a (timezone-of time-b))
 	(cond
-	  ((< day-a (epoch-day-of time-b)) '<)
-	  ((> day-a (epoch-day-of time-b)) '>)
-	  ((< sec-a (epoch-sec-of time-b)) '<)
-	  ((> sec-a (epoch-sec-of time-b)) '>)
-	  ((< (epoch-usec-of time-a) (epoch-usec-of time-b)) '<)
-	  ((> (epoch-usec-of time-a) (epoch-usec-of time-b)) '>)
+	  ((< day-a (day-of time-b)) '<)
+	  ((> day-a (day-of time-b)) '>)
+	  ((< sec-a (sec-of time-b)) '<)
+	  ((> sec-a (sec-of time-b)) '>)
+	  ((< (usec-of time-a) (usec-of time-b)) '<)
+	  ((> (usec-of time-a) (usec-of time-b)) '>)
 	  (t													 '=))))
 
 (defun month-days (month)
