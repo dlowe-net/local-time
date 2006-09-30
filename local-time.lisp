@@ -33,12 +33,12 @@
 
 
 (defpackage local-time
-	(:use cl)
+    (:use cl)
   (:export local-time
 		   make-local-time
-		   day-of
-		   sec-of
-		   usec-of
+		   epoch-days-of
+		   epoch-secs-of
+		   epoch-usec-of
 		   timezone-of
 		   local-time<
 		   local-time<=
@@ -59,18 +59,18 @@
 		   local-timezone
 		   define-timezone
 		   *default-timezone*
-		   now
-		   enable-read-macros
-		   +utc-zone+
-		   +month-names+
-		   +short-month-names+
-		   +day-names+
-		   +short-day-names+
-		   astronomical-julian-date
-		   modified-julian-date
-		   astronomical-modified-julian-date))
+           now
+           enable-read-macros
+           +utc-zone+
+           +month-names+
+           +short-month-names+
+           +day-names+
+           +short-day-names+
+           astronomical-julian-date
+           modified-julian-date
+           astronomical-modified-julian-date))
 
-(in-package local-time)
+(in-package :local-time)
 
 ;;; Month information
 (defparameter +month-names+
