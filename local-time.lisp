@@ -212,18 +212,30 @@
   (define-timezone *default-timezone* #p"/etc/localtime"))
 
 (defclass local-time ()
-  ((day :accessor day-of :initarg :day :initform 0
-		:documentation "the day field of the time point")
-   (sec :accessor sec-of :initarg :sec :initform 0
-		:documentation "the second field of the time point")
-   (usec :accessor usec-of :initarg :usec :initform 0
-		 :documentation "the microsecond field of the time point")
+  ((day :accessor day-of :initarg :day :initform 0)
+   (sec :accessor sec-of :initarg :sec :initform 0)
+   (usec :accessor usec-of :initarg :usec :initform 0)
    (timezone :accessor timezone-of :initarg :timezone
-			 :initform *default-timezone*
-			 :documentation "the timezone in which the time point was encoded")))
+			 :initform *default-timezone*)))
 
 (defmacro make-local-time (&rest args)
+  "Creates a new local-time object"
   `(make-instance 'local-time ,@args))
+
+(defun local-time-day (local-time)
+  "Deprecated function to retrieve the day field from the local-time"
+  (declare (type local-time local-time))
+  (day-of local-time))
+
+(defun local-time-sec (local-time)
+  "Deprecated function to retrieve the seconds field from the local-time"
+  (declare (type local-time local-time))
+  (sec-of local-time))
+
+(defun local-time-msec (local-time)
+  "Deprecated function to retrieve the milliseconds field from the local-time"
+  (declare (type local-time local-time))
+  (floor (usec-of local-time) 1000))
 
 (defparameter +utc-zone+ (make-timezone :subzones '((0 nil "UTC" nil nil))
 										:loaded t)
