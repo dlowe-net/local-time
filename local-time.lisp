@@ -36,9 +36,9 @@
     (:use cl)
   (:export local-time
 		   make-local-time
-		   day-of
-		   sec-of
-		   usec-of
+		   epoch-days-of
+		   epoch-secs-of
+		   epoch-usec-of
 		   timezone-of
 		   local-time<
 		   local-time<=
@@ -61,6 +61,7 @@
 		   *default-timezone*
            now
            enable-read-macros
+           +utc-zone+
            +month-names+
            +short-month-names+
            +day-names+
