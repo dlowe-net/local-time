@@ -36,9 +36,9 @@
     (:use cl)
   (:export local-time
 		   make-local-time
-		   epoch-days-of
-		   epoch-secs-of
-		   epoch-usec-of
+		   day-of
+		   sec-of
+		   usec-of
 		   timezone-of
 		   local-time<
 		   local-time<=
@@ -211,13 +211,15 @@
   (define-timezone *default-timezone* #p"/etc/localtime"))
 
 (defclass local-time ()
-  ((epoch-day :accessor epoch-day-of :initarg :epoch-day :initform 0)
-   (epoch-sec :accessor epoch-sec-of :initarg :epoch-sec :initform 0)
-   (epoch-usec :accessor epoch-usec-of :initarg :epoch-usec :initform 0)
-   (timezone :accessor timezone-of :initarg :timezone :initform *default-timezone*)
-   (days :accessor days-of :initarg :days :initform 0)
-   (secs :accessor secs-of :initarg :secs :initform 0)
-   (usecs :accessor usecs-of :initarg :usecs :initform 0)))
+  ((day :accessor day-of :initarg :day :initform 0
+		:documentation "the day field of the time point")
+   (sec :accessor sec-of :initarg :sec :initform 0
+		:documentation "the second field of the time point")
+   (usec :accessor usec-of :initarg :usec :initform 0
+		 :documentation "the microsecond field of the time point")
+   (timezone :accessor timezone-of :initarg :timezone
+			 :initform *default-timezone*
+			 :documentation "the timezone in which the time point was encoded")))
 
 (defmacro make-local-time (&rest args)
   `(make-instance 'local-time ,@args))
@@ -228,8 +230,8 @@
 
 (defun unix-time (local-time)
   "Return the Unix time corresponding to the LOCAL-TIME"
-  (+ (* (+ (epoch-day-of local-time) 11017) 86400)
-	 (epoch-sec-of local-time)))
+  (+ (* (+ (day-of local-time) 11017) 86400)
+	 (sec-of local-time)))
 
 (defun timezone (local-time &optional timezone)
   "Return as multiple values the time zone as the number of seconds east of UTC, a boolean daylight-saving-p, the customary abbreviation of the timezone, the starting time of this timezone, and the ending time of this timezone."
@@ -255,44 +257,43 @@
          (offset-sign (signum offset-diff)))
     (multiple-value-bind (offset-day offset-sec)
         (floor (abs offset-diff) 86400)
-      (let ((new-day (+ (epoch-day-of source) (* offset-sign offset-day)))
-            (new-sec (+ (epoch-sec-of source) (* offset-sign offset-sec))))
+      (let ((new-day (+ (day-of source) (* offset-sign offset-day)))
+            (new-sec (+ (sec-of source) (* offset-sign offset-sec))))
         (when (minusp new-sec)
           (incf new-sec 86400)
           (decf new-day))
         (cond
           (destination
-           (setf (epoch-usec-of destination) (epoch-usec-of source)
-                 (epoch-sec-of destination) new-sec
-                 (epoch-day-of destination) new-day
+           (setf (usec-of destination) (usec-of source)
+                 (sec-of destination) new-sec
+                 (day-of destination) new-day
                  (timezone-of destination) timezone)
            destination)
           (t
            (values new-day new-sec)))))))
 
 (defun astronomical-julian-date (local-time)
-  (- (epoch-day-of local-time) +astronomical-julian-date-offset+))
+  (- (day-of local-time) +astronomical-julian-date-offset+))
 
 (defun modified-julian-date (local-time)
-  (- (epoch-day-of local-time) +modified-julian-date-offset+))
+  (- (day-of local-time) +modified-julian-date-offset+))
 
 (defun local-time-diff (time-a time-b)
   "Returns a new LOCAL-TIME containing the difference between TIME-A and TIME-B"
   (multiple-value-bind (day-a sec-a)
 	  (local-time-adjust time-a (timezone-of time-b))
-	(let ((usec (- (epoch-usec-of time-a) (epoch-usec-of time-b)))
-		  (seconds (- sec-a (epoch-sec-of time-b)))
-		  (days (- day-a (epoch-day-of time-b))))
+	(let ((usec (- (usec-of time-a) (usec-of time-b)))
+		  (seconds (- sec-a (sec-of time-b)))
+		  (days (- day-a (day-of time-b))))
 	  (when (minusp usec)
 		(decf seconds)
 		(incf usec 1000000))
 	  (when (minusp seconds)
 		(decf days)
 		(incf seconds 86400))
-	  (make-local-time :epoch-usec usec
-					   :epoch-sec seconds
-					   :epoch-day days
-					   :timezone (timezone-of time-b)))))
+	  (make-localtime :usec usec
+					  :sec seconds
+					  :day days))))
 
 (defun local-time-sum (time-a time-b)
   "Returns a new LOCAL-TIME containing the sum of TIME-A and TIME-B"
@@ -332,7 +333,7 @@
   (position day +month-days+ :from-end t :test #'>=))
 
 (defun local-time-day-of-week (local-time)
-  (mod (+ 3 (epoch-day-of local-time)) 7))
+  (mod (+ 3 (day-of local-time)) 7))
 
 (defun encode-local-time (us ss mm hh day month year &optional timezone)
   "Return a new LOCAL-TIME instance corresponding to the specified time elements."
@@ -340,9 +341,9 @@
 		 (int-year (if (< month 3) (- year 2001) (- year 2000)))
 		 (zone (realize-timezone (or timezone *default-timezone*)))
 		 (result (make-local-time
-				  :epoch-usec us
-				  :epoch-sec (+ (* hh 3600) (* mm 60) ss)
-				  :epoch-day (+ (floor (* int-year 1461) 4)
+				  :usec us
+				  :sec (+ (* hh 3600) (* mm 60) ss)
+				  :day (+ (floor (* int-year 1461) 4)
                                 (month-days int-month)
                                 (1- day))
 				  :timezone zone)))
@@ -365,9 +366,9 @@
 	(unix
 	 (let* ((days (floor unix 86400))
             (secs (- unix (* days 86400))))
-       (make-local-time :epoch-day (- days 11017)
-                        :epoch-sec secs
-                        :epoch-usec usec
+       (make-local-time :day (- days 11017)
+                        :sec secs
+                        :usec usec
                         :timezone (realize-timezone
                                    (or timezone *default-timezone*)))))))
 
@@ -404,7 +405,7 @@
 
 (defun local-time-decoded-date (local-time)
   (multiple-value-bind (leap-cycle year-days)
-      (floor (epoch-day-of local-time) 1461)
+      (floor (day-of local-time) 1461)
     (multiple-value-bind (years month-days)
         (floor year-days 365)
       (let* ((month (decode-month month-days))
@@ -422,7 +423,7 @@
 
 (defun local-time-decoded-time (local-time)
   (multiple-value-bind (hours hour-remainder)
-      (floor (epoch-sec-of local-time) 3600)
+      (floor (sec-of local-time) 3600)
     (multiple-value-bind (minutes seconds)
         (floor hour-remainder 60)
       (values
@@ -439,7 +440,7 @@
     (multiple-value-bind (year month day)
         (local-time-decoded-date local-time)
       (values
-       (epoch-usec-of local-time)
+       (usec-of local-time)
        seconds minutes hours
        day month year
        (local-time-day-of-week local-time)
