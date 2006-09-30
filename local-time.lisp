@@ -82,7 +82,7 @@
 
 (defparameter +month-days+
   (make-array 12 :initial-contents
-			  (loop for length across #(0 31 30 31 30 31 31 30 31 30 31 31)
+              (loop for length across #(0 31 30 31 30 31 31 30 31 30 31 31)
                     as days = 0 then (+ days length)
                     collect days)))
 
@@ -122,7 +122,7 @@
 (defun string-from-unsigned-vector (vector offset)
   "Returns a string created from the vector of unsigned bytes VECTOR starting at OFFSET which is terminated by a 0."
   (let ((null-pos (or (position 0 vector :start offset) (length vector))))
-	(with-output-to-string (str)
+    (with-output-to-string (str)
                            (loop for idx from offset upto (1- null-pos)
                                  do (princ (code-char (aref vector idx)) str)))))
 
@@ -231,23 +231,23 @@
 
 (defun unix-time (local-time)
   "Return the Unix time corresponding to the LOCAL-TIME"
-  (+ (* (+ (day-of local-time) 11017) 86400)
-	 (sec-of local-time)))
+  (+ (* (+ (epoch-day-of local-time) 11017) 86400)
+	 (epoch-sec-of local-time)))
 
 (defun timezone (local-time &optional timezone)
   "Return as multiple values the time zone as the number of seconds east of UTC, a boolean daylight-saving-p, the customary abbreviation of the timezone, the starting time of this timezone, and the ending time of this timezone."
   (let* ((zone (realize-timezone
                 (or timezone (timezone-of local-time) *default-timezone*)))
-		 (subzone-idx (or
-					   (second (assoc (unix-time local-time)
-									  (timezone-transitions zone)
-									  :test #'>))
-					   0))
-		 (subzone (nth subzone-idx (timezone-subzones zone))))
-	(values
-	 (first subzone)
-	 (second subzone)
-	 (third subzone))))
+         (subzone-idx (or
+                       (second (assoc (unix-time local-time)
+                                      (timezone-transitions zone)
+                                      :test #'>))
+                       0))
+         (subzone (nth subzone-idx (timezone-subzones zone))))
+    (values
+     (first subzone)
+     (second subzone)
+     (third subzone))))
 
 (defun local-time-adjust (source timezone &optional (destination nil))
   "Returns two values, the values of new DAY and SEC slots, or, if DESTINATION is a LOCAL-TIME instance, fills the slots with the new values and returns the destination"
@@ -283,49 +283,50 @@
   "Returns a new LOCAL-TIME containing the difference between TIME-A and TIME-B"
   (multiple-value-bind (day-a sec-a)
 	  (local-time-adjust time-a (timezone-of time-b))
-	(let ((usec (- (usec-of time-a) (usec-of time-b)))
-		  (seconds (- sec-a (sec-of time-b)))
-		  (days (- day-a (day-of time-b))))
+	(let ((usec (- (epoch-usec-of time-a) (epoch-usec-of time-b)))
+		  (seconds (- sec-a (epoch-sec-of time-b)))
+		  (days (- day-a (epoch-day-of time-b))))
 	  (when (minusp usec)
 		(decf seconds)
 		(incf usec 1000000))
 	  (when (minusp seconds)
 		(decf days)
 		(incf seconds 86400))
-	  (make-localtime :usec usec
-					  :sec seconds
-					  :day days))))
+	  (make-local-time :epoch-usec usec
+					   :epoch-sec seconds
+					   :epoch-day days
+					   :timezone (timezone-of time-b)))))
 
 (defun local-time-sum (time-a time-b)
   "Returns a new LOCAL-TIME containing the sum of TIME-A and TIME-B"
   (multiple-value-bind (day-a sec-a)
-	  (local-time-adjust time-a (timezone-of time-b))
-	(let ((usec (+ (epoch-usec-of time-a) (epoch-usec-of time-b)))
-		  (sec (+ sec-a (epoch-sec-of time-b)))
-		  (day (+ day-a (epoch-day-of time-b))))
-	  (when (> usec 1000000)
-		(decf usec 1000000)
-		(incf sec))
-	  (when (> sec 86400)
-		(decf sec 86400)
-		(incf day))
-	  (make-local-time :epoch-usec usec
-					   :epoch-sec sec
-					   :epoch-day day
-					   :timezone (timezone-of time-b)))))
+      (local-time-adjust time-a (timezone-of time-b))
+    (let ((usec (+ (epoch-usec-of time-a) (epoch-usec-of time-b)))
+          (sec (+ sec-a (epoch-sec-of time-b)))
+          (day (+ day-a (epoch-day-of time-b))))
+      (when (> usec 1000000)
+        (decf usec 1000000)
+        (incf sec))
+      (when (> sec 86400)
+        (decf sec 86400)
+        (incf day))
+      (make-local-time :epoch-usec usec
+                       :epoch-sec sec
+                       :epoch-day day
+                       :timezone (timezone-of time-b)))))
 
 (defun local-time-compare (time-a time-b)
   "Returns the symbols <, >, or =, describing the relationship between TIME-A and TIME-b."
   (multiple-value-bind (day-a sec-a)
-	  (local-time-adjust time-a (timezone-of time-b))
-	(cond
-	  ((< day-a (epoch-day-of time-b)) '<)
-	  ((> day-a (epoch-day-of time-b)) '>)
-	  ((< sec-a (epoch-sec-of time-b)) '<)
-	  ((> sec-a (epoch-sec-of time-b)) '>)
-	  ((< (epoch-usec-of time-a) (epoch-usec-of time-b)) '<)
-	  ((> (epoch-usec-of time-a) (epoch-usec-of time-b)) '>)
-	  (t                                                     '=))))
+      (local-time-adjust time-a (timezone-of time-b))
+    (cond
+      ((< day-a (epoch-day-of time-b)) '<)
+      ((> day-a (epoch-day-of time-b)) '>)
+      ((< sec-a (epoch-sec-of time-b)) '<)
+      ((> sec-a (epoch-sec-of time-b)) '>)
+      ((< (epoch-usec-of time-a) (epoch-usec-of time-b)) '<)
+      ((> (epoch-usec-of time-a) (epoch-usec-of time-b)) '>)
+      (t                                                     '=))))
 
 (defun month-days (month)
   (aref +month-days+ month))
@@ -342,30 +343,30 @@
 		 (int-year (if (< month 3) (- year 2001) (- year 2000)))
 		 (zone (realize-timezone (or timezone *default-timezone*)))
 		 (result (make-local-time
-				  :usec us
-				  :sec (+ (* hh 3600) (* mm 60) ss)
-				  :day (+ (floor (* int-year 1461) 4)
+				  :epoch-usec us
+				  :epoch-sec (+ (* hh 3600) (* mm 60) ss)
+				  :epoch-day (+ (floor (* int-year 1461) 4)
                                 (month-days int-month)
                                 (1- day))
-				  :timezone zone)))
-	result
+                  :timezone zone)))
+    result
     (local-time-adjust result zone result)))
 
 (defun local-time (&key (universal nil) (internal nil) (unix nil) (usec 0) (timezone nil))
   "Produce a LOCAL-TIME instance from the provided numeric time representation."
   (declare (ignorable internal))
   (cond
-	(universal
-	 (multiple-value-bind (sec minute hour date month year)
-		 (decode-universal-time universal)
-	   (encode-local-time usec sec minute hour date month year
+    (universal
+     (multiple-value-bind (sec minute hour date month year)
+         (decode-universal-time universal)
+       (encode-local-time usec sec minute hour date month year
                           (realize-timezone (or timezone
                                                 *default-timezone*)))))
-	(internal
-	 ;; FIXME: How to portably convert between internal time?
+    (internal
+     ;; FIXME: How to portably convert between internal time?
      (error "Conversion of internal time not implemented"))
-	(unix
-	 (let* ((days (floor unix 86400))
+    (unix
+     (let* ((days (floor unix 86400))
             (secs (- unix (* days 86400))))
        (make-local-time :day (- days 11017)
                         :sec secs
@@ -626,9 +627,9 @@
 (defun universal-time (local-time)
   "Return the UNIVERSAL-TIME corresponding to the LOCAL-TIME"
   (multiple-value-bind (usec seconds minutes hours day month year)
-	  (decode-local-time local-time)
-	(declare (ignore usec))
-	(encode-universal-time seconds minutes hours day month year)))
+      (decode-local-time local-time)
+    (declare (ignore usec))
+    (encode-universal-time seconds minutes hours day month year)))
 
 (defun internal-time (local-time)
   "Return the internal system time corresponding to the LOCAL-TIME"
