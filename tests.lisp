@@ -234,38 +234,41 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test format-timestring
-  (is-string= (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil)
+  (is-string= (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t)
               "2008-06-05T04:03:02.000001"
 
               ;; This test only works on CDT (so far)
-              (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil t)
-              "2008-06-05T04:03:02.000001-5:00"
+              (format-timestring (encode-local-time 1 2 3 4 5 6 2008))
+              "2008-06-05T04:03:02.000001-05:00"
 
-              (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008 +utc-zone+) t t)
-              "2008-06-05T04:03:02.000001+0:00"
+              (format-timestring (encode-local-time 1 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p t)
+              "2008-06-05T04:03:02.000001Z"
 
-              (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 2)
+              (format-timestring (encode-local-time 12345678 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p nil)
+              "2008-06-05T04:03:02.12345678+00:00"
+
+              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 2)
               "-06-05T04:03:02.000001"
 
-              (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 1)
+              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 1)
               "-05T04:03:02.000001"
 
-              (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 0)
+              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0)
               "04:03:02.000001"
 
-              (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 0 3)
+              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 3)
               "04:03:02"
 
-              (format-timestring nil (encode-local-time 1 2 3 4 5 6 -5) nil nil)
+              (format-timestring (encode-local-time 1 2 3 4 5 6 -5) :omit-timezone-p t)
               "-0005-06-05T04:03:02.000001"
 
-              (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 0 0)
+              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 0)
               ""
 
-              (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 0 1)
+              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 1)
               "04"
 
-              (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 0 2)
+              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 2)
               "04:03"))
 
 (deftest parse-timestring-4 ()
@@ -302,7 +305,7 @@
 (test parse-timestring
   (let ((local-time (now)))
     (is (local-time= (parse-timestring
-                      (format-timestring nil local-time nil nil))
+                      (format-timestring local-time))
                      local-time)))
   (let ((local-time (encode-local-time 0 0 0 0 1 1 0)))
     (is (local-time= (parse-timestring "0000-01-01T00:00:00,0")
