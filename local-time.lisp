@@ -673,7 +673,8 @@
 
 (defun enable-read-macros ()
   (set-macro-character #\@ 'read-timestring)
-  (set-dispatch-macro-character #\# #\@ 'read-universal-time))
+  (set-dispatch-macro-character #\# #\@ 'read-universal-time)
+  (values))
 
 (defmethod print-object ((object local-time) stream)
   "Print the LOCAL-TIME object using the standard reader notation"
