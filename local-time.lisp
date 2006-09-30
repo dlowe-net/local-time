@@ -576,64 +576,64 @@
 						   junk-allowed)))
 
 (defun construct-timestring (local-time universal-p timezone-p
-										date-elements time-elements date-separator
-										time-separator internal-separator)
+                                        date-elements time-elements date-separator
+                                        time-separator internal-separator)
   (with-output-to-string (str)
-						 (multiple-value-bind (usec sec minute hour day month year day-of-week daylight-p zone)
-							 (decode-local-time local-time)
-						   (declare (ignore day-of-week daylight-p))
-						   (check-type date-elements (integer 0 3))
-						   (check-type time-elements (integer 0 4))
-						   (cond
-							 ((> date-elements 2)
-							  (format str "~:[~;-~]~4,'0d~c"
-									  (minusp year)
-									  (abs year)
-									  date-separator))
-							 ((plusp date-elements)
-							  ;; if the year is not shown, but other parts of the date are,
-							  ;; the year is replaced with a hyphen
-							  (princ "-" str)))
-						   (when (> date-elements 1)
-							 (format str "~2,'0d~c" month date-separator))
-						   (when (> date-elements 0)
-							 (format str "~2,'0d" day))
-						   (when (and (plusp date-elements) (plusp time-elements))
-							 (princ internal-separator str))
-						   (when (> time-elements 0)
-							 (format str "~2,'0d" hour))
-						   (when (> time-elements 1)
-							 (format str "~c~2,'0d" time-separator minute))
-						   (when (> time-elements 2)
-							 (format str "~c~2,'0d" time-separator sec))
-						   (when (> time-elements 3)
-							 (format str ".~6,'0d" usec))
-						   (when timezone-p
-							 (let* ((zone (if universal-p +utc-zone+ zone))
-									(offset (local-timezone local-time zone)))
-							   (format str "~2,'0@d:~2,'0d"
-									   (floor offset 3600)
-									   (abs (mod offset 3600))))))))
+                         (multiple-value-bind (usec sec minute hour day month year day-of-week daylight-p zone)
+                             (decode-local-time local-time)
+                           (declare (ignore day-of-week daylight-p))
+                           (check-type date-elements (integer 0 3))
+                           (check-type time-elements (integer 0 4))
+                           (cond
+                             ((> date-elements 2)
+                              (format str "~:[~;-~]~4,'0d~c"
+                                      (minusp year)
+                                      (abs year)
+                                      date-separator))
+                             ((plusp date-elements)
+                              ;; if the year is not shown, but other parts of the date are,
+                              ;; the year is replaced with a hyphen
+                              (princ "-" str)))
+                           (when (> date-elements 1)
+                             (format str "~2,'0d~c" month date-separator))
+                           (when (> date-elements 0)
+                             (format str "~2,'0d" day))
+                           (when (and (plusp date-elements) (plusp time-elements))
+                             (princ internal-separator str))
+                           (when (> time-elements 0)
+                             (format str "~2,'0d" hour))
+                           (when (> time-elements 1)
+                             (format str "~c~2,'0d" time-separator minute))
+                           (when (> time-elements 2)
+                             (format str "~c~2,'0d" time-separator sec))
+                           (when (> time-elements 3)
+                             (format str ".~6,'0d" usec))
+                           (when timezone-p
+                             (let* ((zone (if universal-p +utc-zone+ zone))
+                                    (offset (local-timezone local-time zone)))
+                               (format str "~2,'0@d:~2,'0d"
+                                       (floor offset 3600)
+                                       (abs (mod offset 3600))))))))
 
 (defun format-timestring (stream local-time universal-p timezone-p
-								 &optional date-elements time-elements
-								 date-separator time-separator internal-separator)
+                                 &optional date-elements time-elements
+                                 date-separator time-separator internal-separator)
   "Produces on stream the timestring corresponding to the LOCAL-TIME with the given options.  If STREAM is NIL, returns a string containing what would have been output.  If STREAM is T, prints the string to *standard-output*."
   (let ((str (construct-timestring local-time universal-p timezone-p
-								   (or date-elements 3)
-								   (or time-elements 4)
-								   (or date-separator #\-)
-								   (or time-separator #\:)
-								   (cond
-									 ((eql internal-separator 0) "")
-									 (internal-separator internal-separator)
-									 (t "T")))))
-	(cond
-	  (stream
-	   (princ str stream)
-	   nil)
-	  (t
-	   str))))
+                                   (or date-elements 3)
+                                   (or time-elements 4)
+                                   (or date-separator #\-)
+                                   (or time-separator #\:)
+                                   (cond
+                                     ((eql internal-separator 0) "")
+                                     (internal-separator internal-separator)
+                                     (t "T")))))
+    (cond
+      (stream
+       (princ str stream)
+       nil)
+      (t
+       str))))
 
 (defun universal-time (local-time)
   "Return the UNIVERSAL-TIME corresponding to the LOCAL-TIME"
