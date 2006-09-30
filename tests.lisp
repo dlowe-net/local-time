@@ -8,228 +8,171 @@
 
 (in-suite* #:local-time.make :in :local-time)
 
-(test make-local-time-1
-  (let ((local-time (make-local-time :epoch-usec 1 :epoch-sec 2 :epoch-day 3 :timezone *default-timezone*)))
-    (is-equal (epoch-usec-of local-time) 1
-              (epoch-sec-of local-time) 2
-              (epoch-day-of local-time) 3)))
+(test make-local-time
+  (let ((local-time (make-local-time :usec 1 :sec 2 :day 3 :timezone *default-timezone*)))
+    (is-equal (usec-of local-time) 1
+              (sec-of local-time) 2
+              (day-of local-time) 3)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(deftest make-local-time-1 ()
-	(let ((local-time (make-local-time :epoch-usec 1 :epoch-sec 2 :epoch-day 3 :timezone *default-timezone*)))
-	  (values
-	   (epoch-usec-of local-time)
-	   (epoch-sec-of local-time)
-	   (epoch-day-of local-time)))
-  1 2 3)
+(defmacro defcmptest (compare-with &body args)
+  `(test ,compare-with
+    (flet ((make (day &optional (sec 0) (usec 0))
+             (make-local-time :day day :sec sec :usec usec)))
+      ,@(loop for entry in args
+              if (= (length entry) 1)
+              do (push 'is entry)
+              else do (setf (car entry) (if (member (car entry) '(t true is is-true) :test #'eq)
+                                            'is
+                                            'is-false))
+              collect `(,(first entry) (,compare-with (make ,@(second entry))
+                                        (make ,@(third entry))))))))
+(defcmptest local-time<
+  (true (1 0 0)
+        (2 0 0))
+  (true (0 1 0)
+        (0 2 0))
+  (true (0 0 1)
+        (0 0 2))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(deftest local-time<-1 ()
-	(local-time< (make-local-time :epoch-day 1 :epoch-sec 0 :epoch-usec 0)
-				 (make-local-time :epoch-day 2 :epoch-sec 0 :epoch-usec 0))
-  t)
-(deftest local-time<-2 ()
-	(local-time< (make-local-time :epoch-day 2 :epoch-sec 0 :epoch-usec 0)
-				 (make-local-time :epoch-day 1 :epoch-sec 0 :epoch-usec 0))
-  nil)
-(deftest local-time<-3 ()
-	(local-time< (make-local-time :epoch-day 0 :epoch-sec 1 :epoch-usec 0)
-				 (make-local-time :epoch-day 0 :epoch-sec 2 :epoch-usec 0))
-  t)
-(deftest local-time<-4 ()
-	(local-time< (make-local-time :epoch-day 0 :epoch-sec 2 :epoch-usec 0)
-				 (make-local-time :epoch-day 0 :epoch-sec 1 :epoch-usec 0))
-  nil)
-(deftest local-time<-5 ()
-	(local-time< (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 1)
-				 (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 2))
-  t)
-(deftest local-time<-6 ()
-	(local-time< (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 2)
-				 (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 1))
-  nil)
+  (false (2 0 0)
+         (1 0 0))
+  (false (0 2 0)
+         (0 1 0))
+  (false (0 0 2)
+         (0 0 1)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(deftest local-time<=-1 ()
-	(local-time<= (make-local-time :epoch-day 1 :epoch-sec 0 :epoch-usec 0)
-				  (make-local-time :epoch-day 2 :epoch-sec 0 :epoch-usec 0))
-  t)
-(deftest local-time<=-2 ()
-	(local-time<= (make-local-time :epoch-day 2 :epoch-sec 0 :epoch-usec 0)
-				  (make-local-time :epoch-day 1 :epoch-sec 0 :epoch-usec 0))
-  nil)
-(deftest local-time<=-3 ()
-	(local-time<= (make-local-time :epoch-day 0 :epoch-sec 1 :epoch-usec 0)
-				  (make-local-time :epoch-day 0 :epoch-sec 2 :epoch-usec 0))
-  t)
-(deftest local-time<=-4 ()
-	(local-time<= (make-local-time :epoch-day 0 :epoch-sec 2 :epoch-usec 0)
-				  (make-local-time :epoch-day 0 :epoch-sec 1 :epoch-usec 0))
-  nil)
-(deftest local-time<=-5 ()
-	(local-time<= (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 1)
-				  (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 2))
-  t)
-(deftest local-time<=-6 ()
-	(local-time<= (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 2)
-				  (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 1))
-  nil)
-(deftest local-time<=-7 ()
-	(local-time<= (make-local-time :epoch-day 1 :epoch-sec 2 :epoch-usec 3)
-				  (make-local-time :epoch-day 1 :epoch-sec 2 :epoch-usec 3))
-  t)
+(defcmptest local-time<=
+  (true (1 0 0)
+        (2 0 0))
+  (true (0 1 0)
+        (0 2 0))
+  (true (0 0 1)
+        (0 0 2))
+  (true (1 0 0)
+        (1 0 0))
+  (true (1 1 0)
+        (1 1 0))
+  (true (1 1 1)
+        (1 1 1))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(deftest local-time>-1 ()
-	(local-time> (make-local-time :epoch-day 2 :epoch-sec 0 :epoch-usec 0)
-				 (make-local-time :epoch-day 1 :epoch-sec 0 :epoch-usec 0))
-  t)
-(deftest local-time>-2 ()
-	(local-time> (make-local-time :epoch-day 1 :epoch-sec 0 :epoch-usec 0)
-				 (make-local-time :epoch-day 2 :epoch-sec 0 :epoch-usec 0))
-  nil)
-(deftest local-time>-3 ()
-	(local-time> (make-local-time :epoch-day 0 :epoch-sec 2 :epoch-usec 0)
-				 (make-local-time :epoch-day 0 :epoch-sec 1 :epoch-usec 0))
-  t)
-(deftest local-time>-4 ()
-	(local-time> (make-local-time :epoch-day 0 :epoch-sec 1 :epoch-usec 0)
-				 (make-local-time :epoch-day 0 :epoch-sec 2 :epoch-usec 0))
-  nil)
-(deftest local-time>-5 ()
-	(local-time> (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 2)
-				 (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 1))
-  t)
-(deftest local-time>-6 ()
-	(local-time> (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 1)
-				 (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 2))
-  nil)
+  (false (2 0 0)
+         (1 0 0))
+  (false (0 2 0)
+         (0 1 0))
+  (false (0 0 2)
+         (0 0 1)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(deftest local-time>=-1 ()
-	(local-time>= (make-local-time :epoch-day 2 :epoch-sec 0 :epoch-usec 0)
-				  (make-local-time :epoch-day 1 :epoch-sec 0 :epoch-usec 0))
-  t)
-(deftest local-time>=-2 ()
-	(local-time>= (make-local-time :epoch-day 1 :epoch-sec 0 :epoch-usec 0)
-				  (make-local-time :epoch-day 2 :epoch-sec 0 :epoch-usec 0))
-  nil)
-(deftest local-time>=-3 ()
-	(local-time>= (make-local-time :epoch-day 0 :epoch-sec 2 :epoch-usec 0)
-				  (make-local-time :epoch-day 0 :epoch-sec 1 :epoch-usec 0))
-  t)
-(deftest local-time>=-4 ()
-	(local-time>= (make-local-time :epoch-day 0 :epoch-sec 1 :epoch-usec 0)
-				  (make-local-time :epoch-day 0 :epoch-sec 2 :epoch-usec 0))
-  nil)
-(deftest local-time>=-5 ()
-	(local-time>= (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 2)
-				  (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 1))
-  t)
-(deftest local-time>=-6 ()
-	(local-time>= (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 1)
-				  (make-local-time :epoch-day 0 :epoch-sec 0 :epoch-usec 2))
-  nil)
-(deftest local-time>=-7 ()
-	(local-time>= (make-local-time :epoch-day 1 :epoch-sec 2 :epoch-usec 3)
-				  (make-local-time :epoch-day 1 :epoch-sec 2 :epoch-usec 3))
-  t)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(deftest local-time=-1 ()
-	(local-time= (make-local-time) (make-local-time))
-  t)
-(deftest local-time=-2 ()
-	(local-time= (make-local-time) (make-local-time :epoch-usec 1))
-  nil)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(deftest local-time/=-1 ()
-	(local-time/= (make-local-time) (make-local-time))
-  nil)
-(deftest local-time/=-2 ()
-	(local-time/= (make-local-time) (make-local-time :epoch-usec 1))
-  t)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcmptest local-time>
+  (true (2 0 0)
+        (1 0 0))
+  (true (0 2 0)
+        (0 1 0))
+  (true (0 0 2)
+        (0 0 1))
 
-(deftest encode-local-time-1 ()
-	(let ((local-time (encode-local-time 0 0 0 0 1 3 2000)))
-	  (values
-	   (epoch-usec-of local-time)
-	   (epoch-sec-of local-time)
-	   (epoch-day-of local-time)))
-  0 0 0)
+  (false (1 0 0)
+         (2 0 0))
+  (false (0 1 0)
+         (0 2 0))
+  (false (0 0 1)
+         (0 0 2)))
 
-(deftest encode-local-time-2 ()
-	(let ((local-time (encode-local-time 0 0 0 0 29 2 2000)))
-	  (values
-	   (epoch-usec-of local-time)
-	   (epoch-sec-of local-time)
-	   (epoch-day-of local-time)))
-  0 0 -1)
+(defcmptest local-time>=
+  (true (2 0 0)
+        (1 0 0))
+  (true (0 2 0)
+        (0 1 0))
+  (true (0 0 2)
+        (0 0 1))
+  (true (1 0 0)
+        (1 0 0))
+  (true (1 1 0)
+        (1 1 0))
+  (true (1 1 1)
+        (1 1 1))
 
-(deftest encode-local-time-3 ()
-	(let ((local-time (encode-local-time 0 0 0 0 2 3 2000)))
-	  (values
-	   (epoch-usec-of local-time)
-	   (epoch-sec-of local-time)
-	   (epoch-day-of local-time)))
-  0 0 1)
+  (false (1 0 0)
+         (2 0 0))
+  (false (0 1 0)
+         (0 2 0))
+  (false (0 0 1)
+         (0 0 2)))
 
-(deftest encode-local-time-4 ()
-	(let ((local-time (encode-local-time 0 0 0 0 1 1 2000)))
-	  (values
-	   (epoch-usec-of local-time)
-	   (epoch-sec-of local-time)
-	   (epoch-day-of local-time)))
-  0 0 -60)
+(defcmptest local-time=
+  (true (1 0 0)
+        (1 0 0))
+  (true (1 1 0)
+        (1 1 0))
+  (true (1 1 1)
+        (1 1 1))
 
-(deftest encode-local-time-5 ()
-	(let ((local-time (encode-local-time 0 0 0 0 1 3 2001)))
-	  (values
-	   (epoch-usec-of local-time)
-	   (epoch-sec-of local-time)
-	   (epoch-day-of local-time)))
-  0 0 365)
+  (false (1 0 0)
+         (2 0 0))
+  (false (0 1 0)
+         (0 2 0))
+  (false (0 0 1)
+         (0 0 2)))
 
 (test local-time=-1
   (is (local-time= (make-local-time) (make-local-time)))
-  (is-false (local-time= (make-local-time) (make-local-time :epoch-usec 1))))
+  (is-false (local-time= (make-local-time) (make-local-time :usec 1))))
 
 (test local-time/=
-  (is (local-time/= (make-local-time) (make-local-time :epoch-usec 1)))
+  (is (local-time/= (make-local-time) (make-local-time :usec 1)))
   (is-false (local-time/= (make-local-time) (make-local-time))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test encode-local-time
   (let ((local-time (encode-local-time 0 0 0 0 1 3 2000)))
-    (is-equal (epoch-usec-of local-time) 0
-              (epoch-day-of local-time) 0
-              (epoch-sec-of local-time) 0))
+    (is-equal (usec-of local-time) 0
+              (day-of local-time) 0
+              (sec-of local-time) 0))
   (let ((local-time (encode-local-time 0 0 0 0 29 2 2000)))
-    (is-equal (epoch-usec-of local-time) 0
-              (epoch-day-of local-time) -1
-              (epoch-sec-of local-time) 0))
+    (is-equal (usec-of local-time) 0
+              (day-of local-time) -1
+              (sec-of local-time) 0))
   (let ((local-time (encode-local-time 0 0 0 0 2 3 2000)))
-    (is-equal (epoch-usec-of local-time) 0
-              (epoch-sec-of local-time) 0
-              (epoch-day-of local-time) 1))
+    (is-equal (usec-of local-time) 0
+              (sec-of local-time) 0
+              (day-of local-time) 1))
   (let ((local-time (encode-local-time 0 0 0 0 1 1 2000)))
-    (is-equal (epoch-usec-of local-time) 0
-              (epoch-sec-of local-time) 0
-              (epoch-day-of local-time) -60))
+    (is-equal (usec-of local-time) 0
+              (sec-of local-time) 0
+              (day-of local-time) -60))
   (let ((local-time (encode-local-time 0 0 0 0 1 3 2001)))
-    (is-equal (epoch-usec-of local-time) 0
-              (epoch-sec-of local-time) 0
-              (epoch-day-of local-time) 365)))
+    (is-equal (usec-of local-time) 0
+              (sec-of local-time) 0
+              (day-of local-time) 365)))
 
-(deftest decode-local-time-5 ((local-time (make-local-time
-                                           :epoch-day (- (random 65535) 36767)
-                                           :epoch-sec (random 86400)
-                                           :epoch-usec (random 1000))))
-  (multiple-value-bind (ms ss mm hh day mon year)
-      (decode-local-time local-time)
-    (local-time= local-time (encode-local-time ms ss mm hh day mon year)))
-  t)
+(defmacro encode-decode-test (args &body body)
+  `(let ((local-time (encode-local-time ,@(subseq args 0 7))))
+    (is-equal (decode-local-time local-time)
+     (values ,@args ,@(let ((stars nil))
+                           (dotimes (n (- 11 (length args)))
+                             (push '* stars))
+                           stars)))
+    ,@body))
+
+(test decode-local-time
+  (encode-decode-test (5 5 5 5 5 5 1990 6))
+  (encode-decode-test (0 0 0 0 1 3 2001 4))
+  (encode-decode-test (0 0 0 0 1 3 1998 0))
+  (encode-decode-test (1 2 3 4 5 6 2008 4)
+    (is-equal (timezone-of local-time) *default-timezone*
+              (length (multiple-value-list (timezone local-time))) 3))
+  (encode-decode-test (0 0 0 0 1 1 0)
+    (is-equal (multiple-value-list (decode-local-time local-time))
+              `(0 0 0 0 1 1 0 5
+                ,(nth-value 1 (timezone local-time))
+                ,*default-timezone*
+                ,(nth-value 2 (timezone local-time)))))
+  (let ((local-time (make-local-time
+                     :day (- (random 65535) 36767)
+                     :sec (random 86400)
+                     :usec (random 1000))))
+    (multiple-value-bind (ms ss mm hh day mon year) (decode-local-time local-time)
+      (is (local-time= local-time (encode-local-time ms ss mm hh day mon year))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -271,11 +214,7 @@
               (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 2)
               "04:03"))
 
-(deftest parse-timestring-4 ()
-  (epoch-day-of (parse-timestring "xxxx 2006-01-01T00:00:00,0 xxxx"
-                                    :start 5
-                                    :end 15))
-  (epoch-day-of (encode-local-time 0 0 0 0 1 1 2006)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test local-timezone
     ;; In 2005, April 4th is the start of daylight savings time.  The
@@ -313,10 +252,10 @@
   (let ((local-time (encode-local-time 0 0 0 0 1 1 2006)))
     (is (local-time= (parse-timestring "2006-01-01T00:00:00,0")
                      local-time)))
-  (is-equal (epoch-day-of (parse-timestring "xxxx 2006-01-01T00:00:00,0 xxxx"
-                                            :start 5
-                                            :end 15))
-            (epoch-day-of (encode-local-time 0 0 0 0 1 1 2006)))
+  (is-equal (day-of (parse-timestring "xxxx 2006-01-01T00:00:00,0 xxxx"
+                                      :start 5
+                                      :end 15))
+            (day-of (encode-local-time 0 0 0 0 1 1 2006)))
   (is (local-time= (parse-timestring "2008-07-06T05:04:03,02")
                    (encode-local-time 20000 3 4 5 6 7 2008)))
   (is (local-time= (parse-timestring "--23T::02")
@@ -352,13 +291,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest read-timestring-1 ((now (now)))
-  (with-input-from-string (ins (format-timestring nil now nil nil))
-    (read-timestring ins #\@))
-  now)
+(test read-timestring
+  (let ((now (now)))
+    (is (local-time= (with-input-from-string (ins (format-timestring now))
+                       (local-time::read-timestring ins #\@))
+                     now))))
 
-(deftest read-universal-time-1 ((now (now)))
-  (with-input-from-string (ins (format nil "~a" (universal-time now)))
-    (read-universal-time ins #\@ nil))
-  now)
+(test read-universal-time
+  (let ((now (now)))
+    (is (local-time= (with-input-from-string (ins (format nil "~a" (universal-time now)))
+                       (local-time::read-universal-time ins #\@ nil))
+                     now))))
 
