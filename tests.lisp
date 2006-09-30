@@ -1,4 +1,4 @@
-(in-package local-time)
+(in-package :local-time)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -422,4 +422,3 @@
     (local-time= (read-universal-time ins #\@ nil) now))
   t)
 
-(run-tests)
