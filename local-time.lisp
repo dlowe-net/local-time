@@ -692,7 +692,7 @@
   "Print the LOCAL-TIME object using the standard reader notation"
   (when *print-escape*
 	(princ "@" stream))
-  (format-timestring stream object nil nil))
+  (format-timestring object :destination stream))
 
 (defmethod print-object ((object timezone) stream)
   "Print the TIMEZONE object in a reader-rejected manner."
