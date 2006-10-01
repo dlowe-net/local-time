@@ -10,9 +10,10 @@
 
 (test make-local-time
   (let ((local-time (make-local-time :usec 1 :sec 2 :day 3 :timezone *default-timezone*)))
-    (is-equal (usec-of local-time) 1
-              (sec-of local-time) 2
-              (day-of local-time) 3)))
+    (is-every =
+      (usec-of local-time) 1
+      (sec-of local-time) 2
+      (day-of local-time) 3)))
 
 (defmacro defcmptest (compare-with &body args)
   `(test ,compare-with
@@ -125,33 +126,38 @@
 
 (test encode-local-time
   (let ((local-time (encode-local-time 0 0 0 0 1 3 2000)))
-    (is-equal (usec-of local-time) 0
-              (day-of local-time) 0
-              (sec-of local-time) 0))
+    (is-every =
+      (usec-of local-time) 0
+      (day-of local-time) 0
+      (sec-of local-time) 0))
   (let ((local-time (encode-local-time 0 0 0 0 29 2 2000)))
-    (is-equal (usec-of local-time) 0
-              (day-of local-time) -1
-              (sec-of local-time) 0))
+    (is-every =
+      (usec-of local-time) 0
+      (day-of local-time) -1
+      (sec-of local-time) 0))
   (let ((local-time (encode-local-time 0 0 0 0 2 3 2000)))
-    (is-equal (usec-of local-time) 0
-              (sec-of local-time) 0
-              (day-of local-time) 1))
+    (is-every =
+      (usec-of local-time) 0
+      (sec-of local-time) 0
+      (day-of local-time) 1))
   (let ((local-time (encode-local-time 0 0 0 0 1 1 2000)))
-    (is-equal (usec-of local-time) 0
-              (sec-of local-time) 0
-              (day-of local-time) -60))
+    (is-every =
+      (usec-of local-time) 0
+      (sec-of local-time) 0
+      (day-of local-time) -60))
   (let ((local-time (encode-local-time 0 0 0 0 1 3 2001)))
-    (is-equal (usec-of local-time) 0
-              (sec-of local-time) 0
-              (day-of local-time) 365)))
+    (is-every =
+      (usec-of local-time) 0
+      (sec-of local-time) 0
+      (day-of local-time) 365)))
 
 (defmacro encode-decode-test (args &body body)
   `(let ((local-time (encode-local-time ,@(subseq args 0 7))))
-    (is-equal (decode-local-time local-time)
-     (values ,@args ,@(let ((stars nil))
-                           (dotimes (n (- 11 (length args)))
-                             (push '* stars))
-                           stars)))
+    (is (equal (decode-local-time local-time)
+               (values ,@args ,@(let ((stars nil))
+                                     (dotimes (n (- 11 (length args)))
+                                       (push '* stars))
+                                     stars))))
     ,@body))
 
 (test decode-local-time
@@ -159,14 +165,14 @@
   (encode-decode-test (0 0 0 0 1 3 2001 4))
   (encode-decode-test (0 0 0 0 1 3 1998 0))
   (encode-decode-test (1 2 3 4 5 6 2008 4)
-    (is-equal (timezone-of local-time) *default-timezone*
-              (length (multiple-value-list (timezone local-time))) 3))
+    (is (eq (timezone-of local-time) *default-timezone*))
+    (is (= (length (multiple-value-list (timezone local-time))) 3)))
   (encode-decode-test (0 0 0 0 1 1 0)
-    (is-equal (multiple-value-list (decode-local-time local-time))
-              `(0 0 0 0 1 1 0 5
-                ,(nth-value 1 (timezone local-time))
-                ,*default-timezone*
-                ,(nth-value 2 (timezone local-time)))))
+    (is (equal (multiple-value-list (decode-local-time local-time))
+               `(0 0 0 0 1 1 0 5
+                 ,(nth-value 1 (timezone local-time))
+                 ,*default-timezone*
+                 ,(nth-value 2 (timezone local-time))))))
   (let ((local-time (make-local-time
                      :day (- (random 65535) 36767)
                      :sec (random 86400)
@@ -177,42 +183,43 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test format-timestring
-  (is-string= (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t)
-              "2008-06-05T04:03:02.000001"
+  (is-every string=
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t)
+    "2008-06-05T04:03:02.000001"
 
-              ;; This test only works on CDT (so far)
-              (format-timestring (encode-local-time 1 2 3 4 5 6 2008))
-              "2008-06-05T04:03:02.000001-05:00"
+    ;; This test only works on CDT (so far)
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008))
+    "2008-06-05T04:03:02.000001-05:00"
 
-              (format-timestring (encode-local-time 1 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p t)
-              "2008-06-05T04:03:02.000001Z"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p t)
+    "2008-06-05T04:03:02.000001Z"
 
-              (format-timestring (encode-local-time 12345678 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p nil)
-              "2008-06-05T04:03:02.12345678+00:00"
+    (format-timestring (encode-local-time 12345678 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p nil)
+    "2008-06-05T04:03:02.12345678+00:00"
 
-              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 2)
-              "-06-05T04:03:02.000001"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 2)
+    "-06-05T04:03:02.000001"
 
-              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 1)
-              "-05T04:03:02.000001"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 1)
+    "-05T04:03:02.000001"
 
-              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0)
-              "04:03:02.000001"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0)
+    "04:03:02.000001"
 
-              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 3)
-              "04:03:02"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 3)
+    "04:03:02"
 
-              (format-timestring (encode-local-time 1 2 3 4 5 6 -5) :omit-timezone-p t)
-              "-0005-06-05T04:03:02.000001"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 -5) :omit-timezone-p t)
+    "-0005-06-05T04:03:02.000001"
 
-              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 0)
-              ""
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 0)
+    ""
 
-              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 1)
-              "04"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 1)
+    "04"
 
-              (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 2)
-              "04:03"))
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 2)
+    "04:03"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -220,24 +227,24 @@
     ;; In 2005, April 4th is the start of daylight savings time.  The
     ;; difference between daylight savings and non-daylight savings
     ;; is one hour (for now)
-  (is-equal (- (local-timezone (encode-local-time 0 0 0 0 4 4 2005 +utc-zone+))
-               (local-timezone (encode-local-time 0 0 0 0 3 4 2005 +utc-zone+)))
-            3600))
+  (is (= (- (local-timezone (encode-local-time 0 0 0 0 4 4 2005 +utc-zone+))
+            (local-timezone (encode-local-time 0 0 0 0 3 4 2005 +utc-zone+)))
+         3600)))
 
 (test unix-time
-  (is-equal (unix-time (encode-local-time 0 0 0 0 1 1 1970)) 0))
+  (is (eql (unix-time (encode-local-time 0 0 0 0 1 1 1970)) 0)))
 
 (test universal-time
-  (is-equal (decode-universal-time (universal-time (encode-local-time 1 2 3 4 5 6 2008)))
-            (values 2 3 4 5 6 2008 3 * *)))
+  (is (equal (decode-universal-time (universal-time (encode-local-time 1 2 3 4 5 6 2008)))
+             (values 2 3 4 5 6 2008 3 * *))))
   
 (test local-time
   (let ((now (now)))
     (is (local-time= (local-time :unix (unix-time now))
                      now)))
   (let ((now (get-universal-time)))
-    (is-equal (universal-time (local-time :universal now))
-              now)))
+    (is (equal (universal-time (local-time :universal now))
+               now))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -252,10 +259,10 @@
   (let ((local-time (encode-local-time 0 0 0 0 1 1 2006)))
     (is (local-time= (parse-timestring "2006-01-01T00:00:00,0")
                      local-time)))
-  (is-equal (day-of (parse-timestring "xxxx 2006-01-01T00:00:00,0 xxxx"
-                                      :start 5
-                                      :end 15))
-            (day-of (encode-local-time 0 0 0 0 1 1 2006)))
+  (is (eql (day-of (parse-timestring "xxxx 2006-01-01T00:00:00,0 xxxx"
+                                     :start 5
+                                     :end 15))
+           (day-of (encode-local-time 0 0 0 0 1 1 2006))))
   (is (local-time= (parse-timestring "2008-07-06T05:04:03,02")
                    (encode-local-time 20000 3 4 5 6 7 2008)))
   (is (local-time= (parse-timestring "--23T::02" :allow-missing-elements-p t)
@@ -277,16 +284,16 @@
         (utc+1 (local-time::make-timezone :subzones '((+3600 NIL "UTC+1" T NIL))
                                           :loaded t))
         (epoch (local-time :unix 0 :timezone +utc-zone+)))
-    (is-equal (decode-local-time (local-time-adjust epoch utc-1 (make-local-time)))
-              ;; ms ss mm hh day mon year wday ds-p zone abbrev
-              (values 00 00 00 23 31 12 1969 3 nil utc-1 "UTC-1"))
+    (is (equal (decode-local-time (local-time-adjust epoch utc-1 (make-local-time)))
+               ;; ms ss mm hh day mon year wday ds-p zone abbrev
+               (values 00 00 00 23 31 12 1969 3 nil utc-1 "UTC-1")))
     (let ((local-time (local-time :unix 3600 :timezone +utc-zone+)))
-      (is-equal (decode-local-time (local-time-adjust local-time utc-1 (make-local-time)))
-                ;; ms ss mm hh day mon year
-                (values 00 00 00 00 01 01 1970 4 nil utc-1 "UTC-1")))
-    (is-equal (decode-local-time (local-time-adjust epoch utc+1 (make-local-time)))
-              ;; ms ss mm hh day mon year
-              (values 00 00 00 01 01 01 1970 4 nil utc+1 "UTC+1"))))
+      (is (equal (decode-local-time (local-time-adjust local-time utc-1 (make-local-time)))
+                 ;; ms ss mm hh day mon year
+                 (values 00 00 00 00 01 01 1970 4 nil utc-1 "UTC-1"))))
+    (is (equal (decode-local-time (local-time-adjust epoch utc+1 (make-local-time)))
+               ;; ms ss mm hh day mon year
+               (values 00 00 00 01 01 01 1970 4 nil utc+1 "UTC+1")))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
