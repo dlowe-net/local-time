@@ -53,6 +53,7 @@
            #:parse-timestring
            #:format-timestring
            #:format-rfc3339-timestring
+           #:parse-rfc3339-timestring
            #:universal-time
            #:internal-time
            #:unix-time
@@ -668,6 +669,11 @@
                  (done ()
                    (return-from %split-timestring (list year month day hour minute second offset-hour offset-minute))))
           (parse))))))
+
+(defun parse-rfc3339-timestring (timestring &key (fail-on-error t) &allow-other-keys)
+  (apply #'parse-timestring timestring :fail-on-error fail-on-error
+         :allow-missing-timezone-part-p nil :allow-missing-elements-p nil
+         :allow-missing-time-part-p nil :allow-missing-date-part-p nil))
 
 (defun parse-timestring (timestring &rest args)
   "Parse a timestring and return the corresponding LOCAL-TIME. See split-timestring for details."
