@@ -258,7 +258,7 @@
             (day-of (encode-local-time 0 0 0 0 1 1 2006)))
   (is (local-time= (parse-timestring "2008-07-06T05:04:03,02")
                    (encode-local-time 20000 3 4 5 6 7 2008)))
-  (is (local-time= (parse-timestring "--23T::02")
+  (is (local-time= (parse-timestring "--23T::02" :allow-missing-elements-p t)
                    (multiple-value-bind (ms ss mm hh day mon year)
                        (decode-local-time (now))
                      (declare (ignore ss day))
