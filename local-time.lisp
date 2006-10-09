@@ -686,10 +686,11 @@
                    (return-from %split-timestring (list year month day hour minute second offset-hour offset-minute))))
           (parse))))))
 
-(defun parse-rfc3339-timestring (timestring &key (fail-on-error t) &allow-other-keys)
-  (apply #'parse-timestring timestring :fail-on-error fail-on-error
-         :allow-missing-timezone-part-p nil :allow-missing-elements-p nil
-         :allow-missing-time-part-p nil :allow-missing-date-part-p nil))
+(defun parse-rfc3339-timestring (timestring &key (fail-on-error t)
+                                            (allow-missing-time-part-p nil))
+  (parse-timestring timestring :fail-on-error fail-on-error
+                    :allow-missing-timezone-part-p nil :allow-missing-elements-p nil
+                    :allow-missing-time-part-p allow-missing-time-part-p :allow-missing-date-part-p nil))
 
 (defun parse-timestring (timestring &rest args)
   "Parse a timestring and return the corresponding LOCAL-TIME. See split-timestring for details."
@@ -720,12 +721,15 @@
           (unless year (setf year now-year))))
       (encode-local-time usec second minute hour day month year *default-timezone*))))
 
-(defun format-rfc3339-timestring (local-time)
-  (format-timestring local-time))
+(defun format-rfc3339-timestring (local-time &rest args &key omit-date-part-p omit-time-part-p
+                                             omit-timezone-part-p)
+  (declare (ignore omit-date-part-p omit-time-part-p omit-timezone-part-p))
+  (apply #'format-timestring local-time args))
 
-(defun format-timestring (local-time &key destination timezone omit-timezone-p
+(defun format-timestring (local-time &key destination timezone (omit-date-part-p nil)
+                                     (omit-time-part-p nil) (omit-timezone-part-p omit-time-part-p)
                                      (use-zulu-p t)
-                                     (date-elements 3) (time-elements 4)
+                                     (date-elements (if omit-date-part-p 0 3)) (time-elements (if omit-time-part-p 0 4))
                                      (date-separator #\-) (time-separator #\:)
                                      (date-time-separator #\T))
   "Produces on stream the timestring corresponding to the LOCAL-TIME with the given options. If DESTINATION is NIL, returns a string containing what would have been output.  If DESTINATION is T, prints the string to *standard-output*."
@@ -763,7 +767,7 @@
                  (when (and (> time-elements 3)
                             (not (zerop usec)))
                    (format str ".~6,'0d" usec))
-                 (unless omit-timezone-p
+                 (unless omit-timezone-part-p
                    (let* ((offset (local-timezone local-time zone)))
                      (if (and use-zulu-p
                               (eq zone +utc-zone+))

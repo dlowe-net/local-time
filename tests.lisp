@@ -184,7 +184,7 @@
 
 (test format-timestring
   (is-every string=
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t)
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t)
     "2008-06-05T04:03:02.000001"
 
     ;; This test only works on CDT (so far)
@@ -197,28 +197,28 @@
     (format-timestring (encode-local-time 12345678 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p nil)
     "2008-06-05T04:03:02.12345678+00:00"
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 2)
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :date-elements 2)
     "-06-05T04:03:02.000001"
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 1)
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :date-elements 1)
     "-05T04:03:02.000001"
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0)
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t)
     "04:03:02.000001"
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 3)
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t :time-elements 3)
     "04:03:02"
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 -5) :omit-timezone-p t)
+    (format-timestring (encode-local-time 1 2 3 4 5 6 -5) :omit-timezone-part-p t)
     "-0005-06-05T04:03:02.000001"
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 0)
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-time-part-p t :omit-date-part-p t)
     ""
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 1)
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t :time-elements 1)
     "04"
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-p t :date-elements 0 :time-elements 2)
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t :time-elements 2)
     "04:03"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
