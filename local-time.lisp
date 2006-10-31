@@ -354,7 +354,7 @@
       ((> sec-a (sec-of time-b)) '>)
       ((< (usec-of time-a) (usec-of time-b)) '<)
       ((> (usec-of time-a) (usec-of time-b)) '>)
-      (t                                                     '=))))
+      (t '=))))
 
 (defun month-days (month)
   (aref +month-days+ month))
@@ -580,8 +580,7 @@
                          with match-count of-type (integer 0 #.most-positive-fixnum) = 0
                          for index of-type fixnum upfrom start
                          while (< index end)
-                         for el = (aref time-string index)
-                         when (member el chars :test #'char-equal)
+                         when (member (aref time-string index) chars :test #'char-equal)
                          collect (prog1 (if (< last-match index)
                                             (cons last-match index)
                                             nil)
