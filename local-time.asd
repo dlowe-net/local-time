@@ -20,11 +20,7 @@
 
 (defmethod perform ((op test-op) (system (eql (find-system :local-time))))
   (operate 'load-op '#:local-time.test)
-  (funcall (read-from-string "local-time::run-tests")))
-
-;; this is not really nice to have it enabled by default
-#+nil(defmethod perform :after ((op load-op) (system (eql (find-system :local-time))))
-  (in-package :local-time))
+  (funcall (read-from-string "5am:run!")))
 
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :local-time))))
   nil)
