@@ -108,11 +108,11 @@
 (defparameter +modified-julian-date-offset+ -51604)
 
 (defstruct timezone
-  (transitions nil)
-  (subzones nil)
-  (leap-seconds nil)
+  (transitions nil :type list)
+  (subzones nil :type list)
+  (leap-seconds nil :type list)
   (path nil)
-  (loaded nil))
+  (loaded nil :type boolean))
 
 (defun read-binary-integer (stream byte-count &optional (signed nil))
   "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
@@ -246,11 +246,14 @@
 
 (defun unix-time (local-time)
   "Return the Unix time corresponding to the LOCAL-TIME"
+  (declare (type local-time local-time))
   (+ (* (+ (day-of local-time) 11017) 86400)
      (sec-of local-time)))
 
 (defun timezone (local-time &optional timezone)
   "Return as multiple values the time zone as the number of seconds east of UTC, a boolean daylight-saving-p, the customary abbreviation of the timezone, the starting time of this timezone, and the ending time of this timezone."
+  (declare (type local-time local-time)
+           (type (or null timezone) timezone))
   (let* ((zone (realize-timezone
                 (or timezone (timezone-of local-time) *default-timezone*)))
          (subzone-idx (or
@@ -266,6 +269,8 @@
 
 (defun local-time-adjust (source timezone &optional (destination nil))
   "Returns two values, the values of new DAY and SEC slots, or, if DESTINATION is a LOCAL-TIME instance, fills the slots with the new values and returns the destination"
+  (declare (type local-time source)
+           (type (or null local-time) destination))
   (realize-timezone (timezone-of source))
   (realize-timezone timezone)
   (let* ((offset-diff (- (timezone source timezone) 
@@ -345,6 +350,7 @@
 
 (defun local-time-compare (time-a time-b)
   "Returns the symbols <, >, or =, describing the relationship between TIME-A and TIME-b."
+  (declare (type local-time time-a time-b))
   (multiple-value-bind (day-a sec-a)
       (local-time-adjust time-a (timezone-of time-b))
     (cond
@@ -367,6 +373,8 @@
 
 (defun encode-local-time (us ss mm hh day month year &optional timezone)
   "Return a new LOCAL-TIME instance corresponding to the specified time elements."
+  (declare (type integer us ss mm hh day month year)
+           (type (or null timezone) timezone))
   (let* ((int-month (if (< month 3) (+ month 9) (- month 3)))
          (int-year (if (< month 3) (- year 2001) (- year 2000)))
          (zone (realize-timezone (or timezone *default-timezone*)))
@@ -405,6 +413,8 @@
 (defun now ()
   (local-time :universal (get-universal-time)))
 
+(declaim (inline local-time< local-time/= local-time= local-time>= local-time> local-time<=))
+
 (defun local-time< (time-a time-b)
   "Returns T if TIME-A is less than TIME-B"
   (eql (local-time-compare time-a time-b) '<))
@@ -434,6 +444,7 @@
   nil)
 
 (defun local-time-decoded-date (local-time)
+  (declare (type local-time local-time))
   (multiple-value-bind (leap-cycle year-days)
       (floor (day-of local-time) 1461)
     (multiple-value-bind (years month-days)
@@ -452,6 +463,7 @@
          day)))))
 
 (defun local-time-decoded-time (local-time)
+  (declare (type local-time local-time))
   (multiple-value-bind (hours hour-remainder)
       (floor (sec-of local-time) 3600)
     (multiple-value-bind (minutes seconds)
@@ -465,6 +477,7 @@
 
 (defun decode-local-time (local-time)
   "Returns the decoded time as multiple values: ms, ss, mm, hh, day, month, year, day-of-week, daylight-saving-time-p, timezone, and the customary timezone abbreviation."
+  (declare (type local-time local-time))
   (multiple-value-bind (hours minutes seconds)
       (local-time-decoded-time local-time)
     (multiple-value-bind (year month day)
@@ -489,8 +502,7 @@
                                       (date-time-separator #\T)
                                       (allow-missing-date-part-p t) (allow-missing-time-part-p t)
                                       (allow-missing-timezone-part-p t))
-  "Based on http://www.ietf.org/rfc/rfc3339.txt including the function names used. Returns (values year month day hour minute second offset-hour offset-minute). If the parsing
-  fails, then either signals an error or returns nil based on FAIL-ON-ERROR."
+  "Based on http://www.ietf.org/rfc/rfc3339.txt including the function names used. Returns (values year month day hour minute second offset-hour offset-minute). If the parsing fails, then either signals an error or returns nil based on FAIL-ON-ERROR."
   (declare (type character date-time-separator time-separator date-separator)
            (type (simple-array character) time-string)
            (optimize (speed 3)))
@@ -689,7 +701,8 @@
   "Produces on stream the timestring corresponding to the LOCAL-TIME with the given options. If DESTINATION is NIL, returns a string containing what would have been output.  If DESTINATION is T, prints the string to *standard-output*."
   (declare (type (or null stream) destination)
            (type (integer 0 3) date-elements)
-           (type (integer 0 4) time-elements))
+           (type (integer 0 4) time-elements)
+           (type local-time local-time))
   (let ((str (with-output-to-string (str)
                (when timezone
                  (setf local-time (local-time-adjust local-time timezone (make-local-time))))
