@@ -478,53 +478,6 @@
        (timezone-of local-time)
        (nth-value 2 (timezone local-time))))))
 
-(defun skip-timestring-junk (stream junk-allowed &rest expected)
-  (cond
-    (junk-allowed
-     ;; just skip non-digit characters
-     (loop for c = (read-char stream nil nil)
-           while (and c (not (digit-char-p c)))
-           finally (unread-char c stream)))
-    (t
-     ;; must have an expected character or the string end, then
-     ;; followed by a digit or the string end
-     (let ((c (read-char stream nil nil)))
-       (unless (or (null c) (member c expected :test 'eql))
-         (error
-          "Junk in timestring: expected ~:[(or ~{~s~^ ~})~;~{~s~}~], got ~s"
-          (= (length expected) 1)
-          expected
-          c)))
-     (let ((c (read-char stream nil nil)))
-       (if (or (null c) (digit-char-p c) (member c expected :test 'eql))
-           (when c
-             (unread-char c stream))
-           (error "Junk in timestring: expected digit, got ~s"  c))))))
-
-(defun read-integer-str (stream)
-  (loop for c = (read-char stream nil nil)
-        while (and c (digit-char-p c))
-        collect c into result
-        finally (progn
-                  (when c
-                    (unread-char c stream))
-                  (return
-                    (when result
-                      (parse-integer (coerce result 'string)))))))
-
-(defun read-millisecond-str (stream)
-  (loop for c = (read-char stream nil nil)
-        while (and c (digit-char-p c))
-        collect c into result
-        finally (progn
-                  (when c
-                    (unread-char c stream))
-                  (return
-                    (when result
-                      (* (expt 10 (- 6 (min (length result) 6)))
-                         (parse-integer (coerce result 'string)
-                                        :end (min (length result) 6))))))))
-
 (defun split-timestring (str &rest args)
   (declare (inline))
   (apply #'%split-timestring (coerce str 'simple-string) args))
