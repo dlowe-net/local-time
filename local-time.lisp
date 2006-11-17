@@ -498,7 +498,6 @@
 (defun %split-timestring (time-string &key (start 0) (end (length time-string))
                                       (fail-on-error t) (time-separator #\:)
                                       (date-separator #\-)
-                                      (allow-missing-elements-p nil)
                                       (date-time-separator #\T)
                                       (allow-missing-date-part-p t) (allow-missing-time-part-p t)
                                       (allow-missing-timezone-part-p t))
@@ -520,17 +519,16 @@
                          (start (gensym "START"))
                          (end (gensym "END")))
                      `(let ((,entry ,start-end))
-                       (if ,entry
-                           (let ((,start (car ,entry))
-                                 (,end (cdr ,entry)))
-                             (multiple-value-bind (,value ,pos) (parse-integer time-string :start ,start :end ,end :junk-allowed t)
-                               (passert (= ,pos ,end))
-                               (setf ,place ,value)
-                               ,(if (and low-limit high-limit)
-                                    `(passert (<= ,low-limit ,place ,high-limit))
-                                    (values))
-                               (values)))
-                           (passert allow-missing-elements-p)))))
+                       (passert ,entry)
+                       (let ((,start (car ,entry))
+                             (,end (cdr ,entry)))
+                         (multiple-value-bind (,value ,pos) (parse-integer time-string :start ,start :end ,end :junk-allowed t)
+                           (passert (= ,pos ,end))
+                           (setf ,place ,value)
+                           ,(if (and low-limit high-limit)
+                                `(passert (<= ,low-limit ,place ,high-limit))
+                                (values))
+                           (values))))))
                  (with-parts-and-count ((start end split-chars) &body body)
                    `(multiple-value-bind (parts count) (split ,start ,end ,split-chars)
                      (declare (ignorable count) (type fixnum count)
@@ -655,7 +653,7 @@
 (defun parse-rfc3339-timestring (timestring &key (fail-on-error t)
                                             (allow-missing-time-part-p nil))
   (parse-timestring timestring :fail-on-error fail-on-error
-                    :allow-missing-timezone-part-p nil :allow-missing-elements-p nil
+                    :allow-missing-timezone-part-p nil
                     :allow-missing-time-part-p allow-missing-time-part-p :allow-missing-date-part-p nil))
 
 (defun parse-timestring (timestring &rest args)
@@ -670,7 +668,8 @@
             (setf timezone +utc-zone+)
             (progn
               ;; TODO process timezone offsets
-              )))
+              (cerror "Parse as UTC" "Currently timezone parsing does not work for anything else then UTC. Failed for ~S" timestring)
+              (setf timezone +utc-zone+))))
       (unless (typep second 'integer)
         ;; TODO extract usec
         )
@@ -685,7 +684,7 @@
           (unless day (setf day now-day))
           (unless month (setf month now-month))
           (unless year (setf year now-year))))
-      (encode-local-time usec second minute hour day month year *default-timezone*))))
+      (encode-local-time usec second minute hour day month year timezone))))
 
 (defun format-rfc3339-timestring (local-time &rest args &key omit-date-part-p omit-time-part-p
                                              omit-timezone-part-p)
