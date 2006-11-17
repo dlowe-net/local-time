@@ -293,19 +293,19 @@
           (t
            (values new-day new-sec)))))))
 
-(defun maximize-time-part (local-time)
+(defun maximize-time-part (local-time &optional timezone)
   "Return a local-time with the time part set to the end of the day."
-  (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p timezone)
+  (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
       (decode-local-time local-time)
     (declare (ignore usec sec min hour day-of-week daylight-saving-time-p))
-    (encode-local-time 0 59 59 23 day month year timezone)))
+    (encode-local-time 0 59 59 23 day month year (or timezone original-timezone))))
 
-(defun minimize-time-part (local-time)
+(defun minimize-time-part (local-time &optional timezone)
   "Return a local-time with the time part set to the beginning of the day."
-  (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p timezone)
+  (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
       (decode-local-time local-time)
     (declare (ignore usec sec min hour day-of-week daylight-saving-time-p))
-    (encode-local-time 0 0 0 0 day month year timezone)))
+    (encode-local-time 0 0 0 0 day month year (or timezone original-timezone))))
 
 (defun astronomical-julian-date (local-time)
   (- (day-of local-time) +astronomical-julian-date-offset+))
