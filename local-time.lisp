@@ -750,10 +750,10 @@
 
 (defun universal-time (local-time)
   "Return the UNIVERSAL-TIME corresponding to the LOCAL-TIME"
-  (multiple-value-bind (usec seconds minutes hours day month year)
+  (multiple-value-bind (usec seconds minutes hours day month year day-of-week daylight-saving-time-p timezone)
       (decode-local-time local-time)
-    (declare (ignore usec))
-    (encode-universal-time seconds minutes hours day month year)))
+    (declare (ignore usec day-of-week daylight-saving-time-p))
+    (encode-universal-time seconds minutes hours day month year (floor (timezone local-time timezone) -3600))))
 
 (defun internal-time (local-time)
   "Return the internal system time corresponding to the LOCAL-TIME"
