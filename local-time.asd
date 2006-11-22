@@ -8,7 +8,8 @@
   :version "0.9.1"
   :author "Daniel Lowe <dlowe@sanctuary.org>"
   :description "A library for manipulating dates and times, based on a paper by Erik Naggum"
-  :components ((:file "local-time")))
+  :components ((:file "local-time"))
+  :depends-on (:cl-fad))
 
 (defsystem #:local-time.test
   :name "local-time.test"

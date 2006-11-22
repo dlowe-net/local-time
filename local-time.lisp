@@ -33,7 +33,7 @@
 
 
 (defpackage :local-time
-    (:use #:cl)
+    (:use #:cl #:cl-fad)
   (:export #:local-time
            #:make-local-time
            #:day-of
@@ -75,6 +75,13 @@
            #:astronomical-modified-julian-date))
 
 (in-package :local-time)
+
+(defparameter *project-home-directory*
+  (make-pathname :directory (pathname-directory
+                             (if (find-package "ASDF")
+                                 (eval (read-from-string "(asdf:system-definition-pathname
+                                                            (asdf:find-system '#:local-time))"))
+                                 *load-pathname*))))
 
 ;;; Month information
 (defparameter +month-names+
@@ -223,7 +230,35 @@
 
 (defvar *default-timezone*)
 (eval-when (:load-toplevel :execute)
-  (define-timezone *default-timezone* #p"/etc/localtime"))
+  (let ((default-timezone-file #p"/etc/localtime"))
+    (if (probe-file default-timezone-file)
+        (define-timezone *default-timezone* default-timezone-file :load t)
+        (defparameter *default-timezone* +utc-zone+))))
+
+(defparameter *timezone-repository* nil "A list of (list \"Europe/Budapest\" timezone) entries")
+(defparameter *timezone-offset->timezone* (make-hash-table))
+
+(eval-when (:load-toplevel :execute)
+  (defun reread-timezone-repository ()
+    (let* ((root-directory (merge-pathnames "zoneinfo/" *project-home-directory*))
+           (cutoff-position (length (princ-to-string root-directory)))
+           (visitor (lambda (file)
+                      (let* ((full-name (subseq (princ-to-string file) cutoff-position))
+                             (name (pathname-name file))
+                             (timezone (realize-timezone (make-timezone :path file :name name))))
+                        (push (list full-name timezone) *timezone-repository*)
+                        ;; TODO this entire *timezone-offset->timezone* is probably useless this way,
+                        ;; we can't reverse map a +01:30 offset to a timezone struct, or can we?
+                        (dolist (subzone (timezone-subzones timezone))
+                          (pushnew timezone (gethash (first subzone) *timezone-offset->timezone*)))))))
+      (setf *timezone-repository* nil)
+      (setf *timezone-offset->timezone* (make-hash-table))
+      (walk-directory root-directory visitor :directories nil
+                      :test (lambda (file)
+                              (not (find "Etc" (pathname-directory file) :test #'string=))))
+      ;; walk the Etc dir last, so they will be the first entries in the *timezone-offset->timezone* map
+      (walk-directory (merge-pathnames "Etc/" root-directory) visitor :directories nil)
+      (setf *timezone-repository* (sort *timezone-repository* #'string< :key #'first)))))
 
 (defclass local-time ()
   ((day :accessor day-of :initarg :day :initform 0)
@@ -674,14 +709,19 @@
       (apply #'split-timestring timestring args)
     ;; TODO should we assert on month and leap rules here?
     (let ((usec 0)
-          (timezone *default-timezone*))
-      (when (and offset-hour offset-minute)
-        (if (and (zerop offset-hour) (zerop offset-minute))
-            (setf timezone +utc-zone+)
-            (progn
-              ;; TODO process timezone offsets
-              (cerror "Parse as UTC" "Currently timezone parsing does not work for anything else then UTC. Failed for ~S" timestring)
-              (setf timezone +utc-zone+))))
+          (timezone (if offset-hour
+                        (progn
+                          (unless offset-minute
+                            (setf offset-minute 0))
+                          (let ((offset-in-sec (* (+ (* 60 offset-hour) offset-minute) 60)))
+                            ;; TODO this reverse mapping may not not work at all
+                            #+nil(setf timezone (first (gethash offset-in-sec *timezone-offset->timezone*)))
+                            ;; as a last resort, create an anonymous timezone
+                            (unless timezone
+                              (setf timezone (make-timezone :subzones `((,offset-in-sec nil "anonymous" nil nil))
+                                                            :name "anonymous"
+                                                            :loaded t)))))
+                        *default-timezone*)))
       (unless (typep second 'integer)
         ;; TODO extract usec
         )
