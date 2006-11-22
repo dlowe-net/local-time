@@ -112,6 +112,7 @@
   (subzones nil :type list)
   (leap-seconds nil :type list)
   (path nil)
+  (name "anonymous" :type string)
   (loaded nil :type boolean))
 
 (defun read-binary-integer (stream byte-count &optional (signed nil))
@@ -203,11 +204,20 @@
     (setf (timezone-loaded zone) t))
   zone)
 
+(defparameter +utc-zone+ (make-timezone :subzones '((0 nil "UTC" nil nil))
+                                        :name "UTC"
+                                        :loaded t)
+  "The zone for Coordinated Universal Time.")
+
 (defmacro define-timezone (zone-name zone-file &key (load nil))
   "Define zone-name (a symbol or a string) as a new timezone, lazy-loaded from zone-file (a pathname designator relative to the zoneinfo directory on this system.  If load is true, load immediately."
+  (declare (type (or string symbol) zone-name))
   (let ((zone-sym (if (symbolp zone-name) zone-name (intern zone-name))))
     `(prog1
-      (defparameter ,zone-sym (make-timezone :path ,zone-file))
+      (defparameter ,zone-sym (make-timezone :path ,zone-file
+                                             :name ,(if (symbolp zone-name)
+                                                        (string-downcase (symbol-name zone-name))
+                                                        zone-name)))
       ,@(when load
               `((realize-timezone ,zone-sym))))))
 
@@ -239,10 +249,6 @@
   "Deprecated function to retrieve the milliseconds field from the local-time"
   (declare (type local-time local-time))
   (floor (usec-of local-time) 1000))
-
-(defparameter +utc-zone+ (make-timezone :subzones '((0 nil "UTC" nil nil))
-                                        :loaded t)
-  "The zone for Coordinated Universal Time.")
 
 (defun unix-time (local-time)
   "Return the Unix time corresponding to the LOCAL-TIME"
@@ -499,8 +505,10 @@
                                       (fail-on-error t) (time-separator #\:)
                                       (date-separator #\-)
                                       (date-time-separator #\T)
-                                      (allow-missing-date-part-p t) (allow-missing-time-part-p t)
-                                      (allow-missing-timezone-part-p t))
+                                      (allow-missing-elements-p t)
+                                      (allow-missing-date-part-p allow-missing-elements-p)
+                                      (allow-missing-time-part-p allow-missing-elements-p)
+                                      (allow-missing-timezone-part-p allow-missing-elements-p))
   "Based on http://www.ietf.org/rfc/rfc3339.txt including the function names used. Returns (values year month day hour minute second offset-hour offset-minute). If the parsing fails, then either signals an error or returns nil based on FAIL-ON-ERROR."
   (declare (type character date-time-separator time-separator date-separator)
            (type (simple-array character) time-string)
@@ -519,16 +527,19 @@
                          (start (gensym "START"))
                          (end (gensym "END")))
                      `(let ((,entry ,start-end))
-                       (passert ,entry)
-                       (let ((,start (car ,entry))
-                             (,end (cdr ,entry)))
-                         (multiple-value-bind (,value ,pos) (parse-integer time-string :start ,start :end ,end :junk-allowed t)
-                           (passert (= ,pos ,end))
-                           (setf ,place ,value)
-                           ,(if (and low-limit high-limit)
-                                `(passert (<= ,low-limit ,place ,high-limit))
-                                (values))
-                           (values))))))
+                       (if ,entry
+                           (let ((,start (car ,entry))
+                                 (,end (cdr ,entry)))
+                             (multiple-value-bind (,value ,pos) (parse-integer time-string :start ,start :end ,end :junk-allowed t)
+                               (passert (= ,pos ,end))
+                               (setf ,place ,value)
+                               ,(if (and low-limit high-limit)
+                                    `(passert (<= ,low-limit ,place ,high-limit))
+                                    (values))
+                               (values)))
+                           (progn
+                             (passert allow-missing-elements-p)
+                             (values))))))
                  (with-parts-and-count ((start end split-chars) &body body)
                    `(multiple-value-bind (parts count) (split ,start ,end ,split-chars)
                      (declare (ignorable count) (type fixnum count)
@@ -597,7 +608,11 @@
                    (let ((start (car start-end))
                          (end (cdr start-end)))
                      (with-parts-and-count (start end (list #\Z #\- #\+))
-                       (let ((zulup (find #\Z time-string :test #'char-equal :start start :end end)))
+                       (let* ((zulup (find #\Z time-string :test #'char-equal :start start :end end))
+                              (sign (unless zulup
+                                      (if (find #\+ time-string :test #'char-equal :start start :end end)
+                                          1
+                                          -1))))
                          (passert (<= 1 count 2))
                          (partial-time (first parts))
                          (if (= count 1)
@@ -611,10 +626,7 @@
                                (if zulup
                                    (setf offset-hour 0
                                          offset-minute 0)
-                                   (time-offset (second parts)
-                                                (if (find #\+ time-string :test #'char-equal :start start :end end)
-                                                    1
-                                                    -1)))))))))
+                                   (time-offset (second parts) sign))))))))
                  (partial-time (start-end)
                    (with-parts-and-count ((car start-end) (cdr start-end) time-separator)
                      (passert (eql (list-length parts) 3))
@@ -740,9 +752,9 @@
                          (princ #\Z str)
                          (format str "~c~2,'0d~c~2,'0d"
                                  (if (minusp offset) #\- #\+)
-                                 (floor offset 3600)
+                                 (abs (floor offset 3600))
                                  time-separator
-                                 (abs (mod offset 3600))))))))))
+                                 (abs (floor (mod offset 3600) 60))))))))))
     (when destination
       (princ str destination))
     str))
