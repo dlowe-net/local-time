@@ -187,8 +187,10 @@
     (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t)
     "2008-06-05T04:03:02.000001"
 
-    ;; This test only works on CDT (so far)
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008))
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008
+                                          (local-time::make-timezone
+                                           :subzones `((,(* (* 60 5) -60) nil "anonymous" nil nil))
+                                           :loaded t)))
     "2008-06-05T04:03:02.000001-05:00"
 
     (format-timestring (encode-local-time 1 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p t)
