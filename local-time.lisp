@@ -714,13 +714,13 @@
                           (unless offset-minute
                             (setf offset-minute 0))
                           (let ((offset-in-sec (* (+ (* 60 offset-hour) offset-minute) 60)))
-                            ;; TODO this reverse mapping may not not work at all
-                            #+nil(setf timezone (first (gethash offset-in-sec *timezone-offset->timezone*)))
-                            ;; as a last resort, create an anonymous timezone
-                            (unless timezone
-                              (setf timezone (make-timezone :subzones `((,offset-in-sec nil "anonymous" nil nil))
-                                                            :name "anonymous"
-                                                            :loaded t)))))
+                            
+                            (or ;; TODO this reverse mapping may not not work at all
+                                #+nil(setf timezone (first (gethash offset-in-sec *timezone-offset->timezone*)))
+                                ;; as a last resort, create an anonymous timezone
+                                (make-timezone :subzones `((,offset-in-sec nil "anonymous" nil nil))
+                                               :name "anonymous"
+                                               :loaded t))))
                         *default-timezone*)))
       (unless (typep second 'integer)
         ;; TODO extract usec
