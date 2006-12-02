@@ -17,3 +17,6 @@
 - Ideally, local-time should have everything that the ruby Date class does,
   as well as the time functions in the venerable and honored clsql library.
   This may be a tall order.
+
+- We should integrate local-time with http://common-lisp.net/project/cl-l10n/
+  and drop time/timezone related functionality from cl-l10n.
