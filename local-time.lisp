@@ -704,7 +704,7 @@
                     :allow-missing-time-part-p allow-missing-time-part-p :allow-missing-date-part-p nil))
 
 (defun parse-timestring (timestring &rest args)
-  "Parse a timestring and return the corresponding LOCAL-TIME. See split-timestring for details."
+  "Parse a timestring and return the corresponding LOCAL-TIME. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value."
   (destructuring-bind (year month day hour minute second offset-hour offset-minute)
       (apply #'split-timestring timestring args)
     ;; TODO should we assert on month and leap rules here?
@@ -716,26 +716,21 @@
                           (let ((offset-in-sec (* (+ (* 60 offset-hour) offset-minute) 60)))
                             
                             (or ;; TODO this reverse mapping may not not work at all
-                                #+nil(setf timezone (first (gethash offset-in-sec *timezone-offset->timezone*)))
-                                ;; as a last resort, create an anonymous timezone
-                                (make-timezone :subzones `((,offset-in-sec nil "anonymous" nil nil))
-                                               :name "anonymous"
-                                               :loaded t))))
+                             #+nil(setf timezone (first (gethash offset-in-sec *timezone-offset->timezone*)))
+                             ;; as a last resort, create an anonymous timezone
+                             (make-timezone :subzones `((,offset-in-sec nil "anonymous" nil nil))
+                                            :name "anonymous"
+                                            :loaded t))))
                         *default-timezone*)))
       (unless (typep second 'integer)
         ;; TODO extract usec
         )
-      ;; we don't care about usec defaulting, it's optional
-      (unless (and year month day hour minute second)
-        (multiple-value-bind (now-usec now-second now-minute now-hour now-day now-month now-year)
-            (decode-local-time (now))
-          (declare (ignore now-usec))
-          (unless second (setf second now-second))
-          (unless minute (setf minute now-minute))
-          (unless hour (setf hour now-hour))
-          (unless day (setf day now-day))
-          (unless month (setf month now-month))
-          (unless year (setf year now-year))))
+      (unless second (setf second 0))
+      (unless minute (setf minute 0))
+      (unless hour (setf hour 0))
+      (unless day (setf day 1))
+      (unless month (setf month 1))
+      (unless year (setf year 0))
       (encode-local-time usec second minute hour day month year timezone))))
 
 (defun format-rfc3339-timestring (local-time &rest args &key omit-date-part-p omit-time-part-p
