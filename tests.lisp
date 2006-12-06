@@ -258,6 +258,9 @@
   (let ((local-time (encode-local-time 0 0 0 0 1 1 0)))
     (is (local-time= (parse-timestring "0000-01-01T00:00:00,0")
                      local-time)))
+  (let ((local-time (encode-local-time 0 0 0 0 1 1 0 +utc-zone+)))
+    (is (local-time= (parse-timestring "0000-01-01T00:00:00Z")
+                     local-time)))
   (let ((local-time (encode-local-time 0 0 0 0 1 1 2006)))
     (is (local-time= (parse-timestring "2006-01-01T00:00:00,0")
                      local-time)))
@@ -268,15 +271,9 @@
   (is (local-time= (parse-timestring "2008-07-06T05:04:03,02")
                    (encode-local-time 20000 3 4 5 6 7 2008)))
   (is (local-time= (parse-timestring "--23T::02" :allow-missing-elements-p t)
-                   (multiple-value-bind (ms ss mm hh day mon year)
-                       (decode-local-time (now))
-                     (declare (ignore ss day))
-                     (encode-local-time ms 02 mm hh 23 mon year))))
+                   (encode-local-time 0 02 0 0 23 1 0)))
   (is (local-time= (parse-timestring "T05:06:07,08")
-                   (multiple-value-bind (ms ss mm hh day mon year)
-                       (decode-local-time (now))
-                     (declare (ignore ms ss mm hh))
-                     (encode-local-time 80000 7 6 5 day mon year)))))
+                   (encode-local-time 80000 7 6 5 1 1 0))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

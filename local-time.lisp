@@ -650,6 +650,9 @@
                                           -1))))
                          (passert (<= 1 count 2))
                          (partial-time (first parts))
+                         (when zulup
+                           (setf offset-hour 0
+                                 offset-minute 0))
                          (if (= count 1)
                              (passert allow-missing-timezone-part-p)
                              (let* ((entry (second parts))
@@ -658,10 +661,8 @@
                                (declare (type fixnum start end))
                                (passert (or zulup
                                             (not (zerop (- end start)))))
-                               (if zulup
-                                   (setf offset-hour 0
-                                         offset-minute 0)
-                                   (time-offset (second parts) sign))))))))
+                               (unless zulup
+                                 (time-offset (second parts) sign))))))))
                  (partial-time (start-end)
                    (with-parts-and-count ((car start-end) (cdr start-end) time-separator)
                      (passert (eql (list-length parts) 3))
