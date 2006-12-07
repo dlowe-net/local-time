@@ -47,6 +47,7 @@
            #:local-time=
            #:local-time/=
            #:local-time-adjust
+           #:local-time-whole-year-difference
            #:maximize-time-part
            #:minimize-time-part
            #:local-time-designator
