@@ -403,6 +403,26 @@
       ((> (usec-of time-a) (usec-of time-b)) '>)
       (t '=))))
 
+(defun local-time-whole-year-difference (time-a time-b)
+  "Returns the number of whole years elapsed between time-a and time-b"
+  (declare (type local-time time-a time-b))
+  (let ((modified-time-a (make-local-time)))
+    (local-time-adjust time-a (timezone-of time-b) modified-time-a)
+    (multiple-value-bind (usec-a sec-a minute-a hour-a day-a month-a year-a day-of-week-a daylight-p-a zone-a)
+        (decode-local-time modified-time-a)
+      (declare (ignore day-of-week-a daylight-p-a zone-a))
+      (print modified-time-a)
+      (multiple-value-bind (usec-b sec-b minute-b hour-b day-b month-b year-b day-of-week-b daylight-p-b zone-b)
+          (decode-local-time time-b)
+        (declare (ignore usec-b sec-b minute-b hour-b day-b month-b day-of-week-b daylight-p-b zone-b))
+        (let ((year-difference (- year-b year-a)))
+          (if (local-time<= (encode-local-time usec-a sec-a minute-a hour-a day-a month-a
+                                               (+ year-difference year-a)
+                                               (timezone-of modified-time-a))
+                            time-b)
+              year-difference
+              (1- year-difference)))))))
+
 (defun month-days (month)
   (aref +month-days+ month))
 
