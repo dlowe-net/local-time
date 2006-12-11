@@ -248,6 +248,15 @@
     (is (equal now
                (universal-time (local-time :universal now))))))
 
+(test year-difference
+  (let ((a (parse-timestring "2006-01-01T00:00:00"))
+        (b (parse-timestring "2001-01-01T00:00:00")))
+    (is (= 5 (local-time-whole-year-difference a b))))
+
+  (let ((a (parse-timestring "2006-01-01T00:00:00"))
+        (b (parse-timestring "2001-01-02T00:00:00")))
+    (is (= 4 (local-time-whole-year-difference a b)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test parse-timestring
