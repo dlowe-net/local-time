@@ -166,7 +166,7 @@
   (encode-decode-test (0 0 0 0 1 3 1998 0))
   (encode-decode-test (1 2 3 4 5 6 2008 4)
     (is (eq (timezone-of local-time) *default-timezone*))
-    (is (= (length (multiple-value-list (timezone local-time))) 3)))
+    (is (= 3 (length (multiple-value-list (timezone local-time))))))
   (encode-decode-test (0 0 0 0 1 1 0)
     (is (equal (multiple-value-list (decode-local-time local-time))
                `(0 0 0 0 1 1 0 5
@@ -184,96 +184,96 @@
 
 (test format-timestring
   (is-every string=
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t)
     "2008-06-05T04:03:02.000001"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t)
 
+    "2008-06-05T04:03:02.000001-05:00"
     (format-timestring (encode-local-time 1 2 3 4 5 6 2008
                                           (local-time::make-timezone
                                            :subzones `((,(* (* 60 5) -60) nil "anonymous" nil nil))
                                            :loaded t)))
-    "2008-06-05T04:03:02.000001-05:00"
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p t)
     "2008-06-05T04:03:02.000001Z"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p t)
 
-    (format-timestring (encode-local-time 12345678 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p nil)
     "2008-06-05T04:03:02.12345678+00:00"
+    (format-timestring (encode-local-time 12345678 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p nil)
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :date-elements 2)
     "-06-05T04:03:02.000001"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :date-elements 2)
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :date-elements 1)
     "-05T04:03:02.000001"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :date-elements 1)
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t)
     "04:03:02.000001"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t)
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t :time-elements 3)
     "04:03:02"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t :time-elements 3)
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 -5) :omit-timezone-part-p t)
     "-0005-06-05T04:03:02.000001"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 -5) :omit-timezone-part-p t)
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-time-part-p t :omit-date-part-p t)
     ""
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-time-part-p t :omit-date-part-p t)
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t :time-elements 1)
     "04"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t :time-elements 1)
 
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t :time-elements 2)
-    "04:03"))
+    "04:03"
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t :time-elements 2)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test local-timezone
-    ;; In 2005, April 4th is the start of daylight savings time.  The
-    ;; difference between daylight savings and non-daylight savings
-    ;; is one hour (for now)
-  (is (= (- (local-timezone (encode-local-time 0 0 0 0 4 4 2005 +utc-zone+))
-            (local-timezone (encode-local-time 0 0 0 0 3 4 2005 +utc-zone+)))
-         3600)))
+  ;; In 2005, April 4th is the start of daylight savings time.  The
+  ;; difference between daylight savings and non-daylight savings
+  ;; is one hour (for now)
+  (is (= 3600
+         (- (local-timezone (encode-local-time 0 0 0 0 4 4 2005 +utc-zone+))
+            (local-timezone (encode-local-time 0 0 0 0 3 4 2005 +utc-zone+))))))
 
 (test unix-time
-  (is (eql (unix-time (encode-local-time 0 0 0 0 1 1 1970)) 0)))
+  (is (eql 0 (unix-time (encode-local-time 0 0 0 0 1 1 1970)))))
 
 (test universal-time
-  (is (equal (decode-universal-time (universal-time (encode-local-time 1 2 3 4 5 6 2008)))
-             (values 2 3 4 5 6 2008 3 * *))))
+  (is (equal (values 2 3 4 5 6 2008 3 * *)
+             (decode-universal-time (universal-time (encode-local-time 1 2 3 4 5 6 2008))))))
   
 (test local-time
   (let ((now (now)))
-    (is (local-time= (local-time :unix (unix-time now))
-                     now)))
+    (is (local-time= now
+                     (local-time :unix (unix-time now)))))
   (let ((now (get-universal-time)))
-    (is (equal (universal-time (local-time :universal now))
-               now))))
+    (is (equal now
+               (universal-time (local-time :universal now))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test parse-timestring
   (let ((local-time (now)))
-    (is (local-time= (parse-timestring
-                      (format-timestring local-time))
-                     local-time)))
+    (is (local-time= local-time
+                     (parse-timestring
+                      (format-timestring local-time)))))
   (let ((local-time (encode-local-time 0 0 0 0 1 1 0)))
-    (is (local-time= (parse-timestring "0000-01-01T00:00:00,0")
-                     local-time)))
+    (is (local-time= local-time
+                     (parse-timestring "0000-01-01T00:00:00,0"))))
   (let ((local-time (encode-local-time 0 0 0 0 1 1 0 +utc-zone+)))
-    (is (local-time= (parse-timestring "0000-01-01T00:00:00Z")
-                     local-time)))
+    (is (local-time= local-time
+                     (parse-timestring "0000-01-01T00:00:00Z"))))
   (let ((local-time (encode-local-time 0 0 0 0 1 1 2006)))
-    (is (local-time= (parse-timestring "2006-01-01T00:00:00,0")
-                     local-time)))
-  (is (eql (day-of (parse-timestring "xxxx 2006-01-01T00:00:00,0 xxxx"
+    (is (local-time= local-time
+                     (parse-timestring "2006-01-01T00:00:00,0"))))
+  (is (eql (day-of (encode-local-time 0 0 0 0 1 1 2006))
+           (day-of (parse-timestring "xxxx 2006-01-01T00:00:00,0 xxxx"
                                      :start 5
-                                     :end 15))
-           (day-of (encode-local-time 0 0 0 0 1 1 2006))))
-  (is (local-time= (parse-timestring "2008-07-06T05:04:03,02")
-                   (encode-local-time 20000 3 4 5 6 7 2008)))
-  (is (local-time= (parse-timestring "--23T::02" :allow-missing-elements-p t)
-                   (encode-local-time 0 02 0 0 23 1 0)))
-  (is (local-time= (parse-timestring "T05:06:07,08")
-                   (encode-local-time 80000 7 6 5 1 1 0))))
+                                     :end 15))))
+  (is (local-time= (encode-local-time 20000 3 4 5 6 7 2008)
+                   (parse-timestring "2008-07-06T05:04:03,02")))
+  (is (local-time= (encode-local-time 0 02 0 0 23 1 0)
+                   (parse-timestring "--23T::02" :allow-missing-elements-p t)))
+  (is (local-time= (encode-local-time 80000 7 6 5 1 1 0)
+                   (parse-timestring "T05:06:07,08"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -299,13 +299,13 @@
 
 (test read-timestring
   (let ((now (now)))
-    (is (local-time= (with-input-from-string (ins (format-timestring now))
-                       (local-time::read-timestring ins #\@))
-                     now))))
+    (is (local-time= now
+                     (with-input-from-string (ins (format-timestring now))
+                       (local-time::read-timestring ins #\@))))))
 
 (test read-universal-time
   (let ((now (now)))
-    (is (local-time= (with-input-from-string (ins (format nil "~a" (universal-time now)))
-                       (local-time::read-universal-time ins #\@ nil))
-                     now))))
+    (is (local-time= now
+                     (with-input-from-string (ins (format nil "~a" (universal-time now)))
+                       (local-time::read-universal-time ins #\@ nil))))))
 
