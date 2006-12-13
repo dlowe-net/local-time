@@ -456,28 +456,44 @@
 
 (declaim (inline local-time< local-time/= local-time= local-time>= local-time> local-time<=))
 
-(defun local-time< (time-a time-b)
-  "Returns T if TIME-A is less than TIME-B"
+(defmacro defcomparator (name &body body)
+  (let ((pair-comparator-name (intern (concatenate 'string "%" (string name)))))
+    `(progn
+      (declaim (inline ,pair-comparator-name))
+      (defun ,pair-comparator-name (time-a time-b)
+        ,@body)
+      (defun ,name (&rest times)
+        (declare (dynamic-extent times))
+        (loop for (time-a time-b) :on times
+              while time-b
+              always (,pair-comparator-name time-a time-b)))
+      (define-compiler-macro ,name (&rest times)
+        (let ((vars (loop for time :in times
+                          for i :upfrom 0
+                          collect (gensym (concatenate 'string "TIME-" (princ-to-string i) "-")))))
+          `(let (,@(loop for var :in vars
+                         for time :in times
+                         collect (list var time)))
+            (and ,@(loop for (time-a time-b) :on vars
+                         while time-b
+                         collect `(,',pair-comparator-name ,time-a ,time-b)))))))))
+
+(defcomparator local-time<
   (eql (local-time-compare time-a time-b) '<))
 
-(defun local-time<= (time-a time-b)
-  "Returns T if TIME-A is less than or equal to TIME-B"
+(defcomparator local-time<=
   (not (null (member (local-time-compare time-a time-b) '(< =)))))
 
-(defun local-time> (time-a time-b)
-  "Returns T if TIME-A is greater than TIME-B"
+(defcomparator local-time>
   (eql (local-time-compare time-a time-b) '>))
 
-(defun local-time>= (time-a time-b)
-  "Returns T if TIME-A is greater than or equal to TIME-B"
+(defcomparator local-time>=
   (not (null (member (local-time-compare time-a time-b) '(> =)))))
 
-(defun local-time= (time-a time-b)
-  "Returns T if TIME-A is equal to TIME-B"
+(defcomparator local-time=
   (eql (local-time-compare time-a time-b) '=))
 
-(defun local-time/= (time-a time-b)
-  "Returns T if TIME-A is not equal to TIME-B"
+(defcomparator local-time/=
   (not (eql (local-time-compare time-a time-b) '=)))
 
 (defun local-time-designator ()
