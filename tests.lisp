@@ -189,15 +189,15 @@
 
     "2008-06-05T04:03:02.000001-05:00"
     (format-timestring (encode-local-time 1 2 3 4 5 6 2008
-                                          (local-time::make-timezone
-                                           :subzones `((,(* (* 60 5) -60) nil "anonymous" nil nil))
-                                           :loaded t)))
+                                          :timezone (local-time::make-timezone
+                                                     :subzones `((,(* (* 60 5) -60) nil "anonymous" nil nil))
+                                                     :loaded t)))
 
     "2008-06-05T04:03:02.000001Z"
-    (format-timestring (encode-local-time 1 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p t)
+    (format-timestring (encode-local-time 1 2 3 4 5 6 2008 :timezone +utc-zone+) :use-zulu-p t)
 
     "2008-06-05T04:03:02.12345678+00:00"
-    (format-timestring (encode-local-time 12345678 2 3 4 5 6 2008 +utc-zone+) :use-zulu-p nil)
+    (format-timestring (encode-local-time 12345678 2 3 4 5 6 2008 :timezone +utc-zone+) :use-zulu-p nil)
 
     "-06-05T04:03:02.000001"
     (format-timestring (encode-local-time 1 2 3 4 5 6 2008) :omit-timezone-part-p t :date-elements 2)
@@ -230,8 +230,8 @@
   ;; difference between daylight savings and non-daylight savings
   ;; is one hour (for now)
   (is (= 3600
-         (- (local-timezone (encode-local-time 0 0 0 0 4 4 2005 +utc-zone+))
-            (local-timezone (encode-local-time 0 0 0 0 3 4 2005 +utc-zone+))))))
+         (- (local-timezone (encode-local-time 0 0 0 0 4 4 2005 :timezone +utc-zone+))
+            (local-timezone (encode-local-time 0 0 0 0 3 4 2005 :timezone +utc-zone+))))))
 
 (test unix-time
   (is (eql 0 (unix-time (encode-local-time 0 0 0 0 1 1 1970)))))
@@ -274,7 +274,7 @@
   (let ((local-time (encode-local-time 0 0 0 0 1 1 0)))
     (is (local-time= local-time
                      (parse-timestring "0000-01-01T00:00:00,0"))))
-  (let ((local-time (encode-local-time 0 0 0 0 1 1 0 +utc-zone+)))
+  (let ((local-time (encode-local-time 0 0 0 0 1 1 0 :timezone +utc-zone+)))
     (is (local-time= local-time
                      (parse-timestring "0000-01-01T00:00:00Z"))))
   (let ((local-time (encode-local-time 0 0 0 0 1 1 2006)))
