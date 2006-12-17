@@ -257,6 +257,13 @@
         (b (parse-timestring "2001-01-02T00:00:00")))
     (is (= 4 (local-time-whole-year-difference a b)))))
 
+(test adjust-days
+  (let ((sunday (parse-timestring "2006-12-17T01:02:03Z")))
+    (is (local-time= (parse-timestring "2006-12-11T01:02:03Z")
+                     (local-time-adjust-days sunday :monday)))
+    (is (local-time= (parse-timestring "2006-12-20T01:02:03Z")
+                     (local-time-adjust-days sunday 3)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test parse-timestring

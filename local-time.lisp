@@ -48,6 +48,7 @@
            #:local-time/=
            #:local-time-adjust
            #:local-time-whole-year-difference
+           #:local-time-adjust-days
            #:maximize-time-part
            #:minimize-time-part
            #:local-time-designator
@@ -101,6 +102,9 @@
 ;;; Day information
 (defparameter +day-names+
   '("Sunday" "Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday"))
+
+(defparameter +day-names-as-keywords+
+  '(:sunday :monday :tuesday :wednesday :thursday :friday :saturday))
 
 (defparameter +short-day-names+
   '("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat"))
@@ -403,6 +407,21 @@
       ((< (usec-of time-a) (usec-of time-b)) '<)
       ((> (usec-of time-a) (usec-of time-b)) '>)
       (t '=))))
+
+(defun local-time-adjust-days (local-time offset &key into)
+  "Add OFFSET to days unless it's a keyword symbol name of a week-day. In that case point the result to the previous day given by OFFSET."
+  (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p timezone)
+      (decode-local-time local-time)
+    (declare (ignore daylight-saving-time-p))
+    (if (symbolp offset)
+        (let ((position (position offset +day-names-as-keywords+ :test #'eq)))
+          (assert position (position) "~S is not a valid day name" offset)
+          (incf day (+ (- (if (zerop day-of-week)
+                              7
+                              day-of-week))
+                       position)))
+        (incf day offset))
+    (encode-local-time usec sec min hour day month year :timezone timezone :into into)))
 
 (defun local-time-whole-year-difference (time-a time-b)
   "Returns the number of whole years elapsed between time-a and time-b"
