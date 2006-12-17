@@ -339,19 +339,19 @@
           (t
            (values new-day new-sec)))))))
 
-(defun maximize-time-part (local-time &optional timezone)
+(defun maximize-time-part (local-time &key timezone into)
   "Return a local-time with the time part set to the end of the day."
   (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
       (decode-local-time local-time)
     (declare (ignore usec sec min hour day-of-week daylight-saving-time-p))
-    (encode-local-time 0 59 59 23 day month year (or timezone original-timezone))))
+    (encode-local-time 0 59 59 23 day month year :timezone (or timezone original-timezone) :into into)))
 
-(defun minimize-time-part (local-time &optional timezone)
+(defun minimize-time-part (local-time &key timezone into)
   "Return a local-time with the time part set to the beginning of the day."
   (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
       (decode-local-time local-time)
     (declare (ignore usec sec min hour day-of-week daylight-saving-time-p))
-    (encode-local-time 0 0 0 0 day month year (or timezone original-timezone))))
+    (encode-local-time 0 0 0 0 day month year :timezone (or timezone original-timezone) :into into)))
 
 (defun astronomical-julian-date (local-time)
   (- (day-of local-time) +astronomical-julian-date-offset+))
@@ -435,7 +435,7 @@
         (let ((year-difference (- year-b year-a)))
           (if (local-time<= (encode-local-time usec-a sec-a minute-a hour-a day-a month-a
                                                (+ year-difference year-a)
-                                               (timezone-of time-a))
+                                               :timezone (timezone-of time-a))
                             time-a)
               year-difference
               (1- year-difference)))))))
@@ -449,22 +449,29 @@
 (defun local-time-day-of-week (local-time)
   (mod (+ 3 (day-of local-time)) 7))
 
-(defun encode-local-time (us ss mm hh day month year &optional timezone)
+(defun encode-local-time (us ss mm hh day month year &key timezone into)
   "Return a new LOCAL-TIME instance corresponding to the specified time elements."
   (declare (type integer us ss mm hh day month year)
            (type (or null timezone) timezone))
   (let* ((int-month (if (< month 3) (+ month 9) (- month 3)))
          (int-year (if (< month 3) (- year 2001) (- year 2000)))
          (zone (realize-timezone (or timezone *default-timezone*)))
-         (result (make-local-time
-                  :usec us
-                  :sec (+ (* hh 3600) (* mm 60) ss)
-                  :day (+ (floor (* int-year 1461) 4)
-                          (month-days int-month)
-                          (1- day))
-                  :timezone zone)))
-    result
-    (local-time-adjust result zone result)))
+         (sec (+ (* hh 3600) (* mm 60) ss))
+         (day (+ (floor (* int-year 1461) 4)
+                 (month-days int-month)
+                 (1- day)))
+         (result (if into
+                     (progn
+                       (setf (day-of into) day)
+                       (setf (sec-of into) sec)
+                       (setf (timezone-of into) zone)
+                       into)
+                     (make-local-time
+                      :usec us
+                      :sec sec
+                      :day day
+                      :timezone zone))))
+    result))
 
 (defun local-time (&key (universal nil) (internal nil) (unix nil) (usec 0) (timezone nil))
   "Produce a LOCAL-TIME instance from the provided numeric time representation."
@@ -474,8 +481,8 @@
      (multiple-value-bind (sec minute hour date month year)
          (decode-universal-time universal)
        (encode-local-time usec sec minute hour date month year
-                          (realize-timezone (or timezone
-                                                *default-timezone*)))))
+                          :timezone (realize-timezone (or timezone
+                                                          *default-timezone*)))))
     (internal
      ;; FIXME: How to portably convert between internal time?
      (error "Conversion of internal time not implemented"))
@@ -785,7 +792,7 @@
       (unless day (setf day 1))
       (unless month (setf month 1))
       (unless year (setf year 0))
-      (encode-local-time usec second minute hour day month year timezone))))
+      (encode-local-time usec second minute hour day month year :timezone timezone))))
 
 (defun format-rfc3339-timestring (local-time &rest args &key omit-date-part-p omit-time-part-p
                                              omit-timezone-part-p)
