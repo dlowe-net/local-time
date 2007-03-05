@@ -46,6 +46,8 @@
            #:local-time>=
            #:local-time=
            #:local-time/=
+           #:local-time-max
+           #:local-time-min
            #:local-time-adjust
            #:local-time-whole-year-difference
            #:local-time-adjust-days
@@ -539,6 +541,16 @@
 
 (defcomparator local-time/=
   (not (eql (local-time-compare time-a time-b) '=)))
+
+(defun local-time-min (date-1 date-2)
+  (if (local-time< date-1 date-2)
+      date-1
+      date-2))
+
+(defun local-time-max (date-1 date-2)
+  (if (local-time< date-1 date-2)
+      date-2
+      date-1))
 
 (defun local-time-designator ()
   "Convert a designator (real number) as a LOCAL-TIME instance"
