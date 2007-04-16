@@ -807,7 +807,7 @@
       (encode-local-time usec second minute hour day month year :timezone timezone))))
 
 (defun format-rfc3339-timestring (local-time &rest args &key omit-date-part-p omit-time-part-p
-                                             omit-timezone-part-p)
+                                             omit-timezone-part-p &allow-other-keys)
   (declare (ignore omit-date-part-p omit-time-part-p omit-timezone-part-p))
   (apply #'format-timestring local-time args))
 
