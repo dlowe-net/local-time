@@ -520,6 +520,7 @@
           `(let (,@(loop for var :in vars
                          for time :in times
                          collect (list var time)))
+            ;; we could evaluate comparisons of local-time literals here
             (and ,@(loop for (time-a time-b) :on vars
                          while time-b
                          collect `(,',pair-comparator-name ,time-a ,time-b)))))))))
@@ -542,15 +543,24 @@
 (defcomparator local-time/=
   (not (eql (local-time-compare time-a time-b) '=)))
 
-(defun local-time-min (date-1 date-2)
-  (if (local-time< date-1 date-2)
-      date-1
-      date-2))
+;; TODO local-time-min/max could have a compiler macro
+(defun local-time-min (time &rest times)
+  (loop with winner = time
+        for candidate :in times
+        while candidate do
+        (if (and winner
+                 (local-time< candidate winner))
+            (setf winner candidate))
+        finally (return winner)))
 
-(defun local-time-max (date-1 date-2)
-  (if (local-time< date-1 date-2)
-      date-2
-      date-1))
+(defun local-time-max (time &rest times)
+  (loop with winner = time
+        for candidate :in times
+        while candidate do
+        (if (and winner
+                 (local-time> candidate winner))
+            (setf winner candidate))
+        finally (return winner)))
 
 (defun local-time-designator ()
   "Convert a designator (real number) as a LOCAL-TIME instance"
