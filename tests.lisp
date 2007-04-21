@@ -284,6 +284,7 @@
            (day-of (parse-timestring "xxxx 2006-01-01T00:00:00,0 xxxx"
                                      :start 5
                                      :end 15))))
+  (is (eql (day-of (parse-timestring "2006-06-06TZ")) 0))
   (is (local-time= (encode-local-time 20000 3 4 5 6 7 2008)
                    (parse-timestring "2008-07-06T05:04:03,02")))
   (is (local-time= (encode-local-time 0 02 0 0 23 1 0)

@@ -731,7 +731,10 @@
                                           1
                                           -1))))
                          (passert (<= 1 count 2))
-                         (partial-time (first parts))
+                         (unless (and (eq (first parts) nil)
+                                      (not (rest parts)))
+                           ;; not a single #\Z
+                           (partial-time (first parts)))
                          (when zulup
                            (setf offset-hour 0
                                  offset-minute 0))
@@ -798,12 +801,15 @@
                             (setf offset-minute 0))
                           (let ((offset-in-sec (* (+ (* 60 offset-hour) offset-minute) 60)))
                             
-                            (or ;; TODO this reverse mapping may not not work at all
-                             #+nil(setf timezone (first (gethash offset-in-sec *timezone-offset->timezone*)))
-                             ;; as a last resort, create an anonymous timezone
-                             (make-timezone :subzones `((,offset-in-sec nil "anonymous" nil nil))
-                                            :name "anonymous"
-                                            :loaded t))))
+                            (if (and (= offset-minute 0)
+                                     (= offset-hour 0))
+                                +utc-zone+
+                                (or ;; TODO this reverse mapping may not not work at all
+                                 #+nil(setf timezone (first (gethash offset-in-sec *timezone-offset->timezone*)))
+                                 ;; as a last resort, create an anonymous timezone
+                                 (make-timezone :subzones `((,offset-in-sec nil "anonymous" nil nil))
+                                                :name "anonymous"
+                                                :loaded t)))))
                         *default-timezone*)))
       (unless (typep second 'integer)
         ;; TODO extract usec
