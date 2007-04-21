@@ -818,8 +818,8 @@
       (unless minute (setf minute 0))
       (unless hour (setf hour 0))
       (unless day (setf day 1))
-      (unless month (setf month 1))
-      (unless year (setf year 0))
+      (unless month (setf month 3))
+      (unless year (setf year 2000))
       (encode-local-time usec second minute hour day month year :timezone timezone))))
 
 (defun format-rfc3339-timestring (local-time &rest args &key omit-date-part-p omit-time-part-p
