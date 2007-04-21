@@ -142,8 +142,8 @@
   "Returns a string created from the vector of unsigned bytes VECTOR starting at OFFSET which is terminated by a 0."
   (let ((null-pos (or (position 0 vector :start offset) (length vector))))
     (with-output-to-string (str)
-                           (loop for idx from offset upto (1- null-pos)
-                                 do (princ (code-char (aref vector idx)) str)))))
+      (loop for idx from offset upto (1- null-pos)
+            do (princ (code-char (aref vector idx)) str)))))
 
 (defun realize-timezone (zone &optional reload)
   "If timezone has not already been loaded or RELOAD is non-NIL, loads the timezone information from its associated unix file."
@@ -270,7 +270,7 @@
 (defclass local-time ()
   ((day :accessor day-of :initarg :day :initform 0)
    (sec :accessor sec-of :initarg :sec :initform 0)
-   (usec :accessor usec-of :initarg :usec :initform 0)
+   (usec :accessor usec-of :initarg :usec :initform 0 :documentation "An integer between 0 and 1000000")
    (timezone :accessor timezone-of :initarg :timezone
              :initform *default-timezone*)))
 
@@ -375,8 +375,8 @@
           (decf days)
           (incf seconds 86400))
         (make-local-time :usec usec
-                        :sec seconds
-                        :day days))))
+                         :sec seconds
+                         :day days))))
 
 (defun local-time-sum (time-a time-b)
   "Returns a new LOCAL-TIME containing the sum of TIME-A and TIME-B"
