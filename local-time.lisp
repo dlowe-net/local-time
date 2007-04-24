@@ -321,25 +321,28 @@
            (type (or null local-time) destination))
   (realize-timezone (timezone-of source))
   (realize-timezone timezone)
-  (let* ((offset-diff (- (timezone source timezone) 
-                         (timezone source (timezone-of source))))
-         (offset-sign (signum offset-diff)))
-    (multiple-value-bind (offset-day offset-sec)
-        (floor (abs offset-diff) 86400)
-      (let ((new-day (+ (day-of source) (* offset-sign offset-day)))
-            (new-sec (+ (sec-of source) (* offset-sign offset-sec))))
-        (when (minusp new-sec)
-          (incf new-sec 86400)
-          (decf new-day))
-        (cond
-          (destination
-           (setf (usec-of destination) (usec-of source)
-                 (sec-of destination) new-sec
-                 (day-of destination) new-day
-                 (timezone-of destination) timezone)
-           destination)
-          (t
-           (values new-day new-sec)))))))
+  (if (and (eq timezone (timezone-of source))
+           (eq source destination))
+      source
+      (let* ((offset-diff (- (timezone source timezone)
+                             (timezone source (timezone-of source))))
+             (offset-sign (signum offset-diff)))
+        (multiple-value-bind (offset-day offset-sec)
+            (floor (abs offset-diff) 86400)
+          (let ((new-day (+ (day-of source) (* offset-sign offset-day)))
+                (new-sec (+ (sec-of source) (* offset-sign offset-sec))))
+            (when (minusp new-sec)
+              (incf new-sec 86400)
+              (decf new-day))
+            (cond
+              (destination
+               (setf (usec-of destination) (usec-of source)
+                     (sec-of destination) new-sec
+                     (day-of destination) new-day
+                     (timezone-of destination) timezone)
+               destination)
+              (t
+               (values new-day new-sec))))))))
 
 (defun maximize-time-part (local-time &key timezone into)
   "Return a local-time with the time part set to the end of the day."
