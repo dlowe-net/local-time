@@ -901,7 +901,7 @@
 
 (defun local-timezone (adjusted-local-time
                        &optional (timezone *default-timezone*))
-  "Return the local timezone adjustment applicable at the already adjusted-local-time.  Used to reverse the effect of TIMEZONE and LOCAL-TIME-ADJUST."
+  "Return the local timezone adjustment applicable at the already adjusted-local-time. Used to reverse the effect of TIMEZONE and LOCAL-TIME-ADJUST."
   (let* ((unix-time (unix-time adjusted-local-time))
          (subzone-idx (or
                        (second (find-if
