@@ -57,6 +57,7 @@
            #:encode-local-time
            #:decode-local-time
            #:parse-timestring
+           #:parse-datestring
            #:format-timestring
            #:format-rfc3339-timestring
            #:parse-rfc3339-timestring
@@ -68,6 +69,7 @@
            #:define-timezone
            #:*default-timezone*
            #:now
+           #:today
            #:enable-read-macros
            #:+utc-zone+
            #:+month-names+
@@ -500,6 +502,9 @@
                         :timezone (realize-timezone
                                    (or timezone *default-timezone*)))))))
 
+(defun today ()
+  (minimize-time-part (now) :timezone +utc-zone+))
+
 (defun now ()
   (local-time :universal (get-universal-time)))
 
@@ -824,6 +829,15 @@
       (unless month (setf month 3))
       (unless year (setf year 2000))
       (encode-local-time usec second minute hour day month year :timezone timezone))))
+
+(defun parse-datestring (string)
+  (let* ((*default-timezone* +utc-zone+)
+         (date (parse-timestring string)))
+    (unless (and (eq (timezone-of date) +utc-zone+)
+                 (zerop (sec-of date))
+                 (zerop (usec-of date)))
+      (error "~S is not a valid date string" string))
+    date))
 
 (defun format-rfc3339-timestring (local-time &rest args &key omit-date-part-p omit-time-part-p
                                              omit-timezone-part-p &allow-other-keys)
