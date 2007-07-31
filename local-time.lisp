@@ -333,9 +333,12 @@
             (floor (abs offset-diff) 86400)
           (let ((new-day (+ (day-of source) (* offset-sign offset-day)))
                 (new-sec (+ (sec-of source) (* offset-sign offset-sec))))
-            (when (minusp new-sec)
-              (incf new-sec 86400)
-              (decf new-day))
+            (cond ((minusp new-sec)
+                   (incf new-sec 86400)
+                   (decf new-day))
+                  ((>= new-sec 86400)
+                   (incf new-day)
+                   (decf new-sec 86400)))
             (cond
               (destination
                (setf (usec-of destination) (usec-of source)
