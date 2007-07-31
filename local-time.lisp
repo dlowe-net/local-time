@@ -82,6 +82,8 @@
 
 (in-package :local-time)
 
+(declaim (inline now today local-time-day local-time-sec local-time-msec))
+
 (defparameter *project-home-directory*
   (make-pathname :directory (pathname-directory
                              (if (find-package "ASDF")
@@ -483,9 +485,8 @@
                       :timezone zone))))
     result))
 
-(defun local-time (&key (universal nil) (internal nil) (unix nil) (usec 0) (timezone nil))
-  "Produce a LOCAL-TIME instance from the provided numeric time representation."
-  (declare (ignorable internal))
+(defun local-time (&key (universal nil) (unix nil) (usec 0) (timezone nil))
+  "Produce a LOCAL-TIME instance from the provided numeric time representation or try to extract the most accurate current time if none of them is provided."
   (cond
     (universal
      (multiple-value-bind (sec minute hour date month year)
@@ -493,9 +494,6 @@
        (encode-local-time usec sec minute hour date month year
                           :timezone (realize-timezone (or timezone
                                                           *default-timezone*)))))
-    (internal
-     ;; FIXME: How to portably convert between internal time?
-     (error "Conversion of internal time not implemented"))
     (unix
      (let* ((days (floor unix 86400))
             (secs (- unix (* days 86400))))
@@ -503,15 +501,22 @@
                         :sec secs
                         :usec usec
                         :timezone (realize-timezone
-                                   (or timezone *default-timezone*)))))))
+                                   (or timezone *default-timezone*)))))
+    (t #+sbcl
+       (multiple-value-bind (_ sec usec) (sb-unix:unix-gettimeofday)
+         (declare (ignore _) (type (unsigned-byte 32) sec usec))
+         (let ((result (local-time :unix sec :usec usec :timezone +utc-zone+)))
+           (local-time-adjust result (realize-timezone (or timezone
+                                                           *default-timezone*))
+                              result)))
+       #-sbcl
+       (local-time :universal (get-universal-time)))))
 
 (defun today ()
   (minimize-time-part (now) :timezone +utc-zone+))
 
 (defun now ()
-  (local-time :universal (get-universal-time)))
-
-(declaim (inline local-time< local-time/= local-time= local-time>= local-time> local-time<=))
+  (local-time))
 
 (defmacro defcomparator (name &body body)
   (let ((pair-comparator-name (intern (concatenate 'string "%" (string name)))))
