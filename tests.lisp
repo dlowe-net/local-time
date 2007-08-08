@@ -326,3 +326,7 @@
                      (with-input-from-string (ins (format nil "~a" (universal-time now)))
                        (local-time::read-universal-time ins #\@ nil))))))
 
+;; TODO currently this is broken due to a bug in decode-local-time (?)
+(test leap-year-printing
+  (let ((local-time (parse-timestring "2004-02-29")))
+    (local-time= local-time (parse-timestring (format-timestring local-time)))))
