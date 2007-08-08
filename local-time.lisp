@@ -944,7 +944,8 @@
      (loop for c = (read-char stream nil #\space)
            until (or (eql c #\space) (eql c #\)))
            do (princ c str)
-           finally (unread-char c stream)))))
+           finally (unread-char c stream)))
+   :allow-missing-elements-p t))
 
 (defun read-universal-time (stream char arg)
   (declare (ignore char arg))
