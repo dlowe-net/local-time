@@ -77,6 +77,12 @@
            #:+short-month-names+
            #:+day-names+
            #:+short-day-names+
+           #:+seconds-per-day+
+           #:+seconds-per-hour+
+           #:+seconds-per-minute+
+           #:+minutes-per-day+
+           #:+minutes-per-hour+
+           #:+hours-per-day+
            #:astronomical-julian-date
            #:modified-julian-date
            #:astronomical-modified-julian-date))
@@ -100,7 +106,19 @@
   '("" "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov"
     "Dec"))
 
-(defparameter +leap-factor+ 1461)
+(defconstant +seconds-per-day+ 86400)
+
+(defconstant +seconds-per-hour+ 3600)
+
+(defconstant +seconds-per-minute+ 60)
+
+(defconstant +minutes-per-day+ 1440)
+
+(defconstant +minutes-per-hour+ 60)
+
+(defconstant +hours-per-day+ 24)
+
+(defconstant +leap-factor+ 1461)
 
 (defparameter +rotated-month-days-without-leap-day+ #(31 30 31 30 31 31 30 31 30 31 31 28))
 
