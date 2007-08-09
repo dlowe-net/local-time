@@ -326,7 +326,44 @@
                      (with-input-from-string (ins (format nil "~a" (universal-time now)))
                        (local-time::read-universal-time ins #\@ nil))))))
 
-;; TODO currently this is broken due to a bug in decode-local-time (?)
 (test leap-year-printing
   (let ((local-time (parse-timestring "2004-02-29")))
-    (local-time= local-time (parse-timestring (format-timestring local-time)))))
+    (is (local-time= local-time (parse-timestring (format-timestring local-time))))))
+
+(test decode-date
+  (loop for (total-day year month day) :in '((-1 2000 02 29)
+                                             (0 2000 03 01)
+                                             (1 2000 03 02)
+                                             (364 2001 02 28)
+                                             (365 2001 03 01)
+                                             (366 2001 03 02)
+                                             (#.(* 2 365) 2002 03 01)
+                                             (#.(* 4 365) 2004 02 29)
+                                             (#.(1+ (* 4 365)) 2004 03 01))
+        do (multiple-value-bind (year* month* day*)
+               (local-time::local-time-decode-date (make-local-time :day total-day))
+             (is (= year year*))
+             (is (= month month*))
+             (is (= day day*)))))
+
+(defun valid-date-p (year month day)
+  (let ((month-days #(31 28 31 30 31 30 31 31 30 31 30 31)))
+    (and (<= 1 month 12)
+         (<= 1 day (+ (aref month-days (1- month))
+                      (if (and (= month 2)
+                               (zerop (mod year 4)))
+                          1
+                          0))))))
+
+(test encode-decode-local-time
+  (let ((*default-timezone* +utc-zone+))
+    (loop for year :in '(1900 1975 1999 2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010) do
+          (loop for month :from 1 :to 12 do
+                (loop for day :in '(1 2 3 27 28 29 30 31) do
+                      (when (valid-date-p year month day)
+                        (multiple-value-bind (usec sec minute hour day* month* year* day-of-week daylight-p zone)
+                            (decode-local-time (encode-local-time 0 0 0 0 day month year))
+                          (declare (ignore usec sec minute hour day-of-week daylight-p zone))
+                          (is (= year year*))
+                          (is (= month month*))
+                          (is (= day day*)))))))))
