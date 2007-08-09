@@ -642,14 +642,13 @@
                                       (allow-missing-date-part-p allow-missing-elements-p)
                                       (allow-missing-time-part-p allow-missing-elements-p)
                                       (allow-missing-timezone-part-p allow-missing-elements-p))
-  "Based on http://www.ietf.org/rfc/rfc3339.txt including the function names used. Returns (values year month day hour minute second offset-hour offset-minute). If the parsing fails, then either signals an error or returns nil based on FAIL-ON-ERROR."
+  "Based on http://www.ietf.org/rfc/rfc3339.txt including the function names used. Returns (values year month day hour minute second usec offset-hour offset-minute). If the parsing fails, then either signals an error or returns nil based on FAIL-ON-ERROR."
   (declare (type character date-time-separator time-separator date-separator)
            (type (simple-array character) time-string)
            (optimize (speed 3)))
   (the list
-    (let (year month day hour minute second offset-hour offset-minute)
-      (declare (type (or null fixnum) start end year month day hour minute offset-hour offset-minute)
-               (type (or null integer float) second))
+    (let (year month day hour minute second usec offset-hour offset-minute)
+      (declare (type (or null fixnum) start end year month day hour minute second usec offset-hour offset-minute))
       (macrolet ((passert (expression)
                    `(unless ,expression
                      (parse-error)))
@@ -766,7 +765,7 @@
                                  (time-offset (second parts) sign))))))))
                  (partial-time (start-end)
                    (with-parts-and-count ((car start-end) (cdr start-end) time-separator)
-                     (passert (eql (list-length parts) 3))
+                     (passert (eql count 3))
                      (time-hour (first parts))
                      (time-minute (second parts))
                      (time-second (third parts))))
@@ -775,13 +774,12 @@
                  (time-minute (start-end)
                    (parse-integer-into start-end minute 0 59))
                  (time-second (start-end)
-                   (let* ((*read-eval* nil)
-                          (start (car start-end))
-                          (end (cdr start-end))
-                          (float (read-from-string (substitute #\, #\. time-string :start start :end end)
-                                                   t nil :start start :end end)))
-                     (passert (typep float '(or float integer)))
-                     (setf second float)))
+                   (with-parts-and-count ((car start-end) (cdr start-end) '(#\. #\,))
+                     (passert (<= 1 count 2))
+                     (let ((*read-eval* nil))
+                       (parse-integer-into (first parts) second 0 59)
+                       (when (> count 1)
+                         (parse-integer-into (second parts) usec 0 999999)))))
                  (time-offset (start-end sign)
                    (with-parts-and-count ((car start-end) (cdr start-end) time-separator)
                      (passert (or allow-missing-timezone-part-p (= count 2)))
@@ -796,7 +794,7 @@
                        (error "Failed to parse ~S as an rfc3339 time" time-string)
                        (return-from %split-timestring nil)))
                  (done ()
-                   (return-from %split-timestring (list year month day hour minute second offset-hour offset-minute))))
+                   (return-from %split-timestring (list year month day hour minute second usec offset-hour offset-minute))))
           (parse))))))
 
 (defun parse-rfc3339-timestring (timestring &key (fail-on-error t)
@@ -807,11 +805,10 @@
 
 (defun parse-timestring (timestring &rest args)
   "Parse a timestring and return the corresponding LOCAL-TIME. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value."
-  (destructuring-bind (year month day hour minute second offset-hour offset-minute)
+  (destructuring-bind (year month day hour minute second usec offset-hour offset-minute)
       (apply #'split-timestring timestring args)
     ;; TODO should we assert on month and leap rules here?
-    (let ((usec 0)
-          (timezone (if offset-hour
+    (let ((timezone (if offset-hour
                         (progn
                           (unless offset-minute
                             (setf offset-minute 0))
@@ -827,9 +824,6 @@
                                                 :name "anonymous"
                                                 :loaded t)))))
                         *default-timezone*)))
-      (unless (typep second 'integer)
-        ;; TODO extract usec
-        )
       (unless second (setf second 0))
       (unless minute (setf minute 0))
       (unless hour (setf hour 0))
