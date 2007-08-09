@@ -100,6 +100,8 @@
   '("" "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov"
     "Dec"))
 
+(defparameter +leap-factor+ 1461)
+
 (defparameter +rotated-month-days-without-leap-day+ #(31 30 31 30 31 31 30 31 30 31 31 28))
 
 (defparameter +rotated-month-offsets-without-leap-day+
@@ -468,7 +470,7 @@
          (int-year (if (< month 3) (- year 2001) (- year 2000)))
          (zone (realize-timezone timezone))
          (sec (+ (* hh 3600) (* mm 60) ss))
-         (day (+ (floor (* int-year 1461) 4)
+         (day (+ (floor (* int-year +leap-factor+) 4)
                  (aref +rotated-month-offsets-without-leap-day+ 0-based-rotated-month)
                  (1- day)))
          (result (if into
@@ -584,7 +586,7 @@
 (defun local-time-decode-date (local-time)
   (declare (type local-time local-time))
   (multiple-value-bind (leap-cycles leap-cycle-days)
-      (floor (day-of local-time) 1461)
+      (floor (day-of local-time) +leap-factor+)
     (multiple-value-bind (leap-cycle-years year-days)
         (floor leap-cycle-days 365)
       (let* ((leap-day-p (and (= leap-cycle-years 4)
@@ -620,8 +622,6 @@
        hours
        minutes
        seconds))))
-
-(defparameter +leap-factor+ 1461)
 
 (defun decode-local-time (local-time)
   "Returns the decoded time as multiple values: ms, ss, mm, hh, day, month, year, day-of-week, daylight-saving-time-p, timezone, and the customary timezone abbreviation."
