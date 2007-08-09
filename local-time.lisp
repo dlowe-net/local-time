@@ -99,11 +99,15 @@
   '("" "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov"
     "Dec"))
 
-(defparameter +month-days+
-  (make-array 12 :initial-contents
-              (loop for length across #(0 31 30 31 30 31 31 30 31 30 31 31)
-                    as days = 0 then (+ days length)
-                    collect days)))
+(defparameter +rotated-month-days-without-leap-day+ #(31 30 31 30 31 31 30 31 30 31 31 28))
+
+(defparameter +rotated-month-offsets-without-leap-day+
+  (coerce
+   (cons 0
+         (loop with sum = 0
+               for days :across +rotated-month-days-without-leap-day+
+               collect (incf sum days)))
+   'simple-vector))
 
 ;;; Day information
 (defparameter +day-names+
@@ -452,25 +456,19 @@
               year-difference
               (1- year-difference)))))))
 
-(defun month-days (month)
-  (aref +month-days+ month))
-
-(defun decode-month (day)
-  (position day +month-days+ :from-end t :test #'>=))
-
 (defun local-time-day-of-week (local-time)
   (mod (+ 3 (day-of local-time)) 7))
 
-(defun encode-local-time (us ss mm hh day month year &key timezone into)
+(defun encode-local-time (us ss mm hh day month year &key (timezone *default-timezone*) into)
   "Return a new LOCAL-TIME instance corresponding to the specified time elements."
   (declare (type integer us ss mm hh day month year)
            (type (or null timezone) timezone))
-  (let* ((int-month (if (< month 3) (+ month 9) (- month 3)))
+  (let* ((0-based-rotated-month (if (>= month 3) (- month 3) (+ month 9)))
          (int-year (if (< month 3) (- year 2001) (- year 2000)))
-         (zone (realize-timezone (or timezone *default-timezone*)))
+         (zone (realize-timezone timezone))
          (sec (+ (* hh 3600) (* mm 60) ss))
          (day (+ (floor (* int-year 1461) 4)
-                 (month-days int-month)
+                 (aref +rotated-month-offsets-without-leap-day+ 0-based-rotated-month)
                  (1- day)))
          (result (if into
                      (progn
@@ -582,26 +580,36 @@
   "Convert a designator (real number) as a LOCAL-TIME instance"
   nil)
 
-(defun local-time-decoded-date (local-time)
+(defun local-time-decode-date (local-time)
   (declare (type local-time local-time))
-  (multiple-value-bind (leap-cycle year-days)
+  (multiple-value-bind (leap-cycles leap-cycle-days)
       (floor (day-of local-time) 1461)
-    (multiple-value-bind (years month-days)
-        (floor year-days 365)
-      (let* ((month (decode-month month-days))
-             (day (1+ (- month-days (month-days month)))))
+    (multiple-value-bind (leap-cycle-years year-days)
+        (floor leap-cycle-days 365)
+      (let* ((leap-day-p (and (= leap-cycle-years 4)
+                              (= year-days 0)))
+             (rotated-1-based-month (if leap-day-p
+                                        12 ;; march is the first month and february is the last
+                                        (position year-days +rotated-month-offsets-without-leap-day+ :test #'<)))
+             (1-based-month (if (>= rotated-1-based-month 11)
+                                (- rotated-1-based-month 10)
+                                (+ rotated-1-based-month 2)))
+             (1-based-day (if leap-day-p
+                              29
+                              (1+ (- year-days (aref +rotated-month-offsets-without-leap-day+
+                                                     (1- rotated-1-based-month)))))))
         (values
-         (+ (* leap-cycle 4)
-            years
-            (if (>= month 10)
+         (+ (* leap-cycles 4)
+            (if leap-day-p
+                (1- leap-cycle-years)
+                leap-cycle-years)
+            (if (>= rotated-1-based-month 11) ;; january is in the next year
                 2001
                 2000))
-         (if (>= month 10)
-             (- month 9)
-             (+ month 3))
-         day)))))
+         1-based-month
+         1-based-day)))))
 
-(defun local-time-decoded-time (local-time)
+(defun local-time-decode-time (local-time)
   (declare (type local-time local-time))
   (multiple-value-bind (hours hour-remainder)
       (floor (sec-of local-time) 3600)
@@ -618,9 +626,9 @@
   "Returns the decoded time as multiple values: ms, ss, mm, hh, day, month, year, day-of-week, daylight-saving-time-p, timezone, and the customary timezone abbreviation."
   (declare (type local-time local-time))
   (multiple-value-bind (hours minutes seconds)
-      (local-time-decoded-time local-time)
+      (local-time-decode-time local-time)
     (multiple-value-bind (year month day)
-        (local-time-decoded-date local-time)
+        (local-time-decode-date local-time)
       (values
        (usec-of local-time)
        seconds minutes hours
