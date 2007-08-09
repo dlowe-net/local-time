@@ -272,9 +272,9 @@
       (setf *timezone-repository* (sort *timezone-repository* #'string< :key #'first)))))
 
 (defclass local-time ()
-  ((day :accessor day-of :initarg :day :initform 0)
-   (sec :accessor sec-of :initarg :sec :initform 0)
-   (usec :accessor usec-of :initarg :usec :initform 0 :documentation "An integer between 0 and 1000000")
+  ((day :accessor day-of :initarg :day :initform 0 :type integer)
+   (sec :accessor sec-of :initarg :sec :initform 0 :type integer)
+   (usec :accessor usec-of :initarg :usec :initform 0 :type (integer 0 999999))
    (timezone :accessor timezone-of :initarg :timezone
              :initform *default-timezone*)))
 
