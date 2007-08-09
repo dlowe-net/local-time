@@ -832,6 +832,7 @@
                                                 :name "anonymous"
                                                 :loaded t)))))
                         *default-timezone*)))
+      (unless usec (setf usec 0))
       (unless second (setf second 0))
       (unless minute (setf minute 0))
       (unless hour (setf hour 0))
