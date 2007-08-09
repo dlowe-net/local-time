@@ -59,6 +59,7 @@
            #:parse-timestring
            #:parse-datestring
            #:format-timestring
+           #:format-datestring
            #:format-rfc3339-timestring
            #:parse-rfc3339-timestring
            #:universal-time
@@ -910,6 +911,9 @@
     (when destination
       (princ str destination))
     str))
+
+(defun format-datestring (date)
+  (format-timestring date :omit-time-part-p t))
 
 (defun universal-time (local-time)
   "Return the UNIVERSAL-TIME corresponding to the LOCAL-TIME"
