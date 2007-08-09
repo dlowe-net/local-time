@@ -242,6 +242,7 @@
   
 (test local-time
   (let ((now (now)))
+    (setf (usec-of now) 0)
     (is (local-time= now
                      (local-time :unix (unix-time now)))))
   (let ((now (get-universal-time)))
@@ -322,8 +323,9 @@
 
 (test read-universal-time
   (let ((now (now)))
+    (setf (usec-of now) 0)
     (is (local-time= now
-                     (with-input-from-string (ins (format nil "~a" (universal-time now)))
+                     (with-input-from-string (ins (princ-to-string (universal-time now)))
                        (local-time::read-universal-time ins #\@ nil))))))
 
 (test leap-year-printing
