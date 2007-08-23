@@ -122,15 +122,17 @@
 
 (defconstant +leap-factor+ 1461)
 
-(defparameter +rotated-month-days-without-leap-day+ #(31 30 31 30 31 31 30 31 30 31 31 28))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter +rotated-month-days-without-leap-day+ #.(coerce #(31 30 31 30 31 31 30 31 30 31 31 28)
+                                                                '(simple-array fixnum (*))))
 
-(defparameter +rotated-month-offsets-without-leap-day+
-  (coerce
-   (cons 0
-         (loop with sum = 0
-               for days :across +rotated-month-days-without-leap-day+
-               collect (incf sum days)))
-   'simple-vector))
+  (defparameter +rotated-month-offsets-without-leap-day+
+    (coerce
+     (cons 0
+           (loop with sum = 0
+                 for days :across +rotated-month-days-without-leap-day+
+                 collect (incf sum days)))
+     '(simple-array fixnum (*)))))
 
 ;;; Day information
 (defparameter +day-names+
@@ -489,7 +491,7 @@
     (encode-local-time usec sec min hour day month year :timezone timezone :into into)))
 
 (defun local-time-whole-year-difference (time-a time-b)
-  "Returns the number of whole years elapsed between time-a and time-b"
+  "Returns the number of whole years elapsed between time-a and time-b (hint: anniversaries)."
   (declare (type local-time time-b time-a))
   (let ((modified-time-b (local-time-adjust time-b (timezone-of time-a) (make-local-time))))
     (multiple-value-bind (usec-a sec-a minute-a hour-a day-a month-a year-a)
@@ -517,7 +519,7 @@
          (zone (realize-timezone timezone))
          (sec (+ (* hh 3600) (* mm 60) ss))
          (day (+ (floor (* int-year +leap-factor+) 4)
-                 (aref +rotated-month-offsets-without-leap-day+ 0-based-rotated-month)
+                 (aref #.+rotated-month-offsets-without-leap-day+ 0-based-rotated-month)
                  (1- day)))
          (result (if into
                      (progn
@@ -639,13 +641,13 @@
                               (= year-days 0)))
              (rotated-1-based-month (if leap-day-p
                                         12 ;; march is the first month and february is the last
-                                        (position year-days +rotated-month-offsets-without-leap-day+ :test #'<)))
+                                        (position year-days #.+rotated-month-offsets-without-leap-day+ :test #'<)))
              (1-based-month (if (>= rotated-1-based-month 11)
                                 (- rotated-1-based-month 10)
                                 (+ rotated-1-based-month 2)))
              (1-based-day (if leap-day-p
                               29
-                              (1+ (- year-days (aref +rotated-month-offsets-without-leap-day+
+                              (1+ (- year-days (aref #.+rotated-month-offsets-without-leap-day+
                                                      (1- rotated-1-based-month)))))))
         (values
          (+ (* leap-cycles 4)
