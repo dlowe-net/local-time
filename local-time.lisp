@@ -53,6 +53,8 @@
            #:local-time-adjust-days
            #:maximize-time-part
            #:minimize-time-part
+           #:first-day-of-year
+           #:last-day-of-year
            #:local-time-designator
            #:encode-local-time
            #:decode-local-time
@@ -389,6 +391,32 @@
       (decode-local-time local-time)
     (declare (ignore usec sec min hour day-of-week daylight-saving-time-p))
     (encode-local-time 0 0 0 0 day month year :timezone (or timezone original-timezone) :into into)))
+
+(defun first-day-of-year (local-time-or-year &key into)
+  "Return a local-time date with the month and day set to the first day of the year the input refers to."
+  (let ((year
+         (etypecase local-time-or-year
+           (local-time
+            (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
+                (decode-local-time local-time-or-year)
+              (declare (ignore usec sec min hour day month day-of-week daylight-saving-time-p original-timezone))
+              year))
+           (integer
+            local-time-or-year))))
+    (encode-local-time 0 0 0 0 1 1 year :timezone +utc-zone+ :into into)))
+
+(defun last-day-of-year (local-time-or-year &key into)
+  "Return a local-time date with the month and day set to the last day of the year the input refers to."
+  (let ((year
+         (etypecase local-time-or-year
+           (local-time
+            (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
+                (decode-local-time local-time-or-year)
+              (declare (ignore usec sec min hour day month day-of-week daylight-saving-time-p original-timezone))
+              year))
+           (integer
+            local-time-or-year))))
+    (encode-local-time 0 0 0 0 31 12 year :timezone +utc-zone+ :into into)))
 
 (defun astronomical-julian-date (local-time)
   (- (day-of local-time) +astronomical-julian-date-offset+))
