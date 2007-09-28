@@ -58,6 +58,7 @@
            #:local-time-designator
            #:encode-local-time
            #:decode-local-time
+           #:with-decoded-local-time
            #:parse-timestring
            #:parse-datestring
            #:valid-date-p
@@ -687,6 +688,25 @@
        (nth-value 1 (timezone local-time))
        (timezone-of local-time)
        (nth-value 2 (timezone local-time))))))
+
+(defmacro with-decoded-local-time ((&key usec sec minute hour day month year day-of-week daylight-p timezone)
+                                   local-time &body forms)
+  (let ((ignores)
+        (variables))
+    (macrolet ((initialize (&rest vars)
+                 `(progn
+                    ,@(loop for var :in vars
+                            collect `(progn
+                                       (unless ,var
+                                         (setf ,var (gensym))
+                                         (push ,var ignores))
+                                       (push ,var variables)))
+                    (setf ignores (nreverse ignores))
+                    (setf variables (nreverse variables)))))
+      (initialize usec sec minute hour day month year day-of-week daylight-p timezone))
+    `(multiple-value-bind (,@variables) (decode-local-time ,local-time)
+       (declare (ignore ,@ignores))
+       ,@forms)))
 
 (defun split-timestring (str &rest args)
   (declare (inline))
