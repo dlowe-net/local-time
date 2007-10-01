@@ -51,6 +51,7 @@
            #:local-time-adjust
            #:local-time-whole-year-difference
            #:local-time-adjust-days
+	   #:adjusted-local-time
            #:maximize-time-part
            #:minimize-time-part
            #:first-day-of-year
@@ -502,6 +503,93 @@
         (incf day offset))
     (encode-local-time usec sec min hour day month year :timezone timezone :into into)))
 
+(defun adjusted-local-time (location offset time)
+  "Returns a time adjusted by the specified offset. Takes care about different kinds of overflows."
+
+  (labels ((direct-adjust (location offset usec sec day timezone)
+	     (if (zerop offset)
+		 ;; The offset is zero, so just assemble the local-time object
+		 (make-local-time :usec usec
+				  :sec sec
+				  :day day
+				  :timezone timezone)
+		 
+		 ;; The offset is not zero
+		 (case location
+		   (:usec
+		    (multiple-value-bind (sec-offset new-usec)
+			(floor (+ offset usec) 1000000)
+		    
+		      ;; the time might need to be adjusted a bit more if q != 0
+		      (direct-adjust :sec sec-offset
+				     new-usec sec day timezone)))
+		   (:day
+		    (make-local-time :usec usec
+				     :sec sec
+				     :day (+ day offset)
+				     :timezone timezone))
+		   (otherwise
+		    (multiple-value-bind (days-offset new-sec)
+			(floor (+ sec (* offset (ecase location
+						  (:sec 1)
+						  (:minute 60)
+						  (:hour 3600))))
+			       86400)
+		      (direct-adjust :day days-offset
+				     usec new-sec day timezone))))))
+
+	   (normalize-month-year-pair (month year)
+	     "Normalizes the month/year pair: in case month is < 1 or > 12
+the month and year are corrected to handle the overflow."
+
+	     (multiple-value-bind (year-offset month-minus-one)
+		 (floor (1- month) 12)
+	       (values (1+ month-minus-one)
+		       (+ year year-offset))))
+
+	   (days-in-month (month year)
+	     "Returns the number of days in the given month of the specified year"
+
+	     (multiple-value-bind (month1 year1)
+		 (normalize-month-year-pair month year)
+	       (multiple-value-bind (month2 year2)
+		   (normalize-month-year-pair (1+ month) year)
+		 ;; month1-year1 pair represents the current month
+		 ;; month2-year2 pair represents the sequential month
+		 ;; now we get timestamps for the first days of these months
+		 ;; and find out what the difference in days is
+		 (let ((timestamp1 (encode-local-time 0 0 0 0 1 month1 year1))
+		       (timestamp2 (encode-local-time 0 0 0 0 1 month2 year2)))
+		   (- (day-of timestamp2) (day-of timestamp1))))))
+
+	   (safe-adjust (location offset time)
+	     (multiple-value-bind (usec ss mm hh day month year d-o-w d-s-t-p timezone)
+		 (decode-local-time time)
+	       (declare (ignore d-o-w d-s-t-p))
+	       (multiple-value-bind (month-new year-new)
+		   (normalize-month-year-pair
+		    (+ (ecase location
+			 (:month offset)
+			 (:year (* 12 offset)))
+		       month)
+		    year)
+		 ;; Almost there. However, it is necessary to check for
+		 ;; overflows first
+		 (let* ((days (days-in-month month-new year-new))
+			(day-new (if (> day days)
+				     days
+				     day)))
+		   (encode-local-time usec ss mm hh day-new month-new year-new :timezone timezone))))))
+    
+    (ecase location
+      ((:usec :sec :minute :hour :day)
+       (direct-adjust location offset
+		      (usec-of time)
+		      (sec-of time)
+		      (day-of time)
+		      (timezone-of time)))
+      ((:month :year) (safe-adjust location offset time)))))
+
 (defun local-time-whole-year-difference (time-a time-b)
   "Returns the number of whole years elapsed between time-a and time-b (hint: anniversaries)."
   (declare (type local-time time-b time-a))
@@ -684,7 +772,7 @@
        seconds))))
 
 (defun decode-local-time (local-time)
-  "Returns the decoded time as multiple values: ms, ss, mm, hh, day, month, year, day-of-week, daylight-saving-time-p, timezone, and the customary timezone abbreviation."
+  "Returns the decoded time as multiple values: usec, ss, mm, hh, day, month, year, day-of-week, daylight-saving-time-p, timezone, and the customary timezone abbreviation."
   (declare (type local-time local-time))
   (multiple-value-bind (hours minutes seconds)
       (local-time-decode-time local-time)
