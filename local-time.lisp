@@ -280,6 +280,16 @@
 (defparameter *timezone-repository* nil "A list of (list \"Europe/Budapest\" timezone) entries")
 (defparameter *timezone-offset->timezone* (make-hash-table))
 
+(defun timezone= (timezone-1 timezone-2)
+  "Return two values indicating the relationship between timezone-1 and timezone-2
+   If values are T and T, timezone-1 and timezone-2 are definitely equals.
+   If values are NIL and T, timezone-1 and timezone-2 are definitely does not equal.
+   If values are NIL and NIL, it couldn't be determined."
+  (if (or (eq timezone-1 timezone-2)
+          (equalp timezone-1 timezone-2))
+      (values t t)
+      (values nil nil)))
+
 (eval-when (:load-toplevel :execute)
   (defun reread-timezone-repository ()
     (let* ((root-directory (merge-pathnames "zoneinfo/" *project-home-directory*))
