@@ -38,7 +38,7 @@
            #:make-local-time
            #:day-of
            #:sec-of
-           #:usec-of
+           #:nsec-of
            #:timezone-of
            #:local-time<
            #:local-time<=
@@ -318,7 +318,7 @@
 (defclass local-time ()
   ((day :accessor day-of :initarg :day :initform 0 :type integer)
    (sec :accessor sec-of :initarg :sec :initform 0 :type integer)
-   (usec :accessor usec-of :initarg :usec :initform 0 :type (integer 0 999999))
+   (nsec :accessor nsec-of :initarg :nsec :initform 0 :type (integer 0 999999999))
    (timezone :accessor timezone-of :initarg :timezone
              :initform *default-timezone*)))
 
@@ -338,7 +338,7 @@
 (defun local-time-msec (local-time)
   "Deprecated function to retrieve the milliseconds field from the local-time"
   (declare (type local-time local-time))
-  (floor (usec-of local-time) 1000))
+  (floor (nsec-of local-time) 1000000))
 
 (defun unix-time (local-time)
   "Return the Unix time corresponding to the LOCAL-TIME"
@@ -387,7 +387,7 @@
                    (decf new-sec 86400)))
             (cond
               (destination
-               (setf (usec-of destination) (usec-of source)
+               (setf (nsec-of destination) (nsec-of source)
                      (sec-of destination) new-sec
                      (day-of destination) new-day
                      (timezone-of destination) timezone)
@@ -397,16 +397,16 @@
 
 (defun maximize-time-part (local-time &key timezone into)
   "Return a local-time with the time part set to the end of the day."
-  (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
+  (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
       (decode-local-time local-time)
-    (declare (ignore usec sec min hour day-of-week daylight-saving-time-p))
+    (declare (ignore nsec sec min hour day-of-week daylight-saving-time-p))
     (encode-local-time 0 59 59 23 day month year :timezone (or timezone original-timezone) :into into)))
 
 (defun minimize-time-part (local-time &key timezone into)
   "Return a local-time with the time part set to the beginning of the day."
-  (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
+  (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
       (decode-local-time local-time)
-    (declare (ignore usec sec min hour day-of-week daylight-saving-time-p))
+    (declare (ignore nsec sec min hour day-of-week daylight-saving-time-p))
     (encode-local-time 0 0 0 0 day month year :timezone (or timezone original-timezone) :into into)))
 
 (defun first-day-of-year (local-time-or-year &key into)
@@ -414,9 +414,9 @@
   (let ((year
          (etypecase local-time-or-year
            (local-time
-            (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
+            (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
                 (decode-local-time local-time-or-year)
-              (declare (ignore usec sec min hour day month day-of-week daylight-saving-time-p original-timezone))
+              (declare (ignore nsec sec min hour day month day-of-week daylight-saving-time-p original-timezone))
               year))
            (integer
             local-time-or-year))))
@@ -427,9 +427,9 @@
   (let ((year
          (etypecase local-time-or-year
            (local-time
-            (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
+            (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
                 (decode-local-time local-time-or-year)
-              (declare (ignore usec sec min hour day month day-of-week daylight-saving-time-p original-timezone))
+              (declare (ignore nsec sec min hour day month day-of-week daylight-saving-time-p original-timezone))
               year))
            (integer
             local-time-or-year))))
@@ -445,16 +445,16 @@
   "Returns a new LOCAL-TIME containing the difference between TIME-A and TIME-B"
   (multiple-value-bind (day-a sec-a)
       (local-time-adjust time-a (timezone-of time-b))
-      (let ((usec (- (usec-of time-a) (usec-of time-b)))
+      (let ((nsec (- (nsec-of time-a) (nsec-of time-b)))
             (seconds (- sec-a (sec-of time-b)))
             (days (- day-a (day-of time-b))))
-        (when (minusp usec)
+        (when (minusp nsec)
           (decf seconds)
-          (incf usec 1000000))
+          (incf nsec 1000000000))
         (when (minusp seconds)
           (decf days)
           (incf seconds 86400))
-        (make-local-time :usec usec
+        (make-local-time :nsec nsec
                          :sec seconds
                          :day days))))
 
@@ -462,16 +462,16 @@
   "Returns a new LOCAL-TIME containing the sum of TIME-A and TIME-B"
   (multiple-value-bind (day-a sec-a)
       (local-time-adjust time-a (timezone-of time-b))
-    (let ((usec (+ (usec-of time-a) (usec-of time-b)))
+    (let ((nsec (+ (nsec-of time-a) (nsec-of time-b)))
           (sec (+ sec-a (sec-of time-b)))
           (day (+ day-a (day-of time-b))))
-      (when (> usec 1000000)
-        (decf usec 1000000)
+      (when (> nsec 1000000000)
+        (decf nsec 1000000000)
         (incf sec))
       (when (> sec 86400)
         (decf sec 86400)
         (incf day))
-      (make-local-time :usec usec
+      (make-local-time :nsec nsec
                        :sec sec
                        :day day
                        :timezone (timezone-of time-b)))))
@@ -486,13 +486,13 @@
       ((> day-a (day-of time-b)) '>)
       ((< sec-a (sec-of time-b)) '<)
       ((> sec-a (sec-of time-b)) '>)
-      ((< (usec-of time-a) (usec-of time-b)) '<)
-      ((> (usec-of time-a) (usec-of time-b)) '>)
+      ((< (nsec-of time-a) (nsec-of time-b)) '<)
+      ((> (nsec-of time-a) (nsec-of time-b)) '>)
       (t '=))))
 
 (defun local-time-adjust-days (local-time offset &key into)
   "Add OFFSET to days unless it's a keyword symbol name of a week-day. In that case point the result to the previous day given by OFFSET."
-  (multiple-value-bind (usec sec min hour day month year day-of-week daylight-saving-time-p timezone)
+  (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p timezone)
       (decode-local-time local-time)
     (declare (ignore daylight-saving-time-p))
     (if (symbolp offset)
@@ -503,7 +503,7 @@
                               day-of-week))
                        position)))
         (incf day offset))
-    (encode-local-time usec sec min hour day month year :timezone timezone :into into)))
+    (encode-local-time nsec sec min hour day month year :timezone timezone :into into)))
 (defun normalize-month-year-pair (month year)
   "Normalizes the month/year pair: in case month is < 1 or > 12
 the month and year are corrected to handle the overflow."
@@ -540,22 +540,22 @@ returns the last day of the month."
 (defun modified-local-time (location new-value time)
   "Returns a modified timestamp, the original timestamp is left intact"
   (case location
-    ((:usec :sec-of-day :day)
-     (let ((usec (usec-of time))
+    ((:nsec :sec-of-day :day)
+     (let ((nsec (nsec-of time))
 	   (sec (sec-of time))
 	   (day (day-of time))
 	   (timezone (timezone-of time)))
        (case location
-	 (:usec (setf usec (coerce new-value '(integer 0 999999))))
+	 (:nsec (setf nsec (coerce new-value '(integer 0 999999999))))
 	 (:sec-of-day (setf sec (coerce new-value '(integer 0 #.(* 24 60 60)))))
 	 (:day (setf day new-value))
 	 (:timezone (setf timezone new-value)))
-       (make-local-time :usec usec
+       (make-local-time :nsec nsec
 			:sec sec
 			:day day
 			:timezone timezone)))
      (otherwise
-      (multiple-value-bind (usec ss mm hh day month year day-of-week daylight-saving-time-p timezone timezone-abbr)
+      (multiple-value-bind (nsec ss mm hh day month year day-of-week daylight-saving-time-p timezone timezone-abbr)
 	  (decode-local-time time)
 	(declare (ignore daylight-saving-time-p timezone-abbr day-of-week))
 	(ecase location
@@ -568,30 +568,30 @@ returns the last day of the month."
 	  (:year (setf year new-value)
 		 (setf day (fix-overflow-in-days day month year)))
 	  (:timezone (setf timezone new-value)))
-	(encode-local-time usec ss mm hh day month year :timezone timezone)))))
+	(encode-local-time nsec ss mm hh day month year :timezone timezone)))))
 
 (defun adjusted-local-time (location offset time)
   "Returns a time adjusted by the specified offset. Takes care about different kinds of overflows."
 
-  (labels ((direct-adjust (location offset usec sec day timezone)
+  (labels ((direct-adjust (location offset nsec sec day timezone)
 	     (if (zerop offset)
 		 ;; The offset is zero, so just assemble the local-time object
-		 (make-local-time :usec usec
+		 (make-local-time :nsec nsec
 				  :sec sec
 				  :day day
 				  :timezone timezone)
 		 
 		 ;; The offset is not zero
 		 (case location
-		   (:usec
-		    (multiple-value-bind (sec-offset new-usec)
-			(floor (+ offset usec) 1000000)
+		   (:nsec
+		    (multiple-value-bind (sec-offset new-nsec)
+			(floor (+ offset nsec) 1000000000)
 		    
 		      ;; the time might need to be adjusted a bit more if q != 0
 		      (direct-adjust :sec sec-offset
-				     new-usec sec day timezone)))
+				     new-nsec sec day timezone)))
 		   (:day
-		    (make-local-time :usec usec
+		    (make-local-time :nsec nsec
 				     :sec sec
 				     :day (+ day offset)
 				     :timezone timezone))
@@ -603,10 +603,10 @@ returns the last day of the month."
 						  (:hour #.(* 60 60)))))
 			       #.(* 24 60 60))
 		      (direct-adjust :day days-offset
-				     usec new-sec day timezone))))))
+				     nsec new-sec day timezone))))))
 
 	   (safe-adjust (location offset time)
-	     (multiple-value-bind (usec ss mm hh day month year d-o-w d-s-t-p timezone)
+	     (multiple-value-bind (nsec ss mm hh day month year d-o-w d-s-t-p timezone)
 		 (decode-local-time time)
 	       (declare (ignore d-o-w d-s-t-p))
 	       (multiple-value-bind (month-new year-new)
@@ -618,15 +618,15 @@ returns the last day of the month."
 		    year)
 		 ;; Almost there. However, it is necessary to check for
 		 ;; overflows first
-		 (encode-local-time usec ss mm hh
+		 (encode-local-time nsec ss mm hh
 				    (fix-overflow-in-days day month-new year-new)
 				    month-new year-new
 				    :timezone timezone)))))
     
     (ecase location
-      ((:usec :sec :minute :hour :day)
+      ((:nsec :sec :minute :hour :day)
        (direct-adjust location offset
-		      (usec-of time)
+		      (nsec-of time)
 		      (sec-of time)
 		      (day-of time)
 		      (timezone-of time)))
@@ -636,13 +636,13 @@ returns the last day of the month."
   "Returns the number of whole years elapsed between time-a and time-b (hint: anniversaries)."
   (declare (type local-time time-b time-a))
   (let ((modified-time-b (local-time-adjust time-b (timezone-of time-a) (make-local-time))))
-    (multiple-value-bind (usec-a sec-a minute-a hour-a day-a month-a year-a)
+    (multiple-value-bind (nsec-a sec-a minute-a hour-a day-a month-a year-a)
         (decode-local-time modified-time-b)
-      (multiple-value-bind (usec-b sec-b minute-b hour-b day-b month-b year-b day-of-week-b daylight-p-b zone-b)
+      (multiple-value-bind (nsec-b sec-b minute-b hour-b day-b month-b year-b day-of-week-b daylight-p-b zone-b)
           (decode-local-time time-a)
-        (declare (ignore usec-b sec-b minute-b hour-b day-b month-b day-of-week-b daylight-p-b zone-b))
+        (declare (ignore nsec-b sec-b minute-b hour-b day-b month-b day-of-week-b daylight-p-b zone-b))
         (let ((year-difference (- year-b year-a)))
-          (if (local-time<= (encode-local-time usec-a sec-a minute-a hour-a day-a month-a
+          (if (local-time<= (encode-local-time nsec-a sec-a minute-a hour-a day-a month-a
                                                (+ year-difference year-a)
                                                :timezone (timezone-of time-a))
                             time-a)
@@ -652,9 +652,9 @@ returns the last day of the month."
 (defun local-time-day-of-week (local-time)
   (mod (+ 3 (day-of local-time)) 7))
 
-(defun encode-local-time (us ss mm hh day month year &key (timezone *default-timezone*) into)
+(defun encode-local-time (ns ss mm hh day month year &key (timezone *default-timezone*) into)
   "Return a new LOCAL-TIME instance corresponding to the specified time elements."
-  (declare (type integer us ss mm hh day month year)
+  (declare (type integer ns ss mm hh day month year)
            (type (or null timezone) timezone))
   (let* ((0-based-rotated-month (if (>= month 3) (- month 3) (+ month 9)))
          (int-year (if (< month 3) (- year 2001) (- year 2000)))
@@ -670,19 +670,19 @@ returns the last day of the month."
                        (setf (timezone-of into) zone)
                        into)
                      (make-local-time
-                      :usec us
+                      :nsec ns
                       :sec sec
                       :day day
                       :timezone zone))))
     result))
 
-(defun local-time (&key (universal nil) (unix nil) (usec 0) (timezone nil))
+(defun local-time (&key (universal nil) (unix nil) (nsec 0) (timezone nil))
   "Produce a LOCAL-TIME instance from the provided numeric time representation or try to extract the most accurate current time if none of them is provided."
   (cond
     (universal
      (multiple-value-bind (sec minute hour date month year)
          (decode-universal-time universal)
-       (encode-local-time usec sec minute hour date month year
+       (encode-local-time nsec sec minute hour date month year
                           :timezone (realize-timezone (or timezone
                                                           *default-timezone*)))))
     (unix
@@ -690,13 +690,13 @@ returns the last day of the month."
             (secs (- unix (* days 86400))))
        (make-local-time :day (- days 11017)
                         :sec secs
-                        :usec usec
+                        :nsec nsec
                         :timezone (realize-timezone
                                    (or timezone *default-timezone*)))))
     (t #+sbcl
        (multiple-value-bind (_ sec usec) (sb-unix:unix-gettimeofday)
          (declare (ignore _) (type (unsigned-byte 32) sec usec))
-         (let ((result (local-time :unix sec :usec usec :timezone +utc-zone+)))
+         (let ((result (local-time :unix sec :nsec (* usec 1000) :timezone +utc-zone+)))
            (local-time-adjust result (realize-timezone (or timezone
                                                            *default-timezone*))
                               result)))
@@ -814,14 +814,14 @@ returns the last day of the month."
        seconds))))
 
 (defun decode-local-time (local-time)
-  "Returns the decoded time as multiple values: usec, ss, mm, hh, day, month, year, day-of-week, daylight-saving-time-p, timezone, and the customary timezone abbreviation."
+  "Returns the decoded time as multiple values: nsec, ss, mm, hh, day, month, year, day-of-week, daylight-saving-time-p, timezone, and the customary timezone abbreviation."
   (declare (type local-time local-time))
   (multiple-value-bind (hours minutes seconds)
       (local-time-decode-time local-time)
     (multiple-value-bind (year month day)
         (local-time-decode-date local-time)
       (values
-       (usec-of local-time)
+       (nsec-of local-time)
        seconds minutes hours
        day month year
        (local-time-day-of-week local-time)
@@ -829,7 +829,7 @@ returns the last day of the month."
        (timezone-of local-time)
        (nth-value 2 (timezone local-time))))))
 
-(defmacro with-decoded-local-time ((&key usec sec minute hour day month year day-of-week daylight-p timezone)
+(defmacro with-decoded-local-time ((&key nsec sec minute hour day month year day-of-week daylight-p timezone)
                                    local-time &body forms)
   (let ((ignores)
         (variables))
@@ -843,7 +843,7 @@ returns the last day of the month."
                                        (push ,var variables)))
                     (setf ignores (nreverse ignores))
                     (setf variables (nreverse variables)))))
-      (initialize usec sec minute hour day month year day-of-week daylight-p timezone))
+      (initialize nsec sec minute hour day month year day-of-week daylight-p timezone))
     `(multiple-value-bind (,@variables) (decode-local-time ,local-time)
        (declare (ignore ,@ignores))
        ,@forms)))
@@ -1063,7 +1063,7 @@ returns the last day of the month."
       (unless day (setf day 1))
       (unless month (setf month 3))
       (unless year (setf year 2000))
-      (encode-local-time usec second minute hour day month year :timezone timezone))))
+      (encode-local-time (* usec 1000) second minute hour day month year :timezone timezone))))
 
 (defun parse-datestring (string)
   (let* ((*default-timezone* +utc-zone+)
@@ -1076,7 +1076,7 @@ returns the last day of the month."
   (and local-time
        (eq (timezone-of local-time) +utc-zone+)
        (zerop (sec-of local-time))
-       (zerop (usec-of local-time))))
+       (zerop (nsec-of local-time))))
 
 (defun format-rfc3339-timestring (local-time &rest args &key omit-date-part-p omit-time-part-p
                                              omit-timezone-part-p &allow-other-keys)
@@ -1097,7 +1097,7 @@ returns the last day of the month."
   (let ((str (with-output-to-string (str)
                (when timezone
                  (setf local-time (local-time-adjust local-time timezone (make-local-time))))
-               (multiple-value-bind (usec sec minute hour day month year day-of-week daylight-p zone)
+               (multiple-value-bind (nsec sec minute hour day month year day-of-week daylight-p zone)
                    (decode-local-time local-time)
                  (declare (ignore day-of-week daylight-p))
                  (cond
@@ -1123,8 +1123,8 @@ returns the last day of the month."
                  (when (> time-elements 2)
                    (format str "~c~2,'0d" time-separator sec))
                  (when (and (> time-elements 3)
-                            (not (zerop usec)))
-                   (format str ".~6,'0d" usec))
+                            (not (zerop nsec)))
+                   (format str ".~6,'0d" (floor nsec 1000)))
                  (unless omit-timezone-part-p
                    (let* ((offset (local-timezone local-time zone)))
                      (if (and use-zulu-p
@@ -1144,9 +1144,9 @@ returns the last day of the month."
 
 (defun universal-time (local-time)
   "Return the UNIVERSAL-TIME corresponding to the LOCAL-TIME"
-  (multiple-value-bind (usec seconds minutes hours day month year day-of-week daylight-saving-time-p timezone)
+  (multiple-value-bind (nsec seconds minutes hours day month year day-of-week daylight-saving-time-p timezone)
       (decode-local-time local-time)
-    (declare (ignore usec day-of-week daylight-saving-time-p))
+    (declare (ignore nsec day-of-week daylight-saving-time-p))
     (encode-universal-time seconds minutes hours day month year (floor (timezone local-time timezone) -3600))))
 
 (defun internal-time (local-time)
