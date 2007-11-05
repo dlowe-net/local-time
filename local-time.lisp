@@ -860,13 +860,13 @@ returns the last day of the month."
                                       (allow-missing-date-part-p allow-missing-elements-p)
                                       (allow-missing-time-part-p allow-missing-elements-p)
                                       (allow-missing-timezone-part-p allow-missing-elements-p))
-  "Based on http://www.ietf.org/rfc/rfc3339.txt including the function names used. Returns (values year month day hour minute second usec offset-hour offset-minute). If the parsing fails, then either signals an error or returns nil based on FAIL-ON-ERROR."
+  "Based on http://www.ietf.org/rfc/rfc3339.txt including the function names used. Returns (values year month day hour minute second nsec offset-hour offset-minute). If the parsing fails, then either signals an error or returns nil based on FAIL-ON-ERROR."
   (declare (type character date-time-separator time-separator date-separator)
            (type (simple-array character) time-string)
            (optimize (speed 3)))
   (the list
-    (let (year month day hour minute second usec offset-hour offset-minute)
-      (declare (type (or null fixnum) start end year month day hour minute second usec offset-hour offset-minute))
+    (let (year month day hour minute second nsec offset-hour offset-minute)
+      (declare (type (or null fixnum) start end year month day hour minute second nsec offset-hour offset-minute))
       (macrolet ((passert (expression)
                    `(unless ,expression
                      (parse-error)))
@@ -1000,18 +1000,19 @@ returns the last day of the month."
                            (let* ((start (car (second parts)))
                                   (end (cdr (second parts))))
                              (declare (type (integer 0 #.array-dimension-limit) start end))
-                             (passert (<= (- end start) 6))
+                             (passert (<= (- end start) 9))
                              (let ((new-end (position-if (lambda (el)
                                                            (not (char= #\0 el)))
                                                          time-string :start start :end end :from-end t)))
                                (when new-end
                                  (setf end (min (1+ new-end)))))
                              ;;(break "~S: ~S"  (subseq time-string start end) (- end start))
-                             (setf usec (* (the fixnum (parse-integer time-string :start start :end end))
-                                           (aref #.(coerce #(1000000 100000 10000 1000 100 10 1)
-                                                           '(simple-array fixnum (7)))
+                             (setf nsec (* (the fixnum (parse-integer time-string :start start :end end))
+                                           (aref #.(coerce #(1000000000 100000000 10000000
+                                                             1000000 100000 10000 1000 100 10 1)
+                                                           '(simple-array fixnum (10)))
                                                  (- end start)))))
-                           (setf usec 0)))))
+                           (setf nsec 0)))))
                  (time-offset (start-end sign)
                    (with-parts-and-count ((car start-end) (cdr start-end) time-separator)
                      (passert (or allow-missing-timezone-part-p (= count 2)))
@@ -1026,7 +1027,7 @@ returns the last day of the month."
                        (error "Failed to parse ~S as an rfc3339 time" time-string)
                        (return-from %split-timestring nil)))
                  (done ()
-                   (return-from %split-timestring (list year month day hour minute second usec offset-hour offset-minute))))
+                   (return-from %split-timestring (list year month day hour minute second nsec offset-hour offset-minute))))
           (parse))))))
 
 (defun parse-rfc3339-timestring (timestring &key (fail-on-error t)
@@ -1037,7 +1038,7 @@ returns the last day of the month."
 
 (defun parse-timestring (timestring &rest args)
   "Parse a timestring and return the corresponding LOCAL-TIME. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value."
-  (destructuring-bind (year month day hour minute second usec offset-hour offset-minute)
+  (destructuring-bind (year month day hour minute second nsec offset-hour offset-minute)
       (apply #'split-timestring timestring args)
     ;; TODO should we assert on month and leap rules here?
     (let ((timezone (if offset-hour
@@ -1056,14 +1057,14 @@ returns the last day of the month."
                                                 :name "anonymous"
                                                 :loaded t)))))
                         *default-timezone*)))
-      (unless usec (setf usec 0))
+      (unless nsec (setf nsec 0))
       (unless second (setf second 0))
       (unless minute (setf minute 0))
       (unless hour (setf hour 0))
       (unless day (setf day 1))
       (unless month (setf month 3))
       (unless year (setf year 2000))
-      (encode-local-time (* usec 1000) second minute hour day month year :timezone timezone))))
+      (encode-local-time nsec second minute hour day month year :timezone timezone))))
 
 (defun parse-datestring (string)
   (let* ((*default-timezone* +utc-zone+)
