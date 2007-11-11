@@ -476,6 +476,7 @@
       ((> (nsec-of time-a) (nsec-of time-b)) '>)
       (t '=))))
 
+;; TODO merge it into adjusted-local-time
 (defun local-time-adjust-days (local-time offset &key into)
   "Add OFFSET to days unless it's a keyword symbol name of a week-day. In that case point the result to the previous day given by OFFSET."
   (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p timezone)
@@ -520,6 +521,10 @@
         max-day
         day)))
 
+;; TODO the modified-local-time and adjusted-local-time names are not too intuitive
+;; maybe something like this could work in form of a compiler-macro that turns it into calls to internal functions:
+;; (adjust-local-time local-time (set day to 3))
+;; (adjust-local-time! local-time (offset month by -3)) ; where ! means to write the result into the input
 (defun modified-local-time (location new-value time)
   "Returns a modified timestamp, the original timestamp is left intact"
   (case location
