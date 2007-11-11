@@ -490,132 +490,124 @@
                        position)))
         (incf day offset))
     (encode-local-time nsec sec min hour day month year :timezone timezone :into into)))
+
 (defun normalize-month-year-pair (month year)
-  "Normalizes the month/year pair: in case month is < 1 or > 12
-the month and year are corrected to handle the overflow."
-  
+  "Normalizes the month/year pair: in case month is < 1 or > 12 the month and year are corrected to handle the overflow."
   (multiple-value-bind (year-offset month-minus-one)
       (floor (1- month) 12)
     (values (1+ month-minus-one)
-	    (+ year year-offset))))
+            (+ year year-offset))))
 
 (defun days-in-month (month year)
-  "Returns the number of days in the given month of the specified year
-TODO: optimize it"
-  
+  "Returns the number of days in the given month of the specified year."
+  ;; TODO optimize it
   (multiple-value-bind (month1 year1)
       (normalize-month-year-pair month year)
     (multiple-value-bind (month2 year2)
-	(normalize-month-year-pair (1+ month) year)
+        (normalize-month-year-pair (1+ month) year)
       ;; month1-year1 pair represents the current month
       ;; month2-year2 pair represents the sequential month
       ;; now we get timestamps for the first days of these months
       ;; and find out what the difference in days is
       (let ((timestamp1 (encode-local-time 0 0 0 0 1 month1 year1))
-	    (timestamp2 (encode-local-time 0 0 0 0 1 month2 year2)))
-	(- (day-of timestamp2) (day-of timestamp1))))))
+            (timestamp2 (encode-local-time 0 0 0 0 1 month2 year2)))
+        (- (day-of timestamp2) (day-of timestamp1))))))
 
 (defun fix-overflow-in-days (day month year)
-  "In case the day number is higher than the maximal possible for the given month/year pair,
-returns the last day of the month."
+  "In case the day number is higher than the maximal possible for the given month/year pair, returns the last day of the month."
   (let ((max-day (days-in-month month year)))
     (if (> day max-day)
-	max-day
-	day)))
+        max-day
+        day)))
 
 (defun modified-local-time (location new-value time)
   "Returns a modified timestamp, the original timestamp is left intact"
   (case location
     ((:nsec :sec-of-day :day)
      (let ((nsec (nsec-of time))
-	   (sec (sec-of time))
-	   (day (day-of time))
-	   (timezone (timezone-of time)))
+           (sec (sec-of time))
+           (day (day-of time))
+           (timezone (timezone-of time)))
        (case location
-	 (:nsec (setf nsec (coerce new-value '(integer 0 999999999))))
-	 (:sec-of-day (setf sec (coerce new-value '(integer 0 #.(* 24 60 60)))))
-	 (:day (setf day new-value))
-	 (:timezone (setf timezone new-value)))
+         (:nsec (setf nsec (coerce new-value '(integer 0 999999999))))
+         (:sec-of-day (setf sec (coerce new-value '(integer 0 #.(* 24 60 60)))))
+         (:day (setf day new-value))
+         (:timezone (setf timezone new-value)))
        (make-local-time :nsec nsec
-			:sec sec
-			:day day
-			:timezone timezone)))
+                        :sec sec
+                        :day day
+                        :timezone timezone)))
      (otherwise
       (multiple-value-bind (nsec ss mm hh day month year day-of-week daylight-saving-time-p timezone timezone-abbr)
-	  (decode-local-time time)
-	(declare (ignore daylight-saving-time-p timezone-abbr day-of-week))
-	(ecase location
-	  (:sec (setf ss new-value))
-	  (:minute (setf mm new-value))
-	  (:hour (setf hh new-value))
-	  (:day-of-month (setf day new-value))
-	  (:month (setf month new-value)
-		  (setf day (fix-overflow-in-days day month year)))
-	  (:year (setf year new-value)
-		 (setf day (fix-overflow-in-days day month year)))
-	  (:timezone (setf timezone new-value)))
-	(encode-local-time nsec ss mm hh day month year :timezone timezone)))))
+          (decode-local-time time)
+        (declare (ignore daylight-saving-time-p timezone-abbr day-of-week))
+        (ecase location
+          (:sec (setf ss new-value))
+          (:minute (setf mm new-value))
+          (:hour (setf hh new-value))
+          (:day-of-month (setf day new-value))
+          (:month (setf month new-value)
+                  (setf day (fix-overflow-in-days day month year)))
+          (:year (setf year new-value)
+                 (setf day (fix-overflow-in-days day month year)))
+          (:timezone (setf timezone new-value)))
+        (encode-local-time nsec ss mm hh day month year :timezone timezone)))))
 
 (defun adjusted-local-time (location offset time)
   "Returns a time adjusted by the specified offset. Takes care about different kinds of overflows."
-
   (labels ((direct-adjust (location offset nsec sec day timezone)
-	     (if (zerop offset)
-		 ;; The offset is zero, so just assemble the local-time object
-		 (make-local-time :nsec nsec
-				  :sec sec
-				  :day day
-				  :timezone timezone)
-		 
-		 ;; The offset is not zero
-		 (case location
-		   (:nsec
-		    (multiple-value-bind (sec-offset new-nsec)
-			(floor (+ offset nsec) 1000000000)
-		    
-		      ;; the time might need to be adjusted a bit more if q != 0
-		      (direct-adjust :sec sec-offset
-				     new-nsec sec day timezone)))
-		   (:day
-		    (make-local-time :nsec nsec
-				     :sec sec
-				     :day (+ day offset)
-				     :timezone timezone))
-		   (otherwise
-		    (multiple-value-bind (days-offset new-sec)
-			(floor (+ sec (* offset (ecase location
-						  (:sec 1)
-						  (:minute 60)
-						  (:hour #.(* 60 60)))))
-			       #.(* 24 60 60))
-		      (direct-adjust :day days-offset
-				     nsec new-sec day timezone))))))
-
-	   (safe-adjust (location offset time)
-	     (multiple-value-bind (nsec ss mm hh day month year d-o-w d-s-t-p timezone)
-		 (decode-local-time time)
-	       (declare (ignore d-o-w d-s-t-p))
-	       (multiple-value-bind (month-new year-new)
-		   (normalize-month-year-pair
-		    (+ (ecase location
-			 (:month offset)
-			 (:year (* 12 offset)))
-		       month)
-		    year)
-		 ;; Almost there. However, it is necessary to check for
-		 ;; overflows first
-		 (encode-local-time nsec ss mm hh
-				    (fix-overflow-in-days day month-new year-new)
-				    month-new year-new
-				    :timezone timezone)))))
-    
+             (if (zerop offset)
+                 ;; The offset is zero, so just assemble the local-time object
+                 (make-local-time :nsec nsec
+                                  :sec sec
+                                  :day day
+                                  :timezone timezone)
+                 ;; The offset is not zero
+                 (case location
+                   (:nsec
+                    (multiple-value-bind (sec-offset new-nsec)
+                        (floor (+ offset nsec) 1000000000)
+                      ;; the time might need to be adjusted a bit more if q != 0
+                      (direct-adjust :sec sec-offset
+                                     new-nsec sec day timezone)))
+                   (:day
+                    (make-local-time :nsec nsec
+                                     :sec sec
+                                     :day (+ day offset)
+                                     :timezone timezone))
+                   (otherwise
+                    (multiple-value-bind (days-offset new-sec)
+                        (floor (+ sec (* offset (ecase location
+                                                  (:sec 1)
+                                                  (:minute 60)
+                                                  (:hour #.(* 60 60)))))
+                               #.(* 24 60 60))
+                      (direct-adjust :day days-offset
+                                     nsec new-sec day timezone))))))
+           (safe-adjust (location offset time)
+             (multiple-value-bind (nsec ss mm hh day month year d-o-w d-s-t-p timezone)
+                 (decode-local-time time)
+               (declare (ignore d-o-w d-s-t-p))
+               (multiple-value-bind (month-new year-new)
+                   (normalize-month-year-pair
+                    (+ (ecase location
+                         (:month offset)
+                         (:year (* 12 offset)))
+                       month)
+                    year)
+                 ;; Almost there. However, it is necessary to check for
+                 ;; overflows first
+                 (encode-local-time nsec ss mm hh
+                                    (fix-overflow-in-days day month-new year-new)
+                                    month-new year-new
+                                    :timezone timezone)))))
     (ecase location
       ((:nsec :sec :minute :hour :day)
        (direct-adjust location offset
-		      (nsec-of time)
-		      (sec-of time)
-		      (day-of time)
-		      (timezone-of time)))
+                      (nsec-of time)
+                      (sec-of time)
+                      (day-of time)
+                      (timezone-of time)))
       ((:month :year) (safe-adjust location offset time)))))
 
 (defun local-time-whole-year-difference (time-a time-b)
