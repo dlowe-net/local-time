@@ -284,10 +284,12 @@
 (defparameter *timezone-offset->timezone* (make-hash-table))
 
 (defun timezone= (timezone-1 timezone-2)
-  "Return two values indicating the relationship between timezone-1 and timezone-2
-   If values are T and T, timezone-1 and timezone-2 are definitely equals.
-   If values are NIL and T, timezone-1 and timezone-2 are definitely does not equal.
-   If values are NIL and NIL, it couldn't be determined."
+  "Return two values indicating the relationship between timezone-1 and timezone-2. The first value is whether the two timezones are equal and the second value indicates whether it is sure or not.
+
+   In other words:
+   (values t t) means timezone-1 and timezone-2 are definitely equal.
+   (values nil t) means timezone-1 and timezone-2 are definitely different.
+   (values nil nil) means that it couldn't be determined."
   (if (or (eq timezone-1 timezone-2)
           (equalp timezone-1 timezone-2))
       (values t t)
