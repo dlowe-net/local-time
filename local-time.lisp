@@ -95,7 +95,7 @@
 
 (in-package :local-time)
 
-(declaim (inline now today local-time-day local-time-sec local-time-msec))
+(declaim (inline now today))
 
 (defparameter *project-home-directory*
   (make-pathname :directory (pathname-directory
@@ -325,21 +325,6 @@
 
 (defmacro make-local-time (&rest args)
   `(make-instance 'local-time ,@args))
-
-(defun local-time-day (local-time)
-  "Deprecated function to retrieve the day field from the local-time"
-  (declare (type local-time local-time))
-  (day-of local-time))
-
-(defun local-time-sec (local-time)
-  "Deprecated function to retrieve the seconds field from the local-time"
-  (declare (type local-time local-time))
-  (sec-of local-time))
-
-(defun local-time-msec (local-time)
-  "Deprecated function to retrieve the milliseconds field from the local-time"
-  (declare (type local-time local-time))
-  (floor (nsec-of local-time) 1000000))
 
 (defun unix-time (local-time)
   "Return the Unix time corresponding to the LOCAL-TIME"
