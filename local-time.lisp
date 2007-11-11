@@ -58,7 +58,6 @@
            #:minimize-time-part
            #:first-day-of-year
            #:last-day-of-year
-           #:local-time-designator
            #:encode-local-time
            #:decode-local-time
            #:with-decoded-local-time
@@ -770,10 +769,6 @@ returns the last day of the month."
                  (local-time> candidate winner))
             (setf winner candidate))
         finally (return winner)))
-
-(defun local-time-designator ()
-  "Convert a designator (real number) as a LOCAL-TIME instance"
-  nil)
 
 (defun local-time-decode-date (local-time)
   (declare (type local-time local-time))
