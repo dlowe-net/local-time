@@ -989,7 +989,7 @@
                              (setf nsec (* (the fixnum (parse-integer time-string :start start :end end))
                                            (aref #.(coerce #(1000000000 100000000 10000000
                                                              1000000 100000 10000 1000 100 10 1)
-                                                           '(simple-array fixnum (10)))
+                                                           '(simple-array (signed-byte 32) (10)))
                                                  (- end start)))))
                            (setf nsec 0)))))
                  (time-offset (start-end sign)
