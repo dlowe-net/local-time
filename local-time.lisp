@@ -6,9 +6,9 @@
 ;;;
 ;;; Based on Erik Naggum's "A Long, Painful History of Time" (1999)
 ;;;
-;;; Authored by Daniel Lowe <dlowe@sanctuary.org>
+;;; Authored by Daniel Lowe <dlowe@bitmuse.com>
 ;;;
-;;; Copyright (c) 2005-2006 Daniel Lowe
+;;; Copyright (c) 2005-2007 Daniel Lowe
 ;;; 
 ;;; Permission is hereby granted, free of charge, to any person obtaining
 ;;; a copy of this software and associated documentation files (the
