@@ -40,17 +40,14 @@ flexibility reasons.
 Returns the 'seconds' component of the time.  Valid values for the
 seconds range from 0 to 86399.
 
-<> usec-of local-time
+<> nsec-of local-time
 
 Returns the 'microseconds' component of the time.  Valid values for
-the microseconds range from 0 to 999999.
+the nanoseconds range from 0 to 999999999.
 
-<> local-time-day local-time
-<> local-time-sec local-time
-<> local-time-msec local-time
+<> make-local-time &key :day :sec :nsec :timezone
 
-These functions are deprecated, and are used for compatibility with
-older versions of the local-time library.
+This macro creates an instance of a local-time
 
 <> unix-time local-time
 
@@ -71,12 +68,53 @@ Returns two values, the values of new DAY and SEC slots, or, if
 DESTINATION is a LOCAL-TIME instance, fills the slots with the new
 values and returns the destination
 
-<> encode-local-time ms ss mm hh day month year &optional timezone
+<> local-time-adjust-days local-time offset &key into
+
+Adds OFFSET to the days of LOCAL-TIME.  If OFFSET is a keyword
+symbol and then name of a weekday, the result is the previous day
+of the week from LOCAL-TIME.
+
+<> local-time-whole-year-difference time-a time-b
+
+Returns the number of whole years elapsed between time-a and time-b.
+This is useful for calculating anniversaries and birthdays.
+
+<> days-in-month month year
+
+Returns the number of days in a given month of the specified year.
+
+<> maximize-time-part local-time &key timezone into
+
+Returns a local-time with the time set to the end of the day.
+
+<> minimize-time-part local-time &key timezone into
+
+Returns a local-time with the time part set to the beginning of the day.
+
+<> first-day-of-year local-time-or-year &key timezone into
+
+Returns a local-time containing the first day of the year.  The year
+may be taken from a local-time or an integer.
+
+<> last-day-of-year
+
+Returns a local-time containing the last day of the year.  The year
+may be taken from a local-time or an integer.
+
+<> with-decoded-local-time (&key nsec sec minute hour day month year
+                                 day-of-week daylight-p timezone)
+                                 local-time
+                            &body body
+
+This macro binds variables to the decoded elements of the given
+localtime.
+
+<> encode-local-time ns ss mm hh day month year &optional timezone
 
 Returns a new LOCAL-TIME instance corresponding to the specified time
 elements.
 
-<> local-time &key universal internal unix (msec 0) zone
+<> local-time &key universal internal unix (nsec 0) zone
 
 Produces a LOCAL-TIME instance from the provided numeric time
 representation.
@@ -84,6 +122,11 @@ representation.
 <> now
 
 This function returns a LOCAL-TIME corresponding to the current time.
+
+<> today
+
+This function returns a LOCAL-TIME corresponding to the midnight of the
+current day.
 
 <> local-time< time-a time-b
 <> local-time<= time-a time-b
@@ -98,9 +141,13 @@ These comparison functions act like their string and char counterparts.
 
 This function returns NIL, as it has not yet been implemented.
 
+<> local-time-day-of-week local-time
+
+This function returns the index of the day of the week, starting at 0.
+
 <> decode-local-time local-time
 
-Returns the decoded time as multiple values: ms, ss, mm, hh, day,
+Returns the decoded time as multiple values: ns, ss, mm, hh, day,
 month, year, day-of-week, daylight-saving-time-p, timezone, and the
 customary timezone abbreviation.
 
