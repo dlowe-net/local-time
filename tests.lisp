@@ -369,3 +369,12 @@
                           (is (= year year*))
                           (is (= month month*))
                           (is (= day day*)))))))))
+
+(test local-time-uses-nsec
+      (let ((universal-time (local-time :universal (get-universal-time)
+                                        :nsec 123456789))
+            (unix-time (local-time :unix 0 :nsec 123456789))
+            (now-time (local-time :nsec 123456789)))
+        (is (= (nsec-of universal-time) 123456789))
+        (is (= (nsec-of unix-time) 123456789))
+        (is (= (nsec-of now-time) 123456789))))

@@ -658,13 +658,13 @@
                       :timezone zone))))
     result))
 
-(defun local-time (&key (universal nil) (unix nil) (nsec 0) (timezone nil))
+(defun local-time (&key universal unix nsec timezone)
   "Produce a LOCAL-TIME instance from the provided numeric time representation or try to extract the most accurate current time if none of them is provided."
   (cond
     (universal
      (multiple-value-bind (sec minute hour date month year)
          (decode-universal-time universal)
-       (encode-local-time nsec sec minute hour date month year
+       (encode-local-time (or nsec 0) sec minute hour date month year
                           :timezone (realize-timezone (or timezone
                                                           *default-timezone*)))))
     (unix
@@ -672,18 +672,20 @@
             (secs (- unix (* days 86400))))
        (make-local-time :day (- days 11017)
                         :sec secs
-                        :nsec nsec
+                        :nsec (or nsec 0)
                         :timezone (realize-timezone
                                    (or timezone *default-timezone*)))))
     (t #+sbcl
        (multiple-value-bind (_ sec usec) (sb-unix:unix-gettimeofday)
          (declare (ignore _) (type (unsigned-byte 32) sec usec))
-         (let ((result (local-time :unix sec :nsec (* usec 1000) :timezone +utc-zone+)))
+         (let ((result (local-time :unix sec
+                                   :nsec (or nsec (* usec 1000))
+                                   :timezone +utc-zone+)))
            (local-time-adjust result (realize-timezone (or timezone
                                                            *default-timezone*))
                               result)))
        #-sbcl
-       (local-time :universal (get-universal-time)))))
+       (local-time :universal (get-universal-time) :nsec nsec))))
 
 (defun today ()
   (minimize-time-part (now) :timezone +utc-zone+))
