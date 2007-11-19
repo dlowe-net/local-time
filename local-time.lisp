@@ -63,7 +63,6 @@
            #:with-decoded-local-time
            #:parse-timestring
            #:parse-datestring
-           #:valid-date-p
            #:format-timestring
            #:format-datestring
            #:format-rfc3339-timestring
@@ -1048,15 +1047,12 @@
 (defun parse-datestring (string)
   (let* ((*default-timezone* +utc-zone+)
          (date (parse-timestring string)))
-    (unless (valid-date-p date)
+    (unless (and date
+                 (eq (timezone-of date) +utc-zone+)
+                 (zerop (sec-of date))
+                 (zerop (nsec-of date)))
       (error "~S is not a valid date string" string))
     date))
-
-(defun valid-date-p (local-time)
-  (and local-time
-       (eq (timezone-of local-time) +utc-zone+)
-       (zerop (sec-of local-time))
-       (zerop (nsec-of local-time))))
 
 (defun format-rfc3339-timestring (local-time &rest args &key omit-date-part-p omit-time-part-p
                                              omit-timezone-part-p &allow-other-keys)
