@@ -1,73 +1,410 @@
-2006-07-18    <dlowe@bitmuse.com>
-	* local-time-tests.lisp: Added tests for reader macro functions
-	* local-time.lisp: Reader macros now return LOCAL-TIME objects
-	  instead of the code to generate them.
-	* RELEASE: New release as local-time-0.9.1
-	
-2006-04-14    <dlowe@bitmuse.com> <svg@surnet.ru>
-	* local-time-tests.lisp: Added tests for LOCAL-TIME-ADJUST with
-	  negatively adjusting timezones
-	* local-time-tests.lisp: Test failure now mentions which value
-	  didn't match
-	* local-time-tests.lisp: Test compilation now results in fewer
-	  warnings
-	* local-time.lisp: LOCAL-TIME-ADJUST now works better with
-	  negatively adjusting timezones
-	
-2006-04-09    <svg@surnet.ru>
-	* local-time.lisp: According to draft
-	  http://www.w3.org/TR/NOTE-datetime, the decimal fraction of a
-	  second is separated by a dot, not a comma.  FORMAT-LOCAL-TIME
-	  now follows this convention.
-	* local-time.lisp: Daylight savings indicator is now returned
-	  by DECODE-LOCAL-TIME, as per the specification and doc string.
-	* local-time.lisp: Leading #\@ is no longer printed when
-	  aesthetic printing is requested.
-	
-2006-04-03    <dlowe@bitmuse.com>
-	* local-time.lisp: Added many potentially useful constants to the
-	  package
-	* local-time.lisp: Added calculation of julian dates
-	* local-time.lisp: PARSE-TIMESTRING now accepts many more valid
-	  timestrings than it once did.  JUNK-ALLOWED now does something
-	  useful.
-	* local-time.lisp: Timestrings now only show the three digits of
-	  precision that a millisecond resolution implies.
-	* local-time-test.lisp: Fixed stupid typo in RESET-TESTS
-	* local-time-test.lisp: Random DECODE-LOCAL-TIME tester no longer
-	  produces invalid dates
-	* local-time-test.lisp: More PARSE-TIMESTRING tests
-	* TODO: Added a bunch of wishlist items
-	* RELEASE: New release as local-time-0.8
-	    
-2006-02-07    <dlowe@bitmuse.com>
+Sun Nov 18 10:01:35 EST 2007  dlowe@bitmuse.com
+  * Fixed tests to operate with nanosecond patch
 
-	* local-time.lisp: Fixed DECODE-LOCAL-TIME which calculated the leap
-	  years improperly
-	* local-time.lisp: Timestring construction now puts at least 4 digits
-	  for the year, and negative years have the negative sign in the
-	  correct place
-	* local-time.lisp: PARSE-TIMESTRING now partially honors JUNK-ALLOWED
-	  keyword
-	* local-time-test.lisp: Added more tests for DECODE-LOCAL-TIME and
-	  ENCODE-LOCAL-TIME
-	* RELEASE: New release as local-time-0.7
+Sun Nov 18 10:00:59 EST 2007  dlowe@bitmuse.com
+  * Email address and copyright change
 
-2005-12-28    <dlowe@bitmuse.com>
+Sun Nov 18 10:00:19 EST 2007  dlowe@bitmuse.com
+  * Updated documentation to reflect code changes
 
-	* local-time.lisp: Fixed problems with DECODE-LOCAL-TIME, where it
-	  would return the wrong month and year when the month was January
-	* local-time.lisp: Fixed PARSE-TIMESTAMP, which wasn't working at
-	  all
-	* local-time-test.lisp: Added more tests for DECODE-LOCAL-TIME and
-	  PARSE-TIMESTAMP
-	* CREDITS: Added Matthew Danish <mdanish@andrew.cmu.edu>
-	* RELEASE: New release as local-time-0.6
+Mon Nov 12 12:12:00 EST 2007  tomi.borbely@gmail.com
+  * fix split-timestring for 32-bit processors
 
-2005-04-27    <dlowe@bitmuse.com>
+Sun Nov 11 12:32:58 EST 2007  attila.lendvai@gmail.com
+  * Added some TODO notes
 
-	* Added numerous bits of documentation
+Sun Nov 11 11:58:15 EST 2007  attila.lendvai@gmail.com
+  * Formatting changes to follow the conventions in the rest of the file
 
-2005-04-19    <dlowe@bitmuse.com>
+Sun Nov 11 11:46:32 EST 2007  attila.lendvai@gmail.com
+  * Drop deprecated functions: local-time-day local-time-sec local-time-msec
 
-	* RELEASE: Initial distribution as local-time-0.5
+Sun Nov 11 11:41:46 EST 2007  attila.lendvai@gmail.com
+  * Remove local-time-designator. Seems like it's something half-done, removed for clarity for now.
+
+Sun Nov 11 11:39:34 EST 2007  attila.lendvai@gmail.com
+  * timezone= docstring wording
+
+Mon Nov  5 02:53:32 EST 2007  attila.lendvai@gmail.com
+  * parse-timestring now parses nsec's to follow the nsec refactor
+
+Thu Oct 11 15:30:40 EDT 2007  Denys Rtveliashvili <rtvd@mail.ru>
+  * Changed the library to use nanoseconds instead of microseconds
+
+Thu Oct 11 12:23:26 EDT 2007  Denys Rtveliashvili <rtvd@mail.ru>
+  * Added "modified-local-time" and "days-in-month" functions.
+
+Mon Oct  1 08:18:30 EDT 2007  Denys Rtveliashvili <rtvd@mail.ru>
+  * Added a function which returns adjusted time, taking care of overflows.
+
+Thu Oct  4 07:01:00 EDT 2007  levente.meszaros@gmail.com
+  * Added timezone=.
+
+Fri Sep 28 08:49:52 EDT 2007  levente.meszaros@gmail.com
+  * Added with-decoded-local-time.
+
+Sat Sep  8 16:52:16 EDT 2007  attila.lendvai@gmail.com
+  * added valid-date-p
+
+Thu Aug 23 10:09:40 EDT 2007  attila.lendvai@gmail.com
+  * Optimize some array lookups
+
+Thu Aug 23 08:41:04 EDT 2007  attila.lendvai@gmail.com
+  * Added first-day-of-year and last-day-of-year
+
+Thu Aug  9 15:43:20 EDT 2007  levente.meszaros@gmail.com
+  * Added some useful constants.
+
+Thu Aug  9 09:52:32 EDT 2007  attila.lendvai@gmail.com
+  * fix some tests: (now) may have usec now
+
+Thu Aug  9 09:52:24 EDT 2007  attila.lendvai@gmail.com
+  * re-fix usec parsing
+
+Thu Aug  9 10:13:19 EDT 2007  levente.meszaros@gmail.com
+  * Use leap-factor wherever applicable.
+
+Thu Aug  9 09:50:40 EDT 2007  levente.meszaros@gmail.com
+  * Added format-datestring.
+
+Thu Aug  9 09:50:08 EDT 2007  levente.meszaros@gmail.com
+  * Fix parse-timestring to always pass usec to encode-local-time, default is 0.
+
+Thu Aug  9 09:48:32 EDT 2007  levente.meszaros@gmail.com
+  * Refactored encode-local-time and local-time-decode-date to correctly work with leap days.
+
+Thu Aug  9 09:48:17 EDT 2007  levente.meszaros@gmail.com
+  * Add tests for encode and decode local time.
+
+Thu Aug  9 09:47:20 EDT 2007  levente.meszaros@gmail.com
+  * Fix wrong parse-timestring test cases.
+
+Thu Aug  9 05:56:15 EDT 2007  attila.lendvai@gmail.com
+  * Fix usec parsing
+
+Thu Aug  9 05:55:46 EDT 2007  attila.lendvai@gmail.com
+  * Annotate types on the local-time class for documentation purposes
+
+Wed Aug  8 17:11:31 EDT 2007  attila.lendvai@gmail.com
+  * Added failing test
+
+Wed Aug  8 16:42:35 EDT 2007  attila.lendvai@gmail.com
+  * Allow missing elements in the reader syntax
+
+Tue Jul 31 19:55:34 EDT 2007  attila.lendvai@gmail.com
+  * Implement usec precision (NOW) for sbcl
+
+Tue Jul 31 19:48:41 EDT 2007  attila.lendvai@gmail.com
+  * Fix: local-time-adjust was not handling the overflow of sec to day
+
+Tue Jun 26 12:16:26 EDT 2007  attila.lendvai@gmail.com
+  * Added PARSE-DATESTRING and TODAY
+
+Tue Apr 24 09:25:35 EDT 2007  attila.lendvai@gmail.com
+  * Docstring typo
+
+Tue Apr 24 09:16:35 EDT 2007  attila.lendvai@gmail.com
+  * Optimization: Check if target timezone is the same as the timezone of the input in local-time-adjust and return the input if it is
+
+Sat Apr 21 10:26:31 EDT 2007  attila.lendvai@gmail.com
+  * Set the default year/month/day in parse-timestring to 2000-03-01 which is the zero point of local-time objects
+
+Sat Apr 21 07:56:21 EDT 2007  attila.lendvai@gmail.com
+  * Fix for (parse-timestring "2000-01-01TZ")
+
+Sat Apr 21 07:53:15 EDT 2007  attila.lendvai@gmail.com
+  * Indentation
+
+Tue Apr 17 05:29:32 EDT 2007  attila.lendvai@gmail.com
+  * Use &rest args for local-time-min/max to behave more like their equivalent CL operator
+
+Mon Apr 16 08:20:23 EDT 2007  attila.lendvai@gmail.com
+  * Added missing &allow-other-keys for format-rfc3339-timestring
+
+Mon Mar  5 08:05:40 EST 2007  attila.lendvai@gmail.com
+  * Added local-time-min and local-time-max
+
+Sun Dec 17 12:18:26 EST 2006  attila.lendvai@gmail.com
+  * Convert some &optional's into &key args for more flexibility (WARNING: api change)
+
+Sun Dec 17 12:17:21 EST 2006  attila.lendvai@gmail.com
+  * Added local-time-adjust-days
+
+Mon Dec 11 12:52:23 EST 2006  attila.lendvai@gmail.com
+  * Cleanups in local-time-whole-year-difference
+
+Thu Dec  7 11:48:54 EST 2006  levente.meszaros@gmail.com
+  * Export.
+
+Thu Dec  7 11:40:02 EST 2006  levente.meszaros@gmail.com
+  * Added function to calculate the number of whole years elapsed between two local-times.
+
+Wed Dec 13 14:50:41 EST 2006  attila.lendvai@gmail.com
+  * Introduced a defcomparator macro and support arbitrary number of times in the comparators
+
+Mon Dec 11 12:37:34 EST 2006  attila.lendvai@gmail.com
+  * Change the test expression order to match the expected (is (predicate EXPECTED ACTUAL))
+
+Wed Dec  6 11:36:45 EST 2006  attila.lendvai@gmail.com
+  * Fix parsing of zulu in timestrings like "2006-06-06T00:00:00Z", fix some tests
+
+Mon Dec  4 06:56:27 EST 2006  attila.lendvai@gmail.com
+  * Default fields to their lowest possible values in parse-timestring when a field is not defined in the string
+
+Sat Dec  2 08:31:59 EST 2006  attila.lendvai@gmail.com
+  * Added note to TODO to integrate with cl-l10n
+
+Sat Dec  2 08:26:25 EST 2006  attila.lendvai@gmail.com
+  * Added .boring file
+
+Fri Nov 24 09:34:08 EST 2006  attila.lendvai@gmail.com
+  * FIX: patch missed at last record
+
+Wed Nov 22 16:30:55 EST 2006  attila.lendvai@gmail.com
+  * Added timezone repository, fix parsing of timestrings with random timezone
+
+Wed Nov 22 16:26:27 EST 2006  attila.lendvai@gmail.com
+  * Various small fixes
+
+Wed Nov 22 16:21:02 EST 2006  attila.lendvai@gmail.com
+  * Added zoneinfo files
+
+Fri Nov 17 10:27:29 EST 2006  attila.lendvai@gmail.com
+  * Partially fix parsing the timezon (works for zulu at least)
+
+Fri Nov 17 09:13:46 EST 2006  attila.lendvai@gmail.com
+  * Convert also the timezone in universal-time
+
+Fri Nov 17 08:34:30 EST 2006  attila.lendvai@gmail.com
+  * Added &optional timezone for minimize/maximize-time-part
+
+Thu Nov  9 07:36:02 EST 2006  attila.lendvai@gmail.com
+  * Added type annotations to fail early when called with a wrong type, also to help the compiler
+
+Thu Nov  9 06:34:19 EST 2006  attila.lendvai@gmail.com
+  * Dropped unused functions: skip-timestring-junk, read-integer-str, read-millisecond-str
+
+Thu Nov  9 09:45:52 EST 2006  levente.meszaros@gmail.com
+  * Allow to specify hour only in timezone when allow-missing-timezone-part-p is true.
+
+Wed Nov  1 15:47:02 EST 2006  dlowe@bitmuse.com
+  * Enable running 5am tests by default
+
+Tue Oct 31 18:35:54 EST 2006  attila.lendvai@gmail.com
+  * Fix for clisp's rigid loop impl
+
+Mon Oct  9 10:10:27 EDT 2006  attila.lendvai@gmail.com
+  * Extend customizability of formatting/parsing timestrings
+
+Sun Oct  1 16:07:38 EDT 2006  attila.lendvai@gmail.com
+  * Added maximize- and minimize-time-part
+
+Sun Oct  1 14:18:20 EDT 2006  attila.lendvai@gmail.com
+  * Added parse-rfc3339-timestring
+
+Sun Oct  1 13:52:05 EDT 2006  attila.lendvai@gmail.com
+  * Follow 5am changes
+
+Sun Oct  1 13:51:54 EDT 2006  attila.lendvai@gmail.com
+  * Replaced the timestring parser with an optimized and more configurable version
+
+Sat Sep 30 16:24:01 EDT 2006  attila.lendvai@gmail.com
+  * Merge conflicts
+
+Sat Sep 30 11:29:08 EDT 2006  attila.lendvai@gmail.com
+  * Added use-zulu-p and made format-timestring call local-time-adjust when a custom timezone is supplied
+
+Sat Sep 30 11:28:33 EDT 2006  attila.lendvai@gmail.com
+  * Added format-rfc3339-timestring with small changes to format-timestring
+
+Sat Sep 30 09:52:33 EDT 2006  attila.lendvai@gmail.com
+  * Converted the tests to use 5am
+
+Wed Nov  1 10:38:47 EST 2006  dlowe@bitmuse.com
+  * Removed unnecessary automatic in-package
+
+Sun Oct  1 15:00:55 EDT 2006  attila.lendvai@gmail.com
+  * Comment out the in-package form by default
+
+Sat Sep 30 10:43:11 EDT 2006  attila.lendvai@gmail.com
+  * Only print usec if it's not zero
+
+Sat Sep 30 10:42:14 EDT 2006  attila.lendvai@gmail.com
+  * Renamed to date-time-separator and used &optional defaulting in format-timestring
+
+Sat Sep 30 10:41:35 EDT 2006  attila.lendvai@gmail.com
+  * Use uninterned symbols in the package definition
+
+Sat Sep 30 10:10:58 EDT 2006  dlowe@bitmuse.com
+  * Added compatibility accessors and fixed documentation strings
+
+Sat Sep 30 10:10:36 EDT 2006  dlowe@bitmuse.com
+  * Update documentation files
+
+Sat Sep 30 09:53:19 EDT 2006  dlowe@bitmuse.com
+  * A few more resolving fixes
+
+Sat Sep 30 09:44:10 EDT 2006  dlowe@bitmuse.com
+  * Resolved conflicts and changed remaining tabs
+
+Sat Sep 30 09:02:09 EDT 2006  attila.lendvai@gmail.com
+  * Replace tabs with spaces
+
+Sat Sep 30 09:01:16 EDT 2006  attila.lendvai@gmail.com
+  * Return (values) from enable-read-macros
+
+Sat Sep 30 09:00:29 EDT 2006  attila.lendvai@gmail.com
+  * Fix exports, export +utc-zone+
+
+Sat Sep 30 05:56:45 EDT 2006  attila.lendvai@gmail.com
+  * Added several asdf goodies
+  
+  - auto in-package after loaded with asdf
+  - (asdf:operate 'asdf:test-op :local-time)
+  - single .asd file
+
+Sat Sep 30 09:20:58 EDT 2006  dlowe@bitmuse.com
+  * Removed durations and renamed accessors
+  
+  Durations, though useful, are too semantically unwieldy to add
+  at this time.  The skeleton duration support has been removed
+  and the accessors renamed by removing the epoch- designator.
+  
+
+Fri Sep 29 18:27:02 EDT 2006  dlowe@bitmuse.com
+  * Fixed erroneous rename of local-time-day-of-week
+
+Tue Aug 15 11:45:46 EDT 2006  dlowe@bitmuse.com
+  * Better testing, code for tracking durations
+  * local-time/local-time-test.lisp
+  * local-time/local-time.lisp
+  	- deftest now accepts forms to test against instead of values
+  	- local-time class now has code for tracking durations - not finished yet
+
+Sat Jul 22 10:00:00 EDT 2006  dlowe@bitmuse.com
+  tagged 0.9.1
+
+Sat Jul 22 09:25:56 EDT 2006  dlowe@bitmuse.com
+  * enable-read-macros is now exported from the package
+
+Tue Jul 18 08:49:34 EDT 2006  dlowe@bitmuse.com
+  * Updated copyright and fixed reader macros
+  * local-time/ChangeLog
+  	- Added new changes
+  
+  * local-time/COPYING
+  	- Updated copyright year
+  
+  * local-time/local-time-test.lisp
+  	- Added tests for reader macros
+  
+  * local-time/local-time.lisp
+  	- Reader macros now return an actual object instead of the code to
+  	  generate it
+  
+  * local-time/local-time.asd
+  	- Bumped up version number
+
+Sat Apr 29 04:53:00 EDT 2006  dlowe@bitmuse.com
+  tagged 0.9.0
+
+Fri Apr 14 12:05:07 EDT 2006  dlowe@bitmuse.com
+  * Fixed local-time-adjust
+  * local-time/local-time-test.lisp
+  	- local-time-adjust-1 now checks more values
+  
+  * local-time/local-time.lisp
+  	- local-time-adjust now passes all tests
+
+Fri Apr 14 11:32:01 EDT 2006  dlowe@bitmuse.com
+  * Fixed problem with negatively adjusting timezones
+  * local-time/ChangeLog
+  * local-time/local-time-test.lisp
+  	- Test failure now mentions which value didn't match
+  	- Added tests for local-time-adjust with negatively adjusting
+  	  timezones
+  	- Test compilation now results in fewer warnings
+  
+  * local-time/local-time.lisp
+  	- LOCAL-TIME-ADJUST now works better with negatively adjusting
+  	  timezones
+
+Sun Apr  9 21:46:40 EDT 2006  dlowe@bitmuse.com
+  * Updated changelog, fixed bugs, added minor features
+  * local-time/TODO
+  	- Added a bunch of todo items
+  
+  * local-time/ChangeLog
+  	- Added mine and Sekissov's contributions
+  
+  * local-time/local-time-test.lisp
+  	- reset-tests now clears the correct hash variable
+  	- tests updated to include Sekissov's changes
+  
+  * local-time/local-time.lisp
+  	- Added month and day names, as well as julian date functions
+  
+  * local-time/CREDITS
+  	- Added Sekissov
+  
+  * local-time/README
+  	- Removed warning about parse-timestring
+  	- Added documentation for julian date functions
+
+Mon Apr  3 18:23:00 EDT 2006  dlowe@bitmuse.com
+  tagged 0.8.0
+
+Mon Apr  3 18:22:53 EDT 2006  dlowe@bitmuse.com
+  * parse-timestring now works much, much better.
+
+Tue Feb  7 13:40:00 EST 2006  dlowe@bitmuse.com
+  tagged 0.7.0
+
+Tue Feb  7 13:39:25 EST 2006  dlowe@bitmuse.com
+  * Updated changelog, better parsing and testing
+  * local-time/ChangeLog
+  	- Added entries for latest changes
+  
+  * local-time/local-time.lisp
+      - updated copyright date
+      - decode-local-time now handles 2001-03-01 correctly
+      - parse-timestring now partially honors JUNK-ALLOWED keyword
+      - construct-timestring now always prints at least 4 digits for year
+      - construct-timestring now puts negative sign in proper location
+      
+  * local-time/local-time-test.lisp
+      - deftest now has many more features
+      - added encode-local-time test
+      - added two more decode-local-time tests
+
+Thu Dec 29 15:44:00 EST 2005  dlowe@bitmuse.com
+  tagged 0.6.0
+
+Wed Dec 28 21:41:15 EST 2005  dlowe@bitmuse.com
+  * Added changelog, credits, and bug fixes
+  * local-time/ChangeLog
+  * local-time/NEWS
+  	- NEWS file removed in favor of a well-formatted ChangeLog
+  
+  * local-time/CREDITS
+  	- Added credits file so I could thank helpers
+  
+  * local-time/local-time-test.lisp
+  	- Added tests for decode-local-time and parse-timestamp
+  
+  * local-time/local-time.lisp
+  	- decode-local-time no longer displays the wrong month and year
+  	  when the month is January
+  	- parse-timestamp now actually does something useful
+
+Thu May 12 11:36:42 EDT 2005  dlowe@bitmuse.com
+  * local-time:NOW is now an exported symbol.
+
+Wed Apr 27 10:39:00 EDT 2005  dlowe@bitmuse.com
+  tagged 0.5.0
+
+Wed Apr 27 15:25:15 EDT 2005  dlowe@bitmuse.com
+  * Added documentation files
+
+Wed Apr 27 11:26:50 EDT 2005  dlowe@bitmuse.com
+  * Initial local-time import
