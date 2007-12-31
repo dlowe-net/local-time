@@ -54,6 +54,9 @@
            #:days-in-month
            #:modified-local-time
            #:adjusted-local-time
+           #:local-time-
+           #:local-time+
+           #:encode-duration
            #:maximize-time-part
            #:minimize-time-part
            #:first-day-of-year
@@ -88,6 +91,7 @@
            #:+minutes-per-day+
            #:+minutes-per-hour+
            #:+hours-per-day+
+           #:+days-per-week+
            #:astronomical-julian-date
            #:modified-julian-date
            #:astronomical-modified-julian-date))
@@ -122,6 +126,8 @@
 (defconstant +minutes-per-hour+ 60)
 
 (defconstant +hours-per-day+ 24)
+
+(defconstant +days-per-week+ 7)
 
 (defconstant +leap-factor+ 1461)
 
@@ -426,22 +432,41 @@
 (defun modified-julian-date (local-time)
   (- (day-of local-time) +modified-julian-date-offset+))
 
-(defun local-time-diff (time-a time-b)
-  "Returns a new LOCAL-TIME containing the difference between TIME-A and TIME-B"
+(defun encode-duration (&key (nsec 0) (usec 0) (msec 0) (sec 0) (minute 0) (hour 0) (day 0) (week 0))
+  (+ (* +seconds-per-minute+
+        (+ (* +minutes-per-hour+
+              (+ (* +hours-per-day+
+                    (+ (* +days-per-week+
+                          week)
+                       day))
+                 hour))
+           minute))
+     sec
+     (/ (+ (/ (+ (/ nsec
+                    1000)
+                 usec)
+              1000)
+           msec)
+        1000)))
+
+(defun local-time- (time-a time-b)
+  "Returns the difference between TIME-A and TIME-B in seconds"
   (multiple-value-bind (day-a sec-a)
       (local-time-adjust time-a (timezone-of time-b))
-      (let ((nsec (- (nsec-of time-a) (nsec-of time-b)))
-            (seconds (- sec-a (sec-of time-b)))
-            (days (- day-a (day-of time-b))))
-        (when (minusp nsec)
-          (decf seconds)
-          (incf nsec 1000000000))
-        (when (minusp seconds)
-          (decf days)
-          (incf seconds 86400))
-        (make-local-time :nsec nsec
-                         :sec seconds
-                         :day days))))
+    (let ((nsec (- (nsec-of time-a) (nsec-of time-b)))
+          (second (- sec-a (sec-of time-b)))
+          (day (- day-a (day-of time-b))))
+      (when (minusp nsec)
+        (decf second)
+        (incf nsec 1000000000))
+      (when (minusp second)
+        (decf day)
+        (incf second 86400))
+      (encode-duration :nsec nsec :sec second :day day))))
+
+(defun local-time+ (time seconds)
+  "Returns a new LOCAL-TIME containing summing TIME and SECONDS"
+  (adjusted-local-time :sec seconds time))
 
 (defun local-time-sum (time-a time-b)
   "Returns a new LOCAL-TIME containing the sum of TIME-A and TIME-B"
