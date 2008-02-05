@@ -331,6 +331,13 @@
 (defmacro make-local-time (&rest args)
   `(make-instance 'local-time ,@args))
 
+(defmacro clone-local-time (local-time)
+  (let ((tmp (gensym "TMP")))
+    `(let ((,tmp ,local-time))
+       (make-instance 'local-time
+                      :nsec (nsec-of ,tmp) :sec (sec-of ,tmp)
+                      :day (day-of ,tmp) :timezone (timezone-of ,tmp)))))
+
 (defun unix-time (local-time)
   "Return the Unix time corresponding to the LOCAL-TIME"
   (declare (type local-time local-time))
