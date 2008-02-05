@@ -169,7 +169,7 @@
     (is (= 3 (length (multiple-value-list (timezone local-time))))))
   (encode-decode-test (0 0 0 0 1 1 0)
     (is (equal (multiple-value-list (decode-local-time local-time))
-               `(0 0 0 0 1 1 0 5
+               `(0 0 0 0 1 1 0 6
                  ,(nth-value 1 (timezone local-time))
                  ,*default-timezone*
                  ,(nth-value 2 (timezone local-time))))))
@@ -261,9 +261,9 @@
 (test adjust-days
   (let ((sunday (parse-timestring "2006-12-17T01:02:03Z")))
     (is (local-time= (parse-timestring "2006-12-11T01:02:03Z")
-                     (local-time-adjust-days sunday :monday)))
+                     (adjust-local-time sunday (offset :day-of-week :monday))))
     (is (local-time= (parse-timestring "2006-12-20T01:02:03Z")
-                     (local-time-adjust-days sunday 3)))))
+                     (adjust-local-time sunday (offset :day 3))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -295,20 +295,20 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(test local-time-adjust
+(test adjust-local-time
   (let ((utc-1 (local-time::make-timezone :subzones '((-3600 NIL "UTC-1" T NIL))
                                           :loaded t))
         (utc+1 (local-time::make-timezone :subzones '((+3600 NIL "UTC+1" T NIL))
                                           :loaded t))
         (epoch (local-time :unix 0 :timezone +utc-zone+)))
-    (is (equal (decode-local-time (local-time-adjust epoch utc-1 (make-local-time)))
+    (is (equal (decode-local-time (adjust-local-time epoch (set :timezone utc-1)))
                ;; ms ss mm hh day mon year wday ds-p zone abbrev
                (values 00 00 00 23 31 12 1969 3 nil utc-1 "UTC-1")))
     (let ((local-time (local-time :unix 3600 :timezone +utc-zone+)))
-      (is (equal (decode-local-time (local-time-adjust local-time utc-1 (make-local-time)))
+      (is (equal (decode-local-time (adjust-local-time local-time (set :timezone utc-1)))
                  ;; ms ss mm hh day mon year
                  (values 00 00 00 00 01 01 1970 4 nil utc-1 "UTC-1"))))
-    (is (equal (decode-local-time (local-time-adjust epoch utc+1 (make-local-time)))
+    (is (equal (decode-local-time (adjust-local-time epoch (set :timezone utc+1)))
                ;; ms ss mm hh day mon year
                (values 00 00 00 01 01 01 1970 4 nil utc+1 "UTC+1")))))
 
@@ -349,11 +349,14 @@
              (is (= day day*)))))
 
 (defun valid-date-p (year month day)
+  ;; it works only on the gregorian calendar
   (let ((month-days #(31 28 31 30 31 30 31 31 30 31 30 31)))
     (and (<= 1 month 12)
          (<= 1 day (+ (aref month-days (1- month))
                       (if (and (= month 2)
-                               (zerop (mod year 4)))
+                               (zerop (mod year 4))
+                               (not (zerop (mod year 100)))
+                               (zerop (mod year 400)))
                           1
                           0))))))
 
