@@ -381,3 +381,17 @@
         (is (= (nsec-of universal-time) 123456789))
         (is (= (nsec-of unix-time) 123456789))
         (is (= (nsec-of now-time) 123456789))))
+
+(defun test-parse/format-consistency (&key (start-day -100000) (end-day 100000)
+                                      (timezone +utc-zone+))
+  (declare (optimize debug))
+  (loop
+     with time = (make-local-time :timezone timezone)
+     for day from start-day upto end-day
+     for index upfrom 0 do
+       (setf (day-of time) day)
+       (when (zerop (mod index 1000))
+         (print time))
+       (let ((parsed (parse-timestring (format-timestring time))))
+         (unless (local-time= parsed time)
+           (error "oops, mismatch: ~A ~A" parsed time)))))
