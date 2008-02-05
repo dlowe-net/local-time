@@ -435,6 +435,25 @@
 (defun modified-julian-date (local-time)
   (- (day-of local-time) +modified-julian-date-offset+))
 
+(defmacro with-decoded-local-time ((&key nsec sec minute hour day month year day-of-week daylight-p timezone)
+                                   local-time &body forms)
+  (let ((ignores)
+        (variables))
+    (macrolet ((initialize (&rest vars)
+                 `(progn
+                    ,@(loop for var :in vars
+                            collect `(progn
+                                       (unless ,var
+                                         (setf ,var (gensym))
+                                         (push ,var ignores))
+                                       (push ,var variables)))
+                    (setf ignores (nreverse ignores))
+                    (setf variables (nreverse variables)))))
+      (initialize nsec sec minute hour day month year day-of-week daylight-p timezone))
+    `(multiple-value-bind (,@variables) (decode-local-time ,local-time)
+       (declare (ignore ,@ignores))
+       ,@forms)))
+
 (defun encode-duration (&key (nsec 0) (usec 0) (msec 0) (sec 0) (minute 0) (hour 0) (day 0) (week 0))
   (+ (* +seconds-per-minute+
         (+ (* +minutes-per-hour+
@@ -451,26 +470,6 @@
               1000)
            msec)
         1000)))
-
-(defun local-time- (time-a time-b)
-  "Returns the difference between TIME-A and TIME-B in seconds"
-  (setf time-a (adjust-local-time time-a (set :timezone (timezone-of time-b))))
-  (multiple-value-bind (sec-a day-a)
-      (adjust-to-timezone time-a (timezone-of time-b))
-    (let ((nsec (- (nsec-of time-a) (nsec-of time-b)))
-          (second (- sec-a (sec-of time-b)))
-          (day (- day-a (day-of time-b))))
-      (when (minusp nsec)
-        (decf second)
-        (incf nsec 1000000000))
-      (when (minusp second)
-        (decf day)
-        (incf second 86400))
-      (encode-duration :nsec nsec :sec second :day day))))
-
-(defun local-time+ (time seconds)
-  "Returns a new LOCAL-TIME containing the sum of TIME and SECONDS"
-  (adjust-local-time time (offset :sec seconds)))
 
 (defun local-time-compare (time-a time-b)
   "Returns the symbols <, >, or =, describing the relationship between TIME-A and TIME-b."
@@ -515,6 +514,8 @@
     (if (> day max-day)
         max-day
         day)))
+
+(eval-when (:compile-toplevel :load-toplevel)
 
 (defun expand-adjust-local-time-changes (local-time changes visitor)
   (dolist (change changes)
@@ -563,6 +564,7 @@
                 `((,new (clone-local-time ,old)))))
        ,@forms
        ,old)))
+) ; eval-when
 
 (defmacro adjust-local-time (local-time &body changes)
   (expand-adjust-local-time local-time changes :functional t))
@@ -680,6 +682,26 @@
                             time-a)
               year-difference
               (1- year-difference)))))))
+
+(defun local-time- (time-a time-b)
+  "Returns the difference between TIME-A and TIME-B in seconds"
+  (setf time-a (adjust-local-time time-a (set :timezone (timezone-of time-b))))
+  (multiple-value-bind (sec-a day-a)
+      (adjust-to-timezone time-a (timezone-of time-b))
+    (let ((nsec (- (nsec-of time-a) (nsec-of time-b)))
+          (second (- sec-a (sec-of time-b)))
+          (day (- day-a (day-of time-b))))
+      (when (minusp nsec)
+        (decf second)
+        (incf nsec 1000000000))
+      (when (minusp second)
+        (decf day)
+        (incf second +seconds-per-day+))
+      (encode-duration :nsec nsec :sec second :day day))))
+
+(defun local-time+ (time seconds)
+  "Returns a new LOCAL-TIME containing the sum of TIME and SECONDS"
+  (adjust-local-time time (offset :sec seconds)))
 
 (defun local-time-day-of-week (local-time)
   (mod (+ 3 (day-of local-time)) 7))
@@ -912,25 +934,6 @@
        (nth-value 1 (timezone local-time))
        (timezone-of local-time)
        (nth-value 2 (timezone local-time))))))
-
-(defmacro with-decoded-local-time ((&key nsec sec minute hour day month year day-of-week daylight-p timezone)
-                                   local-time &body forms)
-  (let ((ignores)
-        (variables))
-    (macrolet ((initialize (&rest vars)
-                 `(progn
-                    ,@(loop for var :in vars
-                            collect `(progn
-                                       (unless ,var
-                                         (setf ,var (gensym))
-                                         (push ,var ignores))
-                                       (push ,var variables)))
-                    (setf ignores (nreverse ignores))
-                    (setf variables (nreverse variables)))))
-      (initialize nsec sec minute hour day month year day-of-week daylight-p timezone))
-    `(multiple-value-bind (,@variables) (decode-local-time ,local-time)
-       (declare (ignore ,@ignores))
-       ,@forms)))
 
 (defun split-timestring (str &rest args)
   (declare (inline))
