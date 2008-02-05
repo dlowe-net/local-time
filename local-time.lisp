@@ -585,8 +585,7 @@
        (case part
          (:nsec (setf nsec (coerce new-value '(integer 0 999999999))))
          (:sec-of-day (setf sec (coerce new-value '(integer 0 #.+seconds-per-day+))))
-         (:day (setf day new-value))
-         (:timezone (setf timezone new-value)))
+         (:day (setf day new-value)))
        (values nsec sec day timezone)))
     (otherwise
      (if (eq part :timezone)
