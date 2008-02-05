@@ -337,7 +337,9 @@
 (defun unix-time (local-time)
   "Return the Unix time corresponding to the LOCAL-TIME"
   (declare (type local-time local-time))
-  (+ (* (+ (day-of local-time) 11017) 86400)
+  (+ (* (+ (day-of local-time)
+           11017)
+        +seconds-per-day+)
      (sec-of local-time)))
 
 (defun timezone (local-time &optional timezone)
@@ -370,15 +372,15 @@
                              (timezone source (timezone-of source))))
              (offset-sign (signum offset-diff)))
         (multiple-value-bind (offset-day offset-sec)
-            (floor (abs offset-diff) 86400)
+            (floor (abs offset-diff) +seconds-per-day+)
           (let ((new-day (+ (day-of source) (* offset-sign offset-day)))
                 (new-sec (+ (sec-of source) (* offset-sign offset-sec))))
             (cond ((minusp new-sec)
-                   (incf new-sec 86400)
+                   (incf new-sec +seconds-per-day+)
                    (decf new-day))
-                  ((>= new-sec 86400)
+                  ((>= new-sec +seconds-per-day+)
                    (incf new-day)
-                   (decf new-sec 86400)))
+                   (decf new-sec +seconds-per-day+)))
             (cond
               (destination
                (setf (nsec-of destination) (nsec-of source)
@@ -494,7 +496,7 @@
 
 (defun days-in-month (month year)
   "Returns the number of days in the given month of the specified year."
-  ;; TODO optimize it
+  ;; TODO dumb implementation, awaits optimization
   (multiple-value-bind (month1 year1)
       (normalize-month-year-pair month year)
     (multiple-value-bind (month2 year2)
@@ -582,7 +584,7 @@
            (timezone (timezone-of time)))
        (case part
          (:nsec (setf nsec (coerce new-value '(integer 0 999999999))))
-         (:sec-of-day (setf sec (coerce new-value '(integer 0 #.(* 24 60 60)))))
+         (:sec-of-day (setf sec (coerce new-value '(integer 0 #.+seconds-per-day+))))
          (:day (setf day new-value))
          (:timezone (setf timezone new-value)))
        (values nsec sec day timezone)))
@@ -635,9 +637,9 @@
                        (multiple-value-bind (days-offset new-sec)
                            (floor (+ sec (* offset (ecase part
                                                      (:sec 1)
-                                                     (:minute 60)
-                                                     (:hour #.(* 60 60)))))
-                                  #.(* 24 60 60))
+                                                     (:minute +seconds-per-minute+)
+                                                     (:hour +seconds-per-hour+))))
+                                  +seconds-per-day+)
                          (direct-adjust :day days-offset
                                         nsec new-sec day timezone)))))))
            (safe-adjust (part offset time)
@@ -721,8 +723,8 @@
                             (- year 2000)))
          (years-as-days (years-to-days internal-year))
          (zone (realize-timezone timezone))
-         (sec (+ (* hour 3600)
-                 (* minute 60)
+         (sec (+ (* hour +seconds-per-hour+)
+                 (* minute +seconds-per-minute+)
                  sec))
          (days-from-zero-point (+ years-as-days
                                   (aref #.+rotated-month-offsets-without-leap-day+ 0-based-rotated-month)
@@ -758,8 +760,8 @@
                           :timezone (realize-timezone (or timezone
                                                           *default-timezone*)))))
     (unix
-     (let* ((days (floor unix 86400))
-            (secs (- unix (* days 86400))))
+     (let* ((days (floor unix +seconds-per-day+))
+            (secs (- unix (* days +seconds-per-day+))))
        (make-local-time :day (- days 11017)
                         :sec secs
                         :nsec (or nsec 0)
@@ -911,9 +913,9 @@
 (defun local-time-decode-time (local-time)
   (declare (type local-time local-time))
   (multiple-value-bind (hours hour-remainder)
-      (floor (sec-of local-time) 3600)
+      (floor (sec-of local-time) +seconds-per-hour+)
     (multiple-value-bind (minutes seconds)
-        (floor hour-remainder 60)
+        (floor hour-remainder +seconds-per-minute+)
       (values
        hours
        minutes
@@ -1132,8 +1134,10 @@
                         (progn
                           (unless offset-minute
                             (setf offset-minute 0))
-                          (let ((offset-in-sec (* (+ (* 60 offset-hour) offset-minute) 60)))
-                            
+                          (let ((offset-in-sec (* (+ (* +minutes-per-hour+
+                                                        offset-hour)
+                                                     offset-minute)
+                                                  +seconds-per-minute+)))
                             (if (and (= offset-minute 0)
                                      (= offset-hour 0))
                                 +utc-zone+
@@ -1217,9 +1221,10 @@
                          (princ #\Z str)
                          (format str "~c~2,'0d~c~2,'0d"
                                  (if (minusp offset) #\- #\+)
-                                 (abs (floor offset 3600))
+                                 (abs (floor offset +seconds-per-hour+))
                                  time-separator
-                                 (abs (floor (mod offset 3600) 60))))))))))
+                                 (abs (floor (mod offset +seconds-per-hour+)
+                                             +seconds-per-minute+))))))))))
     (when destination
       (princ str destination))
     str))
@@ -1232,7 +1237,7 @@
   (multiple-value-bind (nsec seconds minutes hours day month year day-of-week daylight-saving-time-p timezone)
       (decode-local-time local-time)
     (declare (ignore nsec day-of-week daylight-saving-time-p))
-    (encode-universal-time seconds minutes hours day month year (floor (timezone local-time timezone) -3600))))
+    (encode-universal-time seconds minutes hours day month year (floor (timezone local-time timezone) #.(- +seconds-per-hour+)))))
 
 (defun internal-time (local-time)
   "Return the internal system time corresponding to the LOCAL-TIME"
