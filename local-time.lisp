@@ -33,7 +33,7 @@
 
 
 (defpackage :local-time
-    (:use #:cl #:cl-fad)
+    (:use #:cl)
   (:export #:local-time
            #:make-local-time
            #:day-of
@@ -314,9 +314,9 @@
                           (pushnew timezone (gethash (first subzone) *timezone-offset->timezone*)))))))
       (setf *timezone-repository* nil)
       (setf *timezone-offset->timezone* (make-hash-table))
-      (walk-directory root-directory visitor :directories nil
-                      :test (lambda (file)
-                              (not (find "Etc" (pathname-directory file) :test #'string=))))
+      (cl-fad:walk-directory root-directory visitor :directories nil
+                             :test (lambda (file)
+                                     (not (find "Etc" (pathname-directory file) :test #'string=))))
       ;; walk the Etc dir last, so they will be the first entries in the *timezone-offset->timezone* map
       (walk-directory (merge-pathnames "Etc/" root-directory) visitor :directories nil)
       (setf *timezone-repository* (sort *timezone-repository* #'string< :key #'first)))))
