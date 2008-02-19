@@ -1220,10 +1220,10 @@
                          (princ #\Z str)
                          (format str "~c~2,'0d~c~2,'0d"
                                  (if (minusp offset) #\- #\+)
-                                 (abs (floor offset +seconds-per-hour+))
+                                 (abs (truncate offset +seconds-per-hour+))
                                  time-separator
-                                 (abs (floor (mod offset +seconds-per-hour+)
-                                             +seconds-per-minute+))))))))))
+                                 (abs (truncate (mod offset +seconds-per-hour+)
+                                                +seconds-per-minute+))))))))))
     (when destination
       (princ str destination))
     str))

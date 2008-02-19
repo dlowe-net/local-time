@@ -291,7 +291,9 @@
   (is (local-time= (encode-local-time 0 02 0 0 23 3 2000)
                    (parse-timestring "--23T::02" :allow-missing-elements-p t)))
   (is (local-time= (encode-local-time 80000000 7 6 5 1 3 2000)
-                   (parse-timestring "T05:06:07,08"))))
+                   (parse-timestring "T05:06:07,08")))
+  (let ((value "2006-06-06T06:06:06-02:30"))
+    (is (string= value (format-timestring (parse-timestring value))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
