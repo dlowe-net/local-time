@@ -55,6 +55,9 @@
            #:local-time-
            #:local-time+
            #:encode-duration
+           #:decode-duration
+           #:parse-duration
+           #:format-duration
            #:maximize-time-part
            #:minimize-time-part
            #:first-day-of-year
@@ -472,6 +475,84 @@
               1000)
            msec)
         1000)))
+
+(defun decode-duration (duration)
+  "Returns the decoded duration as multiple values: nsec, usec, msec, sec, minute, hour, day, week."
+  (multiple-value-bind (second-duration second-remainder)
+      (floor duration)
+    (multiple-value-bind (minute-duration second)
+        (floor second-duration +seconds-per-minute+)
+      (multiple-value-bind (hour-duration minute)
+          (floor minute-duration +minutes-per-hour+)
+        (multiple-value-bind (day-duration hour)
+            (floor hour-duration +hours-per-day+)
+          (multiple-value-bind (week day)
+              (floor day-duration +days-per-week+)
+            (multiple-value-bind (msec msec-remainder)
+                (floor (* second-remainder 1000))
+              (multiple-value-bind (usec usec-remainder)
+                  (floor (* msec-remainder 1000))
+                (multiple-value-bind (nsec nsec-remainder)
+                    (floor (* usec-remainder 1000))
+                  (declare (ignore nsec-remainder))
+                  (values nsec usec msec second minute hour day week))))))))))
+
+;; TODO: factor out useful parts from split-timestring and refactor this code
+(defun parse-duration (durationstr &key (date-separator #\-) (date-time-separator #\T))
+  (let* ((date-time-separator-index (position date-time-separator durationstr))
+         (extra-sec
+          (if date-time-separator-index
+              (let ((datestr (subseq durationstr 0 date-time-separator-index)))
+                (* +seconds-per-day+
+                   (multiple-value-bind (first-integer pos)
+                       (parse-integer datestr :junk-allowed t)
+                     (if (= pos (length datestr))
+                         first-integer
+                         (progn
+                           (assert (char= date-separator (elt datestr pos)))
+                           (+ (* first-integer +days-per-week+)
+                              (parse-integer datestr :start (1+ pos))))))))
+              0)))
+    (with-decoded-local-time (:nsec nsec :sec sec :minute minute :hour hour)
+        (parse-timestring (subseq durationstr (or date-time-separator-index 0)))
+      (encode-duration :nsec nsec :sec (+ extra-sec sec) :minute minute :hour hour))))
+
+(defun format-duration (duration &key (omit-date-part-p nil) (omit-time-part-p nil)
+                        (date-elements (if omit-date-part-p 0 2)) (time-elements (if omit-time-part-p 0 4))
+                        (date-separator #\-) (time-separator #\:) (date-time-separator #\T))
+  (multiple-value-bind (nsec usec msec second minute hour day week)
+      (decode-duration duration)
+    (with-output-to-string (str)
+      (when (zerop week)
+        (decf date-elements)
+        (when (zerop day)
+          (decf date-elements)))
+      (when (> date-elements 1)
+        (format str "~2,'0d~c" week date-separator))
+      (when (> date-elements 0)
+        (format str "~2,'0d" day))
+      (when (and (plusp date-elements) (plusp time-elements))
+        (princ date-time-separator str))
+      (when (and (zerop date-elements)
+                 (zerop hour))
+        (decf time-elements)
+        (when (zerop minute)
+          (decf time-elements)
+          (when (zerop second)
+            (decf time-elements))))
+      (when (> time-elements 3)
+        (format str "~2,'0d~c" hour time-separator))
+      (when (> time-elements 2)
+        (format str "~2,'0d~c" minute time-separator))
+      (when (> time-elements 1)
+        (format str "~2,'0d" second))
+      (when (> time-elements 0)
+        (when (= time-elements 1)
+          (format str "0"))
+        (format str ".~d" (+ (* 1000
+                                (+ (* 1000 msec)
+                                   usec))
+                             nsec))))))
 
 (defun local-time-compare (time-a time-b)
   "Returns the symbols <, >, or =, describing the relationship between TIME-A and TIME-b."
