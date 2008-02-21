@@ -1176,8 +1176,8 @@
                                                          time-string :start start :end end :from-end t)))
                                (when new-end
                                  (setf end (min (1+ new-end)))))
-                             ;;(break "~S: ~S"  (subseq time-string start end) (- end start))
-                             (setf nsec (* (the (signed-byte 32) (parse-integer time-string :start start :end end))
+                             ;;(break "~S: ~S" (subseq time-string start end) (- end start))
+                             (setf nsec (* (the (integer 0 999999999) (parse-integer time-string :start start :end end))
                                            (aref #.(coerce #(1000000000 100000000 10000000
                                                              1000000 100000 10000 1000 100 10 1)
                                                            '(simple-array (signed-byte 32) (10)))
