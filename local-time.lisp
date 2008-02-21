@@ -1035,7 +1035,8 @@
            (optimize (speed 3)))
   (the list
     (let (year month day hour minute second nsec offset-hour offset-minute)
-      (declare (type (or null fixnum) start end year month day hour minute second nsec offset-hour offset-minute))
+      (declare (type (or null fixnum) start end year month day hour minute second offset-hour offset-minute)
+               (type (or null (signed-byte 32)) nsec))
       (macrolet ((passert (expression)
                    `(unless ,expression
                      (parse-error)))
@@ -1176,7 +1177,7 @@
                                (when new-end
                                  (setf end (min (1+ new-end)))))
                              ;;(break "~S: ~S"  (subseq time-string start end) (- end start))
-                             (setf nsec (* (the fixnum (parse-integer time-string :start start :end end))
+                             (setf nsec (* (the (signed-byte 32) (parse-integer time-string :start start :end end))
                                            (aref #.(coerce #(1000000000 100000000 10000000
                                                              1000000 100000 10000 1000 100 10 1)
                                                            '(simple-array (signed-byte 32) (10)))
