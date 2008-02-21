@@ -362,6 +362,23 @@
      (second subzone)
      (third subzone))))
 
+(declaim (ftype (function * (values fixnum)) local-timezone))
+(defun local-timezone (adjusted-local-time
+                       &optional (timezone *default-timezone*))
+  "Return the local timezone adjustment applicable at the already adjusted-local-time. Used to reverse the effect of TIMEZONE and LOCAL-TIME-ADJUST."
+  (let* ((unix-time (unix-time adjusted-local-time))
+         (subzone-idx (or
+                       (second (find-if
+                                (lambda (tuple)
+                                  (> unix-time
+                                     (- (first tuple)
+                                        (first
+                                         (nth (second tuple)
+                                              (timezone-subzones timezone))))))
+                                (timezone-transitions timezone)))
+                       0)))
+    (first (nth subzone-idx (timezone-subzones timezone)))))
+
 (defun adjust-to-timezone (source timezone &optional (destination nil))
   "Returns two values, the values of new DAY and SEC slots, or, if DESTINATION is a LOCAL-TIME instance, fills the slots with the new values and returns the destination"
   (declare (type local-time source)
@@ -1001,6 +1018,11 @@
        minutes
        seconds))))
 
+(declaim (ftype (function (local-time) (values (integer 0 999999999) (integer 0 59) (integer 0 59) (integer 0 23)
+                                               (integer 1 31) (integer 1 12) (integer -1000000 1000000)
+                                               t t t))
+                decode-local-time))
+
 (defun decode-local-time (local-time)
   "Returns the decoded time as multiple values: nsec, ss, mm, hh, day, month, year, day-of-week, daylight-saving-time-p, timezone, and the customary timezone abbreviation."
   (declare (type local-time local-time))
@@ -1263,52 +1285,57 @@
   (declare (type (or null stream) destination)
            (type (integer 0 3) date-elements)
            (type (integer 0 4) time-elements)
-           (type local-time local-time))
-  (let ((str (with-output-to-string (str)
-               (when timezone
-                 (setf local-time (adjust-to-timezone local-time timezone (make-local-time))))
-               (multiple-value-bind (nsec sec minute hour day month year day-of-week daylight-p zone)
-                   (decode-local-time local-time)
-                 (declare (ignore day-of-week daylight-p))
-                 (cond
-                   ((> date-elements 2)
-                    (format str "~:[~;-~]~4,'0d~c"
-                            (minusp year)
-                            (abs year)
-                            date-separator))
-                   ((plusp date-elements)
-                    ;; if the year is not shown, but other parts of the date are,
-                    ;; the year is replaced with a hyphen
-                    (princ "-" str)))
-                 (when (> date-elements 1)
-                   (format str "~2,'0d~c" month date-separator))
-                 (when (> date-elements 0)
-                   (format str "~2,'0d" day))
-                 (when (and (plusp date-elements) (plusp time-elements))
-                   (princ date-time-separator str))
-                 (when (> time-elements 0)
-                   (format str "~2,'0d" hour))
-                 (when (> time-elements 1)
-                   (format str "~c~2,'0d" time-separator minute))
-                 (when (> time-elements 2)
-                   (format str "~c~2,'0d" time-separator sec))
-                 (when (and (> time-elements 3)
-                            (not (zerop nsec)))
-                   (format str ".~6,'0d" (floor nsec 1000)))
-                 (unless omit-timezone-part-p
-                   (let* ((offset (local-timezone local-time zone)))
-                     (if (and use-zulu-p
-                              (eq zone +utc-zone+))
-                         (princ #\Z str)
-                         (format str "~c~2,'0d~c~2,'0d"
-                                 (if (minusp offset) #\- #\+)
-                                 (abs (truncate offset +seconds-per-hour+))
-                                 time-separator
-                                 (abs (truncate (mod offset +seconds-per-hour+)
-                                                +seconds-per-minute+))))))))))
+           (type local-time local-time)
+           (optimize (speed 3)))
+  (let* ((*print-pretty* nil)
+         (*print-circle* nil)
+         (result))
+    (setf result
+          (with-output-to-string (str)
+            (when timezone
+              (setf local-time (adjust-to-timezone local-time timezone (make-local-time))))
+            (multiple-value-bind (nsec sec minute hour day month year day-of-week daylight-p zone)
+                (decode-local-time local-time)
+              (declare (ignore day-of-week daylight-p))
+              (cond
+                ((> date-elements 2)
+                 (format str "~:[~;-~]~4,'0d~c"
+                         (minusp year)
+                         (abs year)
+                         date-separator))
+                ((plusp date-elements)
+                 ;; if the year is not shown, but other parts of the date are,
+                 ;; the year is replaced with a hyphen
+                 (princ "-" str)))
+              (when (> date-elements 1)
+                (format str "~2,'0d~c" month date-separator))
+              (when (> date-elements 0)
+                (format str "~2,'0d" day))
+              (when (and (plusp date-elements) (plusp time-elements))
+                (princ date-time-separator str))
+              (when (> time-elements 0)
+                (format str "~2,'0d" hour))
+              (when (> time-elements 1)
+                (format str "~c~2,'0d" time-separator minute))
+              (when (> time-elements 2)
+                (format str "~c~2,'0d" time-separator sec))
+              (when (and (> time-elements 3)
+                         (not (zerop nsec)))
+                (format str ".~6,'0d" (floor nsec 1000)))
+              (unless omit-timezone-part-p
+                (let* ((offset (local-timezone local-time zone)))
+                  (if (and use-zulu-p
+                           (eq zone +utc-zone+))
+                      (princ #\Z str)
+                      (format str "~c~2,'0d~c~2,'0d"
+                              (if (minusp offset) #\- #\+)
+                              (abs (truncate offset +seconds-per-hour+))
+                              time-separator
+                              (abs (truncate (mod offset +seconds-per-hour+)
+                                             +seconds-per-minute+)))))))))
     (when destination
-      (princ str destination))
-    str))
+      (princ result destination))
+    result))
 
 (defun format-datestring (date)
   (format-timestring date :omit-time-part-p t))
@@ -1325,22 +1352,6 @@
   ;; FIXME: How to portably convert between internal and local time?
   (declare (ignorable local-time))
   (error "Not implemented"))
-
-(defun local-timezone (adjusted-local-time
-                       &optional (timezone *default-timezone*))
-  "Return the local timezone adjustment applicable at the already adjusted-local-time. Used to reverse the effect of TIMEZONE and LOCAL-TIME-ADJUST."
-  (let* ((unix-time (unix-time adjusted-local-time))
-         (subzone-idx (or
-                       (second (find-if
-                                (lambda (tuple)
-                                  (> unix-time
-                                     (- (first tuple)
-                                        (first
-                                         (nth (second tuple)
-                                              (timezone-subzones timezone))))))
-                                (timezone-transitions timezone)))
-                       0)))
-    (first (nth subzone-idx (timezone-subzones timezone)))))
 
 (defun read-timestring (stream char)
   (declare (ignore char))
