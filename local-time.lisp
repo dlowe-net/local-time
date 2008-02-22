@@ -1058,7 +1058,7 @@
                                       (allow-missing-timezone-part-p allow-missing-elements-p))
   "Based on http://www.ietf.org/rfc/rfc3339.txt including the function names used. Returns (values year month day hour minute second nsec offset-hour offset-minute). If the parsing fails, then either signals an error or returns nil based on FAIL-ON-ERROR."
   (declare (type character date-time-separator time-separator date-separator)
-           (type (simple-array character) time-string)
+           (type simple-string time-string)
            (optimize (speed 3)))
   (the list
     (let (year month day hour minute second nsec offset-hour offset-minute)
