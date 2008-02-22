@@ -99,7 +99,15 @@
 
 (in-package :local-time)
 
-(declaim (inline now today encode-duration))
+(declaim (inline now today encode-duration format-rfc3339-timestring)
+         (ftype (function * (values simple-base-string)) format-rfc3339-timestring)
+         (ftype (function * (values simple-base-string)) format-timestring)
+         (ftype (function * (values simple-base-string)) format-duration)
+         (ftype (function * (values fixnum)) local-timezone)
+         (ftype (function (local-time) (values (integer 0 999999999) (integer 0 59) (integer 0 59) (integer 0 23)
+                                               (integer 1 31) (integer 1 12) (integer -1000000 1000000)
+                                               t t t))
+                decode-local-time))
 
 (defparameter *project-home-directory*
   (make-pathname :directory (pathname-directory
@@ -179,7 +187,7 @@
                     (return (- result #x100000000))
                     (return result))))
 
-(defun string-from-unsigned-vector (vector offset)
+(defun string-from-unsigned-byte-vector (vector offset)
   "Returns a string created from the vector of unsigned bytes VECTOR starting at OFFSET which is terminated by a 0."
   (let ((null-pos (or (position 0 vector :start offset) (length vector))))
     (with-output-to-string (str)
@@ -362,7 +370,6 @@
      (second subzone)
      (third subzone))))
 
-(declaim (ftype (function * (values fixnum)) local-timezone))
 (defun local-timezone (adjusted-local-time
                        &optional (timezone *default-timezone*))
   "Return the local timezone adjustment applicable at the already adjusted-local-time. Used to reverse the effect of TIMEZONE and LOCAL-TIME-ADJUST."
@@ -539,7 +546,7 @@
                         (date-separator #\-) (time-separator #\:) (date-time-separator #\T))
   (multiple-value-bind (nsec usec msec second minute hour day week)
       (decode-duration duration)
-    (with-output-to-string (str)
+    (with-output-to-string (str nil :element-type 'base-char)
       (when (zerop week)
         (decf date-elements)
         (when (zerop day)
@@ -1018,11 +1025,6 @@
        minutes
        seconds))))
 
-(declaim (ftype (function (local-time) (values (integer 0 999999999) (integer 0 59) (integer 0 59) (integer 0 23)
-                                               (integer 1 31) (integer 1 12) (integer -1000000 1000000)
-                                               t t t))
-                decode-local-time))
-
 (defun decode-local-time (local-time)
   "Returns the decoded time as multiple values: nsec, ss, mm, hh, day, month, year, day-of-week, daylight-saving-time-p, timezone, and the customary timezone abbreviation."
   (declare (type local-time local-time))
@@ -1270,10 +1272,10 @@
       (error "~S is not a valid date string" string))
     date))
 
-(defun format-rfc3339-timestring (local-time &rest args &key omit-date-part-p omit-time-part-p
-                                             omit-timezone-part-p &allow-other-keys)
-  (declare (ignore omit-date-part-p omit-time-part-p omit-timezone-part-p))
-  (apply #'format-timestring local-time args))
+(defun format-rfc3339-timestring (local-time &key omit-date-part-p omit-time-part-p
+                                  omit-timezone-part-p (use-zulu-p t))
+  (format-timestring local-time :omit-date-part-p omit-date-part-p :omit-time-part-p omit-time-part-p
+                     :omit-timezone-part-p omit-timezone-part-p :use-zulu-p use-zulu-p))
 
 (defun format-timestring (local-time &key destination timezone (omit-date-part-p nil)
                                      (omit-time-part-p nil) (omit-timezone-part-p omit-time-part-p)
@@ -1291,7 +1293,7 @@
          (*print-circle* nil)
          (result))
     (setf result
-          (with-output-to-string (str)
+          (with-output-to-string (str nil :element-type 'base-char)
             (when timezone
               (setf local-time (adjust-to-timezone local-time timezone (make-local-time))))
             (multiple-value-bind (nsec sec minute hour day month year day-of-week daylight-p zone)
@@ -1334,7 +1336,7 @@
                               (abs (truncate (mod offset +seconds-per-hour+)
                                              +seconds-per-minute+)))))))))
     (when destination
-      (princ result destination))
+      (write-string result destination))
     result))
 
 (defun format-datestring (date)
