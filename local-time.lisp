@@ -189,10 +189,13 @@
 
 (defun string-from-unsigned-byte-vector (vector offset)
   "Returns a string created from the vector of unsigned bytes VECTOR starting at OFFSET which is terminated by a 0."
-  (let ((null-pos (or (position 0 vector :start offset) (length vector))))
-    (with-output-to-string (str)
-      (loop for idx from offset upto (1- null-pos)
-            do (princ (code-char (aref vector idx)) str)))))
+  (declare (type (vector (unsigned-byte 8)) vector))
+  (let* ((null-pos (or (position 0 vector :start offset) (length vector)))
+         (result (make-string (- null-pos offset) :element-type 'base-char)))
+    (loop for input-index :from offset :upto (1- null-pos)
+          for output-index :upfrom 0
+          do (setf (aref result output-index) (code-char (aref vector input-index))))
+    result))
 
 (defun realize-timezone (zone &optional reload)
   "If timezone has not already been loaded or RELOAD is non-NIL, loads the timezone information from its associated unix file."
@@ -234,7 +237,7 @@
                (loop for idx from 1 upto leap-count
                      collect (list (read-binary-integer inf 4)
                                    (read-binary-integer inf 4))))
-              (abbreviation-buf (make-array abbrev-length :element-type 'unsigned-byte)))
+              (abbreviation-buf (make-array abbrev-length :element-type '(unsigned-byte 8))))
           (read-sequence abbreviation-buf inf :start 0 :end abbrev-length)
           (let ((wall-indicators
                  ;; read standard/wall indicators
@@ -256,7 +259,7 @@
                    (lambda (info wall utc)
                      (list (first info)
                            (second info)
-                           (string-from-unsigned-vector abbreviation-buf (third info))
+                           (string-from-unsigned-byte-vector abbreviation-buf (third info))
                            (/= wall 0)
                            (/= utc 0)))
                    local-time-info
