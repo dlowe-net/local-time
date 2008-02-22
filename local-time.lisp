@@ -818,10 +818,17 @@
 ;; TODO read http://java.sun.com/j2se/1.4.2/docs/api/java/util/GregorianCalendar.html (or something else, sorry :)
 ;; this scheme only works back until 1582, the start of the gregorian calendar.
 ;; see also DECODE-LOCAL-TIME when fixing if fixing is desired at all.
+;; TODO support a :overflow-allowed and signal an error for invalid values? (as opposed to silently adding to
+;; the bigger place-value what we do now)
 (defun encode-local-time-into-values (nsec sec minute hour day month year &key (timezone *default-timezone*))
   "Returns (VALUES NSEC SEC DAY ZONE) ready to be used for instantiating a new local-time object."
   (declare (type integer nsec sec minute hour day month year)
            (type (or null timezone) timezone))
+  (if (> nsec 999999999)
+      (multiple-value-bind (more-secs remaining-nsec)
+          (floor nsec 1000000000)
+        (setf nsec remaining-nsec)
+        (incf sec more-secs)))
   (let* ((0-based-rotated-month (if (>= month 3)
                                     (- month 3)
                                     (+ month 9)))
