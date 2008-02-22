@@ -196,7 +196,8 @@
     "2008-06-05T04:03:02.000001Z"
     (format-timestring (encode-local-time 1000 2 3 4 5 6 2008 :timezone +utc-zone+) :use-zulu-p t)
 
-    "2008-06-05T04:03:02.1234567+00:00"
+    ;; note: nsec overflows here
+    "2008-06-05T04:03:03.234567+00:00"
     (format-timestring (encode-local-time 1234567890 2 3 4 5 6 2008 :timezone +utc-zone+) :use-zulu-p nil)
 
     "-06-05T04:03:02.000001"
