@@ -165,7 +165,7 @@
 (defparameter +astronomical-julian-date-offset+ -2451605)
 
 ;; The modified julian date is the number of days between the current
-;; date and 1858-11-17T12:00:00+00:00.  For the sake of simplicity,
+;; date and 1858-11-17T12:00:00+00:00. TODO: For the sake of simplicity,
 ;; we currently just do the date arithmetic and don't adjust for the
 ;; time of day.
 (defparameter +modified-julian-date-offset+ -51604)
@@ -715,7 +715,7 @@
            (encode-local-time-into-values nsec sec minute hour day month year :timezone timezone))))))
 
 (defun %offset-local-time-part (time part offset)
-  "Returns a time adjusted by the specified OFFSET. Takes care of different kinds of overflows. The :day offset may be a keyword symbol name of a week-day (see +DAY-NAMES-AS-KEYWORDS+). In that case point the result to the previous day given by OFFSET."
+  "Returns a time adjusted by the specified OFFSET. Takes care of different kinds of overflows. The setting :day-of-week is possible using a keyword symbol name of a week-day (see +DAY-NAMES-AS-KEYWORDS+) as value. In that case point the result to the previous day given by OFFSET."
   (labels ((direct-adjust (part offset nsec sec day timezone)
              (cond ((eq part :day-of-week)
                     (with-decoded-local-time (:day-of-week day-of-week)
@@ -1282,9 +1282,10 @@
       (error "~S is not a valid date string" string))
     date))
 
-(defun format-rfc3339-timestring (local-time &key omit-date-part-p omit-time-part-p
+(defun format-rfc3339-timestring (local-time &key destination omit-date-part-p omit-time-part-p
                                   omit-timezone-part-p (use-zulu-p t))
-  (format-timestring local-time :omit-date-part-p omit-date-part-p :omit-time-part-p omit-time-part-p
+  (format-timestring local-time :destination destination
+                     :omit-date-part-p omit-date-part-p :omit-time-part-p omit-time-part-p
                      :omit-timezone-part-p omit-timezone-part-p :use-zulu-p use-zulu-p))
 
 (defun format-timestring (local-time &key destination timezone (omit-date-part-p nil)
