@@ -328,7 +328,7 @@
                              :test (lambda (file)
                                      (not (find "Etc" (pathname-directory file) :test #'string=))))
       ;; walk the Etc dir last, so they will be the first entries in the *timezone-offset->timezone* map
-      (walk-directory (merge-pathnames "Etc/" root-directory) visitor :directories nil)
+      (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) visitor :directories nil)
       (setf *timezone-repository* (sort *timezone-repository* #'string< :key #'first)))))
 
 (defclass local-time ()
