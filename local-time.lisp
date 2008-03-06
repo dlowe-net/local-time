@@ -34,37 +34,36 @@
 
 (defpackage :local-time
     (:use #:cl)
-  (:export #:local-time
-           #:make-local-time
+  (:export #:timestamp
+           #:make-timestamp
            #:day-of
            #:sec-of
            #:nsec-of
-           #:timezone-of
-           #:local-time<
-           #:local-time<=
-           #:local-time>
-           #:local-time>=
-           #:local-time=
-           #:local-time/=
-           #:local-time-max
-           #:local-time-min
-           #:adjust-local-time
-           #:adjust-local-time!
-           #:local-time-whole-year-difference
+           #:timestamp<
+           #:timestamp<=
+           #:timestamp>
+           #:timestamp>=
+           #:timestamp=
+           #:timestamp/=
+           #:timestamp-max
+           #:timestamp-min
+           #:adjust-timestamp
+           #:adjust-timestamp!
+           #:timestamp-whole-year-difference
            #:days-in-month
-           #:local-time-
-           #:local-time+
-           #:encode-duration
-           #:decode-duration
-           #:parse-duration
-           #:format-duration
+           #:timestamp-
+           #:timestamp+
+           #:interval
+           #:decode-interval
+           #:parse-interval
+           #:format-interval
            #:maximize-time-part
            #:minimize-time-part
            #:first-day-of-year
            #:last-day-of-year
-           #:encode-local-time
-           #:decode-local-time
-           #:with-decoded-local-time
+           #:encode-timestamp
+           #:decode-timestamp
+           #:with-decoded-timestamp
            #:parse-timestring
            #:parse-datestring
            #:format-timestring
@@ -75,7 +74,7 @@
            #:internal-time
            #:unix-time
            #:timezone
-           #:local-timezone
+           #:timestampzone
            #:define-timezone
            #:*default-timezone*
            #:now
@@ -99,15 +98,15 @@
 
 (in-package :local-time)
 
-(declaim (inline now today encode-duration format-rfc3339-timestring)
+(declaim (inline now today encode-interval format-rfc3339-timestring)
          (ftype (function * (values simple-base-string)) format-rfc3339-timestring)
          (ftype (function * (values simple-base-string)) format-timestring)
-         (ftype (function * (values simple-base-string)) format-duration)
+         (ftype (function * (values simple-base-string)) format-interval)
          (ftype (function * (values fixnum)) local-timezone)
-         (ftype (function (local-time) (values (integer 0 999999999) (integer 0 59) (integer 0 59) (integer 0 23)
+         (ftype (function (timestamp) (values (integer 0 999999999) (integer 0 59) (integer 0 59) (integer 0 23)
                                                (integer 1 31) (integer 1 12) (integer -1000000 1000000)
                                                t t t))
-                decode-local-time))
+                decode-timestamp))
 
 (defparameter *project-home-directory*
   (make-pathname :directory (pathname-directory
@@ -223,11 +222,11 @@
                (loop for idx from 1 upto transition-count
                      collect (read-binary-integer inf 4 t)))
               ;; read local time indexes
-              (local-time-indexes
+              (timestamp-indexes
                (loop for idx from 1 upto transition-count
                      collect (read-binary-integer inf 1)))
               ;; read local time info
-              (local-time-info
+              (timestamp-info
                (loop for idx from 1 upto type-count
                      collect (list (read-binary-integer inf 4 t)
                                    (/= (read-binary-integer inf 1) 0)
@@ -253,7 +252,7 @@
                     (lambda (info index)
                       (list info index))
                     timezone-transitions
-                    local-time-indexes)))
+                    timestamp-indexes)))
             (setf (timezone-subzones zone)
                   (mapcar
                    (lambda (info wall utc)
@@ -262,7 +261,7 @@
                            (string-from-unsigned-byte-vector abbreviation-buf (third info))
                            (/= wall 0)
                            (/= utc 0)))
-                   local-time-info
+                   timestamp-info
                    wall-indicators
                    local-indicators))
             (setf (timezone-leap-seconds zone)
@@ -331,39 +330,36 @@
       (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) visitor :directories nil)
       (setf *timezone-repository* (sort *timezone-repository* #'string< :key #'first)))))
 
-(defclass local-time ()
+(defclass timestamp ()
   ((day :accessor day-of :initarg :day :initform 0 :type integer)
    (sec :accessor sec-of :initarg :sec :initform 0 :type integer)
-   (nsec :accessor nsec-of :initarg :nsec :initform 0 :type (integer 0 999999999))
-   (timezone :accessor timezone-of :initarg :timezone
-             :initform *default-timezone*)))
+   (nsec :accessor nsec-of :initarg :nsec :initform 0 :type (integer 0 999999999))))
 
-(defmacro make-local-time (&rest args)
-  `(make-instance 'local-time ,@args))
+(defmacro make-timestamp (&rest args)
+  `(make-instance 'timestamp ,@args))
 
-(defmacro clone-local-time (local-time)
+(defmacro clone-timestamp (timestamp)
   (let ((tmp (gensym "TMP")))
-    `(let ((,tmp ,local-time))
-       (make-instance 'local-time
+    `(let ((,tmp ,timestamp))
+       (make-instance 'timestamp
                       :nsec (nsec-of ,tmp) :sec (sec-of ,tmp)
-                      :day (day-of ,tmp) :timezone (timezone-of ,tmp)))))
+                      :day (day-of ,tmp)))))
 
-(defun unix-time (local-time)
-  "Return the Unix time corresponding to the LOCAL-TIME"
-  (declare (type local-time local-time))
-  (+ (* (+ (day-of local-time)
+(defun unix-time (timestamp)
+  "Return the Unix time corresponding to the TIMESTAMP"
+  (declare (type timestamp timestamp))
+  (+ (* (+ (day-of timestamp)
            11017)
         +seconds-per-day+)
-     (sec-of local-time)))
+     (sec-of timestamp)))
 
-(defun timezone (local-time &optional timezone)
+(defun timezone (timestamp &optional timezone)
   "Return as multiple values the time zone as the number of seconds east of UTC, a boolean daylight-saving-p, the customary abbreviation of the timezone, the starting time of this timezone, and the ending time of this timezone."
-  (declare (type local-time local-time)
+  (declare (type timestamp timestamp)
            (type (or null timezone) timezone))
-  (let* ((zone (realize-timezone
-                (or timezone (timezone-of local-time) *default-timezone*)))
+  (let* ((zone (realize-timezone (or timezone *default-timezone*)))
          (subzone-idx (or
-                       (second (assoc (unix-time local-time)
+                       (second (assoc (unix-time timestamp)
                                       (timezone-transitions zone)
                                       :test #'>))
                        0))
@@ -373,10 +369,10 @@
      (second subzone)
      (third subzone))))
 
-(defun local-timezone (adjusted-local-time
+(defun timestampzone (adjusted-timestamp
                        &optional (timezone *default-timezone*))
-  "Return the local timezone adjustment applicable at the already adjusted-local-time. Used to reverse the effect of TIMEZONE and LOCAL-TIME-ADJUST."
-  (let* ((unix-time (unix-time adjusted-local-time))
+  "Return the local timezone adjustment applicable at the already adjusted-timestamp. Used to reverse the effect of TIMEZONE and TIMESTAMP-ADJUST."
+  (let* ((unix-time (unix-time adjusted-timestamp))
          (subzone-idx (or
                        (second (find-if
                                 (lambda (tuple)
@@ -390,10 +386,9 @@
     (first (nth subzone-idx (timezone-subzones timezone)))))
 
 (defun adjust-to-timezone (source timezone &optional (destination nil))
-  "Returns two values, the values of new DAY and SEC slots, or, if DESTINATION is a LOCAL-TIME instance, fills the slots with the new values and returns the destination"
-  (declare (type local-time source)
-           (type (or null local-time) destination))
-  (realize-timezone (timezone-of source))
+  "Returns two values, the values of new DAY and SEC slots, or, if DESTINATION is a TIMESTAMP instance, fills the slots with the new values and returns the destination"
+  (declare (type timestamp source)
+           (type (or null timestamp) destination))
   (realize-timezone timezone)
   (if (and (eq timezone (timezone-of source))
            (eq source destination))
@@ -421,54 +416,54 @@
               (t
                (values new-sec new-day))))))))
 
-(defun maximize-time-part (local-time &key timezone into)
-  "Return a local-time with the time part set to the end of the day."
+(defun maximize-time-part (timestamp &key timezone into)
+  "Return a timestamp with the time part set to the end of the day."
   (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
-      (decode-local-time local-time)
+      (decode-timestamp timestamp)
     (declare (ignore nsec sec min hour day-of-week daylight-saving-time-p))
-    (encode-local-time 0 59 59 23 day month year :timezone (or timezone original-timezone) :into into)))
+    (encode-timestamp 0 59 59 23 day month year :timezone (or timezone original-timezone) :into into)))
 
-(defun minimize-time-part (local-time &key timezone into)
-  "Return a local-time with the time part set to the beginning of the day."
+(defun minimize-time-part (timestamp &key timezone into)
+  "Return a timestamp with the time part set to the beginning of the day."
   (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
-      (decode-local-time local-time)
+      (decode-timestamp timestamp)
     (declare (ignore nsec sec min hour day-of-week daylight-saving-time-p))
-    (encode-local-time 0 0 0 0 day month year :timezone (or timezone original-timezone) :into into)))
+    (encode-timestamp 0 0 0 0 day month year :timezone (or timezone original-timezone) :into into)))
 
-(defun first-day-of-year (local-time-or-year &key into)
-  "Return a local-time date with the month and day set to the first day of the year the input refers to."
+(defun first-day-of-year (timestamp-or-year &key into)
+  "Return a timestamp date with the month and day set to the first day of the year the input refers to."
   (let ((year
-         (etypecase local-time-or-year
-           (local-time
+         (etypecase timestamp-or-year
+           (timestamp
             (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
-                (decode-local-time local-time-or-year)
+                (decode-timestamp timestamp-or-year)
               (declare (ignore nsec sec min hour day month day-of-week daylight-saving-time-p original-timezone))
               year))
            (integer
-            local-time-or-year))))
-    (encode-local-time 0 0 0 0 1 1 year :timezone +utc-zone+ :into into)))
+            timestamp-or-year))))
+    (encode-timestamp 0 0 0 0 1 1 year :timezone +utc-zone+ :into into)))
 
-(defun last-day-of-year (local-time-or-year &key into)
-  "Return a local-time date with the month and day set to the last day of the year the input refers to."
+(defun last-day-of-year (timestamp-or-year &key into)
+  "Return a timestamp date with the month and day set to the last day of the year the input refers to."
   (let ((year
-         (etypecase local-time-or-year
-           (local-time
+         (etypecase timestamp-or-year
+           (timestamp
             (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p original-timezone)
-                (decode-local-time local-time-or-year)
+                (decode-timestamp timestamp-or-year)
               (declare (ignore nsec sec min hour day month day-of-week daylight-saving-time-p original-timezone))
               year))
            (integer
-            local-time-or-year))))
-    (encode-local-time 0 0 0 0 31 12 year :timezone +utc-zone+ :into into)))
+            timestamp-or-year))))
+    (encode-timestamp 0 0 0 0 31 12 year :timezone +utc-zone+ :into into)))
 
-(defun astronomical-julian-date (local-time)
-  (- (day-of local-time) +astronomical-julian-date-offset+))
+(defun astronomical-julian-date (timestamp)
+  (- (day-of timestamp) +astronomical-julian-date-offset+))
 
-(defun modified-julian-date (local-time)
-  (- (day-of local-time) +modified-julian-date-offset+))
+(defun modified-julian-date (timestamp)
+  (- (day-of timestamp) +modified-julian-date-offset+))
 
-(defmacro with-decoded-local-time ((&key nsec sec minute hour day month year day-of-week daylight-p timezone)
-                                   local-time &body forms)
+(defmacro with-decoded-timestamp ((&key nsec sec minute hour day month year day-of-week daylight-p timezone)
+                                   timestamp &body forms)
   (let ((ignores)
         (variables))
     (macrolet ((initialize (&rest vars)
@@ -482,11 +477,11 @@
                     (setf ignores (nreverse ignores))
                     (setf variables (nreverse variables)))))
       (initialize nsec sec minute hour day month year day-of-week daylight-p timezone))
-    `(multiple-value-bind (,@variables) (decode-local-time ,local-time)
+    `(multiple-value-bind (,@variables) (decode-timestamp ,timestamp)
        (declare (ignore ,@ignores))
        ,@forms)))
 
-(defun encode-duration (&key (nsec 0) (usec 0) (msec 0) (sec 0) (minute 0) (hour 0) (day 0) (week 0))
+(defun encode-interval (&key (nsec 0) (usec 0) (msec 0) (sec 0) (minute 0) (hour 0) (day 0) (week 0))
   (+ (* +seconds-per-minute+
         (+ (* +minutes-per-hour+
               (+ (* +hours-per-day+
@@ -503,18 +498,18 @@
            msec)
         1000)))
 
-(defun decode-duration (duration)
-  "Returns the decoded duration as multiple values: nsec, usec, msec, sec, minute, hour, day, week."
-  (multiple-value-bind (second-duration second-remainder)
-      (floor duration)
-    (multiple-value-bind (minute-duration second)
-        (floor second-duration +seconds-per-minute+)
-      (multiple-value-bind (hour-duration minute)
-          (floor minute-duration +minutes-per-hour+)
-        (multiple-value-bind (day-duration hour)
-            (floor hour-duration +hours-per-day+)
+(defun decode-interval (interval)
+  "Returns the decoded interval as multiple values: nsec, usec, msec, sec, minute, hour, day, week."
+  (multiple-value-bind (second-interval second-remainder)
+      (floor interval)
+    (multiple-value-bind (minute-interval second)
+        (floor second-interval +seconds-per-minute+)
+      (multiple-value-bind (hour-interval minute)
+          (floor minute-interval +minutes-per-hour+)
+        (multiple-value-bind (day-interval hour)
+            (floor hour-interval +hours-per-day+)
           (multiple-value-bind (week day)
-              (floor day-duration +days-per-week+)
+              (floor day-interval +days-per-week+)
             (multiple-value-bind (msec msec-remainder)
                 (floor (* second-remainder 1000))
               (multiple-value-bind (usec usec-remainder)
@@ -525,11 +520,11 @@
                   (values nsec usec msec second minute hour day week))))))))))
 
 ;; TODO: factor out useful parts from split-timestring and refactor this code
-(defun parse-duration (durationstr &key (date-separator #\-) (date-time-separator #\T))
-  (let* ((date-time-separator-index (position date-time-separator durationstr))
+(defun parse-interval (intervalstr &key (date-separator #\-) (date-time-separator #\T))
+  (let* ((date-time-separator-index (position date-time-separator intervalstr))
          (extra-sec
           (if date-time-separator-index
-              (let ((datestr (subseq durationstr 0 date-time-separator-index)))
+              (let ((datestr (subseq intervalstr 0 date-time-separator-index)))
                 (* +seconds-per-day+
                    (multiple-value-bind (first-integer pos)
                        (parse-integer datestr :junk-allowed t)
@@ -540,15 +535,15 @@
                            (+ (* first-integer +days-per-week+)
                               (parse-integer datestr :start (1+ pos))))))))
               0)))
-    (with-decoded-local-time (:nsec nsec :sec sec :minute minute :hour hour)
-        (parse-timestring (subseq durationstr (or date-time-separator-index 0)))
-      (encode-duration :nsec nsec :sec (+ extra-sec sec) :minute minute :hour hour))))
+    (with-decoded-timestamp (:nsec nsec :sec sec :minute minute :hour hour)
+        (parse-timestring (subseq intervalstr (or date-time-separator-index 0)))
+      (encode-interval :nsec nsec :sec (+ extra-sec sec) :minute minute :hour hour))))
 
-(defun format-duration (duration &key (omit-date-part-p nil) (omit-time-part-p nil)
+(defun format-interval (interval &key (omit-date-part-p nil) (omit-time-part-p nil)
                         (date-elements (if omit-date-part-p 0 2)) (time-elements (if omit-time-part-p 0 4))
                         (date-separator #\-) (time-separator #\:) (date-time-separator #\T))
   (multiple-value-bind (nsec usec msec second minute hour day week)
-      (decode-duration duration)
+      (decode-interval interval)
     (with-output-to-string (str nil :element-type 'base-char)
       (when (zerop week)
         (decf date-elements)
@@ -581,9 +576,9 @@
                                    usec))
                              nsec))))))
 
-(defun local-time-compare (time-a time-b)
+(defun timestamp-compare (time-a time-b)
   "Returns the symbols <, >, or =, describing the relationship between TIME-A and TIME-b."
-  (declare (type local-time time-a time-b))
+  (declare (type timestamp time-a time-b))
   (multiple-value-bind (sec-a day-a)
       (adjust-to-timezone time-a (timezone-of time-b))
     (cond
@@ -613,8 +608,8 @@
       ;; month2-year2 pair represents the sequential month
       ;; now we get timestamps for the first days of these months
       ;; and find out what the difference in days is
-      (let ((timestamp1 (encode-local-time 0 0 0 0 1 month1 year1))
-            (timestamp2 (encode-local-time 0 0 0 0 1 month2 year2)))
+      (let ((timestamp1 (encode-timestamp 0 0 0 0 1 month1 year1))
+            (timestamp2 (encode-timestamp 0 0 0 0 1 month2 year2)))
         (- (day-of timestamp2) (day-of timestamp1))))))
 
 ;; TODO scan all uses of FIX-OVERFLOW-IN-DAYS and decide where it's ok to silently fix and where should be and error reported
@@ -627,7 +622,7 @@
 
 (eval-when (:compile-toplevel :load-toplevel)
 
-(defun expand-adjust-local-time-changes (local-time changes visitor)
+(defun expand-adjust-timestamp-changes (timestamp changes visitor)
   (dolist (change changes)
     (unless (or (= (length change) 3)
                 (and (= (length change) 4)
@@ -641,21 +636,21 @@
                      (third change)
                      (fourth change))))
       (unless (member part '(:nsec :sec :sec-of-day :hour :day :day-of-week :day-of-month :month :year :timezone))
-        (error "Unknown local-time part ~S" part))
+        (error "Unknown timestamp part ~S" part))
       (cond
         ((string= operation "SET")
-         (funcall visitor `(%set-local-time-part ,local-time ,part ,value)))
+         (funcall visitor `(%set-timestamp-part ,timestamp ,part ,value)))
         ((string= operation "OFFSET")
-         (funcall visitor `(%offset-local-time-part ,local-time ,part ,value)))
+         (funcall visitor `(%offset-timestamp-part ,timestamp ,part ,value)))
         (t (error "Unexpected operation ~S" operation))))))
 
-(defun expand-adjust-local-time (local-time changes &key functional)
+(defun expand-adjust-timestamp (timestamp changes &key functional)
   (let* ((old (gensym "OLD"))
          (new (if functional
                   (gensym "NEW")
                   old))
          (forms (list)))
-    (expand-adjust-local-time-changes old changes
+    (expand-adjust-timestamp-changes old changes
                                       (lambda (change)
                                         (push
                                          `(progn
@@ -669,20 +664,20 @@
                                                 `((setf ,old ,new))))
                                          forms)))
     (setf forms (nreverse forms))
-    `(let* ((,old ,local-time)
+    `(let* ((,old ,timestamp)
             ,@(when functional
-                `((,new (clone-local-time ,old)))))
+                `((,new (clone-timestamp ,old)))))
        ,@forms
        ,old)))
 ) ; eval-when
 
-(defmacro adjust-local-time (local-time &body changes)
-  (expand-adjust-local-time local-time changes :functional t))
+(defmacro adjust-timestamp (timestamp &body changes)
+  (expand-adjust-timestamp timestamp changes :functional t))
 
-(defmacro adjust-local-time! (local-time &body changes)
-  (expand-adjust-local-time local-time changes :functional nil))
+(defmacro adjust-timestamp! (timestamp &body changes)
+  (expand-adjust-timestamp timestamp changes :functional nil))
 
-(defun %set-local-time-part (time part new-value)
+(defun %set-timestamp-part (time part new-value)
   ;; TODO think about error signalling. when, how to disable if it makes sense, ...
   (case part
     ((:nsec :sec-of-day :day)
@@ -700,7 +695,7 @@
          (multiple-value-bind (new-sec new-day)
              (adjust-to-timezone time new-value)
            (values (nsec-of time) new-sec new-day new-value))
-         (with-decoded-local-time (:nsec nsec :sec sec :minute minute :hour hour
+         (with-decoded-timestamp (:nsec nsec :sec sec :minute minute :hour hour
                                    :day day :month month :year year :timezone timezone)
              time
            (ecase part
@@ -712,13 +707,13 @@
                      (setf day (fix-overflow-in-days day month year)))
              (:year (setf year new-value)
                     (setf day (fix-overflow-in-days day month year))))
-           (encode-local-time-into-values nsec sec minute hour day month year :timezone timezone))))))
+           (encode-timestamp-into-values nsec sec minute hour day month year :timezone timezone))))))
 
-(defun %offset-local-time-part (time part offset)
+(defun %offset-timestamp-part (time part offset)
   "Returns a time adjusted by the specified OFFSET. Takes care of different kinds of overflows. The setting :day-of-week is possible using a keyword symbol name of a week-day (see +DAY-NAMES-AS-KEYWORDS+) as value. In that case point the result to the previous day given by OFFSET."
   (labels ((direct-adjust (part offset nsec sec day timezone)
              (cond ((eq part :day-of-week)
-                    (with-decoded-local-time (:day-of-week day-of-week)
+                    (with-decoded-timestamp (:day-of-week day-of-week)
                         time
                       (let ((position (position offset +day-names-as-keywords+ :test #'eq)))
                         (assert position (position) "~S is not a valid day name" offset)
@@ -728,7 +723,7 @@
                                          position)))
                           (values nsec sec (+ day offset) timezone)))))
                    ((zerop offset)
-                    ;; The offset is zero, so just return the parts of the local-time object
+                    ;; The offset is zero, so just return the parts of the timestamp object
                     (values nsec sec day timezone))
                    (t
                     (case part
@@ -750,7 +745,7 @@
                          (direct-adjust :day days-offset
                                         nsec new-sec day timezone)))))))
            (safe-adjust (part offset time)
-             (with-decoded-local-time (:nsec nsec :sec sec :hour hour :day day
+             (with-decoded-timestamp (:nsec nsec :sec sec :hour hour :day day
                                        :month month :year year :timezone timezone)
                  time
                (multiple-value-bind (month-new year-new)
@@ -762,7 +757,7 @@
                     year)
                  ;; Almost there. However, it is necessary to check for
                  ;; overflows first
-                 (encode-local-time-into-values nsec sec month hour
+                 (encode-timestamp-into-values nsec sec month hour
                                                 (fix-overflow-in-days day month-new year-new)
                                                 month-new year-new
                                                 :timezone timezone)))))
@@ -775,26 +770,26 @@
                       (timezone-of time)))
       ((:month :year) (safe-adjust part offset time)))))
 
-(defun local-time-whole-year-difference (time-a time-b)
+(defun timestamp-whole-year-difference (time-a time-b)
   "Returns the number of whole years elapsed between time-a and time-b (hint: anniversaries)."
-  (declare (type local-time time-b time-a))
-  (let ((modified-time-b (adjust-to-timezone time-b (timezone-of time-a) (make-local-time))))
+  (declare (type timestamp time-b time-a))
+  (let ((modified-time-b (adjust-to-timezone time-b (timezone-of time-a) (make-timestamp))))
     (multiple-value-bind (nsec-a sec-a minute-a hour-a day-a month-a year-a)
-        (decode-local-time modified-time-b)
+        (decode-timestamp modified-time-b)
       (multiple-value-bind (nsec-b sec-b minute-b hour-b day-b month-b year-b day-of-week-b daylight-p-b zone-b)
-          (decode-local-time time-a)
+          (decode-timestamp time-a)
         (declare (ignore nsec-b sec-b minute-b hour-b day-b month-b day-of-week-b daylight-p-b zone-b))
         (let ((year-difference (- year-b year-a)))
-          (if (local-time<= (encode-local-time nsec-a sec-a minute-a hour-a day-a month-a
+          (if (timestamp<= (encode-timestamp nsec-a sec-a minute-a hour-a day-a month-a
                                                (+ year-difference year-a)
                                                :timezone (timezone-of time-a))
                             time-a)
               year-difference
               (1- year-difference)))))))
 
-(defun local-time- (time-a time-b)
+(defun timestamp- (time-a time-b)
   "Returns the difference between TIME-A and TIME-B in seconds"
-  (setf time-a (adjust-local-time time-a (set :timezone (timezone-of time-b))))
+  (setf time-a (adjust-timestamp time-a (set :timezone (timezone-of time-b))))
   (multiple-value-bind (sec-a day-a)
       (adjust-to-timezone time-a (timezone-of time-b))
     (let ((nsec (- (nsec-of time-a) (nsec-of time-b)))
@@ -806,22 +801,22 @@
       (when (minusp second)
         (decf day)
         (incf second +seconds-per-day+))
-      (encode-duration :nsec nsec :sec second :day day))))
+      (encode-interval :nsec nsec :sec second :day day))))
 
-(defun local-time+ (time seconds)
-  "Returns a new LOCAL-TIME containing the sum of TIME and SECONDS"
-  (adjust-local-time time (offset :sec seconds)))
+(defun timestamp+ (time seconds)
+  "Returns a new TIMESTAMP containing the sum of TIME and SECONDS"
+  (adjust-timestamp time (offset :sec seconds)))
 
-(defun local-time-day-of-week (local-time)
-  (mod (+ 3 (day-of local-time)) 7))
+(defun timestamp-day-of-week (timestamp)
+  (mod (+ 3 (day-of timestamp)) 7))
 
 ;; TODO read http://java.sun.com/j2se/1.4.2/docs/api/java/util/GregorianCalendar.html (or something else, sorry :)
 ;; this scheme only works back until 1582, the start of the gregorian calendar.
-;; see also DECODE-LOCAL-TIME when fixing if fixing is desired at all.
+;; see also DECODE-TIMESTAMP when fixing if fixing is desired at all.
 ;; TODO support a :overflow-allowed and signal an error for invalid values? (as opposed to silently adding to
 ;; the bigger place-value what we do now)
-(defun encode-local-time-into-values (nsec sec minute hour day month year &key (timezone *default-timezone*))
-  "Returns (VALUES NSEC SEC DAY ZONE) ready to be used for instantiating a new local-time object."
+(defun encode-timestamp-into-values (nsec sec minute hour day month year &key (timezone *default-timezone*))
+  "Returns (VALUES NSEC SEC DAY ZONE) ready to be used for instantiating a new timestamp object."
   (declare (type integer nsec sec minute hour day month year)
            (type (or null timezone) timezone))
   (if (> nsec 999999999)
@@ -845,12 +840,12 @@
                                   (1- day))))
     (values nsec sec days-from-zero-point zone)))
 
-(defun encode-local-time (nsec sec minute hour day month year &key (timezone *default-timezone*) into)
-  "Return a new LOCAL-TIME instance corresponding to the specified time elements."
+(defun encode-timestamp (nsec sec minute hour day month year &key (timezone *default-timezone*) into)
+  "Return a new TIMESTAMP instance corresponding to the specified time elements."
   (declare (type integer nsec sec minute hour day month year)
            (type (or null timezone) timezone))
   (multiple-value-bind (nsec sec day timezone)
-      (encode-local-time-into-values nsec sec minute hour day month year :timezone timezone)
+      (encode-timestamp-into-values nsec sec minute hour day month year :timezone timezone)
     (if into
         (progn
           (setf (nsec-of into) nsec)
@@ -858,25 +853,25 @@
           (setf (day-of into) day)
           (setf (timezone-of into) timezone)
           into)
-        (make-local-time
+        (make-timestamp
          :nsec nsec
          :sec sec
          :day day
          :timezone timezone))))
 
-(defun local-time (&key universal unix nsec timezone)
-  "Produce a LOCAL-TIME instance from the provided numeric time representation or try to extract the most accurate current time if none of them is provided."
+(defun timestamp (&key universal unix nsec timezone)
+  "Produce a TIMESTAMP instance from the provided numeric time representation or try to extract the most accurate current time if none of them is provided."
   (cond
     (universal
      (multiple-value-bind (sec minute hour date month year)
          (decode-universal-time universal)
-       (encode-local-time (or nsec 0) sec minute hour date month year
+       (encode-timestamp (or nsec 0) sec minute hour date month year
                           :timezone (realize-timezone (or timezone
                                                           *default-timezone*)))))
     (unix
      (let* ((days (floor unix +seconds-per-day+))
             (secs (- unix (* days +seconds-per-day+))))
-       (make-local-time :day (- days 11017)
+       (make-timestamp :day (- days 11017)
                         :sec secs
                         :nsec (or nsec 0)
                         :timezone (realize-timezone
@@ -884,20 +879,20 @@
     (t #+sbcl
        (multiple-value-bind (_ sec usec) (sb-unix:unix-gettimeofday)
          (declare (ignore _) (type (unsigned-byte 32) sec usec))
-         (let ((result (local-time :unix sec
+         (let ((result (timestamp :unix sec
                                    :nsec (or nsec (* usec 1000))
                                    :timezone +utc-zone+)))
            (adjust-to-timezone result (realize-timezone (or timezone
                                                             *default-timezone*))
                                result)))
        #-sbcl
-       (local-time :universal (get-universal-time) :nsec nsec))))
+       (timestamp :universal (get-universal-time) :nsec nsec))))
 
 (defun today ()
   (minimize-time-part (now) :timezone +utc-zone+))
 
 (defun now ()
-  (local-time))
+  (timestamp))
 
 (defmacro defcomparator (name &body body)
   (let ((pair-comparator-name (intern (concatenate 'string "%" (string name)))))
@@ -917,45 +912,45 @@
           `(let (,@(loop for var :in vars
                          for time :in times
                          collect (list var time)))
-            ;; we could evaluate comparisons of local-time literals here
+            ;; we could evaluate comparisons of timestamp literals here
             (and ,@(loop for (time-a time-b) :on vars
                          while time-b
                          collect `(,',pair-comparator-name ,time-a ,time-b)))))))))
 
-(defcomparator local-time<
-  (eql (local-time-compare time-a time-b) '<))
+(defcomparator timestamp<
+  (eql (timestamp-compare time-a time-b) '<))
 
-(defcomparator local-time<=
-  (not (null (member (local-time-compare time-a time-b) '(< =)))))
+(defcomparator timestamp<=
+  (not (null (member (timestamp-compare time-a time-b) '(< =)))))
 
-(defcomparator local-time>
-  (eql (local-time-compare time-a time-b) '>))
+(defcomparator timestamp>
+  (eql (timestamp-compare time-a time-b) '>))
 
-(defcomparator local-time>=
-  (not (null (member (local-time-compare time-a time-b) '(> =)))))
+(defcomparator timestamp>=
+  (not (null (member (timestamp-compare time-a time-b) '(> =)))))
 
-(defcomparator local-time=
-  (eql (local-time-compare time-a time-b) '=))
+(defcomparator timestamp=
+  (eql (timestamp-compare time-a time-b) '=))
 
-(defcomparator local-time/=
-  (not (eql (local-time-compare time-a time-b) '=)))
+(defcomparator timestamp/=
+  (not (eql (timestamp-compare time-a time-b) '=)))
 
-;; TODO local-time-min/max could have a compiler macro
-(defun local-time-min (time &rest times)
+;; TODO timestamp-min/max could have a compiler macro
+(defun timestamp-min (time &rest times)
   (loop with winner = time
         for candidate :in times
         while candidate do
         (if (and winner
-                 (local-time< candidate winner))
+                 (timestamp< candidate winner))
             (setf winner candidate))
         finally (return winner)))
 
-(defun local-time-max (time &rest times)
+(defun timestamp-max (time &rest times)
   (loop with winner = time
         for candidate :in times
         while candidate do
         (if (and winner
-                 (local-time> candidate winner))
+                 (timestamp> candidate winner))
             (setf winner candidate))
         finally (return winner)))
 
@@ -1001,8 +996,8 @@
                years)
             (- remaining-days (* years 365)))))
 
-(defun local-time-decode-date (time)
-  (declare (type local-time time))
+(defun timestamp-decode-date (time)
+  (declare (type timestamp time))
   (multiple-value-bind (years remaining-days)
       (days-to-years (day-of time))
     (let* ((leap-day-p (= remaining-days 365))
@@ -1024,10 +1019,10 @@
        1-based-month
        1-based-day))))
 
-(defun local-time-decode-time (local-time)
-  (declare (type local-time local-time))
+(defun timestamp-decode-time (timestamp)
+  (declare (type timestamp timestamp))
   (multiple-value-bind (hours hour-remainder)
-      (floor (sec-of local-time) +seconds-per-hour+)
+      (floor (sec-of timestamp) +seconds-per-hour+)
     (multiple-value-bind (minutes seconds)
         (floor hour-remainder +seconds-per-minute+)
       (values
@@ -1035,21 +1030,21 @@
        minutes
        seconds))))
 
-(defun decode-local-time (local-time)
+(defun decode-timestamp (timestamp)
   "Returns the decoded time as multiple values: nsec, ss, mm, hh, day, month, year, day-of-week, daylight-saving-time-p, timezone, and the customary timezone abbreviation."
-  (declare (type local-time local-time))
+  (declare (type timestamp timestamp))
   (multiple-value-bind (hours minutes seconds)
-      (local-time-decode-time local-time)
+      (timestamp-decode-time timestamp)
     (multiple-value-bind (year month day)
-        (local-time-decode-date local-time)
+        (timestamp-decode-date timestamp)
       (values
-       (nsec-of local-time)
+       (nsec-of timestamp)
        seconds minutes hours
        day month year
-       (local-time-day-of-week local-time)
-       (nth-value 1 (timezone local-time))
-       (timezone-of local-time)
-       (nth-value 2 (timezone local-time))))))
+       (timestamp-day-of-week timestamp)
+       (nth-value 1 (timezone timestamp))
+       (timezone-of timestamp)
+       (nth-value 2 (timezone timestamp))))))
 
 (defun split-timestring (str &rest args)
   (declare (inline))
@@ -1241,7 +1236,7 @@
                     :allow-missing-time-part-p allow-missing-time-part-p :allow-missing-date-part-p nil))
 
 (defun parse-timestring (timestring &rest args)
-  "Parse a timestring and return the corresponding LOCAL-TIME. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value."
+  "Parse a timestring and return the corresponding TIMESTAMP. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value."
   (destructuring-bind (year month day hour minute second nsec offset-hour offset-minute)
       (apply #'split-timestring timestring args)
     ;; TODO should we assert on month and leap rules here?
@@ -1270,7 +1265,7 @@
       (unless day (setf day 1))
       (unless month (setf month 3))
       (unless year (setf year 2000))
-      (encode-local-time nsec second minute hour day month year :timezone timezone))))
+      (encode-timestamp nsec second minute hour day month year :timezone timezone))))
 
 (defun parse-datestring (string)
   (let* ((*default-timezone* +utc-zone+)
@@ -1282,23 +1277,26 @@
       (error "~S is not a valid date string" string))
     date))
 
-(defun format-rfc3339-timestring (local-time &key destination omit-date-part-p omit-time-part-p
+(defun format-rfc3339-timestring (timestamp &key destination omit-date-part-p omit-time-part-p
                                   omit-timezone-part-p (use-zulu-p t))
-  (format-timestring local-time :destination destination
-                     :omit-date-part-p omit-date-part-p :omit-time-part-p omit-time-part-p
-                     :omit-timezone-part-p omit-timezone-part-p :use-zulu-p use-zulu-p))
+  (format-timestring timestamp
+                     :destination destination
+                     :omit-date-part-p omit-date-part-p
+                     :omit-time-part-p omit-time-part-p
+                     :omit-timezone-part-p omit-timezone-part-p
+                     :use-zulu-p use-zulu-p))
 
-(defun format-timestring (local-time &key destination timezone (omit-date-part-p nil)
+(defun format-timestring (timestamp &key destination timezone (omit-date-part-p nil)
                                      (omit-time-part-p nil) (omit-timezone-part-p omit-time-part-p)
                                      (use-zulu-p t)
                                      (date-elements (if omit-date-part-p 0 3)) (time-elements (if omit-time-part-p 0 4))
                                      (date-separator #\-) (time-separator #\:)
                                      (date-time-separator #\T))
-  "Produces on stream the timestring corresponding to the LOCAL-TIME with the given options. If DESTINATION is NIL, returns a string containing what would have been output.  If DESTINATION is T, prints the string to *standard-output*."
+  "Produces on stream the timestring corresponding to the TIMESTAMP with the given options. If DESTINATION is NIL, returns a string containing what would have been output.  If DESTINATION is T, prints the string to *standard-output*."
   (declare (type (or null stream) destination)
            (type (integer 0 3) date-elements)
            (type (integer 0 4) time-elements)
-           (type local-time local-time)
+           (type timestamp timestamp)
            (optimize (speed 3)))
   (let* ((*print-pretty* nil)
          (*print-circle* nil)
@@ -1306,9 +1304,9 @@
     (setf result
           (with-output-to-string (str nil :element-type 'base-char)
             (when timezone
-              (setf local-time (adjust-to-timezone local-time timezone (make-local-time))))
+              (setf timestamp (adjust-to-timezone timestamp timezone (make-timestamp))))
             (multiple-value-bind (nsec sec minute hour day month year day-of-week daylight-p zone)
-                (decode-local-time local-time)
+                (decode-timestamp timestamp)
               (declare (ignore day-of-week daylight-p))
               (cond
                 ((> date-elements 2)
@@ -1336,7 +1334,7 @@
                          (not (zerop nsec)))
                 (format str ".~6,'0d" (floor nsec 1000)))
               (unless omit-timezone-part-p
-                (let* ((offset (local-timezone local-time zone)))
+                (let* ((offset (timestampzone timestamp zone)))
                   (if (and use-zulu-p
                            (eq zone +utc-zone+))
                       (princ #\Z str)
@@ -1353,17 +1351,17 @@
 (defun format-datestring (date)
   (format-timestring date :omit-time-part-p t))
 
-(defun universal-time (local-time)
-  "Return the UNIVERSAL-TIME corresponding to the LOCAL-TIME"
+(defun universal-time (timestamp)
+  "Return the UNIVERSAL-TIME corresponding to the TIMESTAMP"
   (multiple-value-bind (nsec seconds minutes hours day month year day-of-week daylight-saving-time-p timezone)
-      (decode-local-time local-time)
+      (decode-timestamp timestamp)
     (declare (ignore nsec day-of-week daylight-saving-time-p))
-    (encode-universal-time seconds minutes hours day month year (floor (timezone local-time timezone) #.(- +seconds-per-hour+)))))
+    (encode-universal-time seconds minutes hours day month year (floor (timezone timestamp timezone) #.(- +seconds-per-hour+)))))
 
-(defun internal-time (local-time)
-  "Return the internal system time corresponding to the LOCAL-TIME"
+(defun internal-time (timestamp)
+  "Return the internal system time corresponding to the TIMESTAMP"
   ;; FIXME: How to portably convert between internal and local time?
-  (declare (ignorable local-time))
+  (declare (ignorable timestamp))
   (error "Not implemented"))
 
 (defun read-timestring (stream char)
@@ -1378,7 +1376,7 @@
 
 (defun read-universal-time (stream char arg)
   (declare (ignore char arg))
-  (local-time :universal
+  (timestamp :universal
               (parse-integer
                (with-output-to-string (str)
                  (loop for c = (read-char stream nil #\space)
@@ -1391,14 +1389,15 @@
   (set-dispatch-macro-character #\# #\@ 'read-universal-time)
   (values))
 
-(defmethod print-object ((object local-time) stream)
-  "Print the LOCAL-TIME object using the standard reader notation"
+(defmethod print-object ((object timestamp) stream)
+  "Print the TIMESTAMP object using the standard reader notation"
   (when *print-escape*
     (princ "@" stream))
   (format-timestring object :destination stream))
 
 (defmethod print-object ((object timezone) stream)
   "Print the TIMEZONE object in a reader-rejected manner."
-  (format stream "#<TIMEZONE: ~:[UNLOADED~;~{~a~^ ~}~]>"
-          (timezone-loaded object)
-          (mapcar #'third (timezone-subzones object))))
+  (print-unreadable-object (object stream :type t)
+    (format stream "~:[UNLOADED~;~{~a~^ ~}~]"
+            (timezone-loaded object)
+            (mapcar #'third (timezone-subzones object)))))
