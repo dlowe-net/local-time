@@ -338,12 +338,11 @@
 (defmacro make-timestamp (&rest args)
   `(make-instance 'timestamp ,@args))
 
-(defmacro clone-timestamp (timestamp)
-  (let ((tmp (gensym "TMP")))
-    `(let ((,tmp ,timestamp))
-       (make-instance 'timestamp
-                      :nsec (nsec-of ,tmp) :sec (sec-of ,tmp)
-                      :day (day-of ,tmp)))))
+(defun clone-timestamp (timestamp)
+  (make-instance 'timestamp
+                 :nsec (nsec-of timestamp)
+                 :sec (sec-of timestamp)
+                 :day (day-of timestamp)))
 
 (defun unix-time (timestamp)
   "Return the Unix time corresponding to the TIMESTAMP"
