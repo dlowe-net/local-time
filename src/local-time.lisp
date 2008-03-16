@@ -158,6 +158,7 @@
 (defconstant +minutes-per-day+ 1440)
 (defconstant +minutes-per-hour+ 60)
 (defconstant +seconds-per-day+ 86400)
+
 (defconstant +seconds-per-hour+ 3600)
 (defconstant +seconds-per-minute+ 60)
 
