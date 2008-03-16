@@ -1,5 +1,16 @@
+(cl:in-package :cl-user)
+
+;;; try to load asdf-system-connections
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (unless (asdf:find-system :asdf-system-connections nil)
+    (when (find-package :asdf-install)
+      (eval (read-from-string "(asdf-install:install '#:asdf-system-connections)")))
+    (unless (asdf:find-system :asdf-system-connections nil)
+      (error "The cl-postgres system requires asdf-system-connections. See http://www.cliki.net/asdf-system-connections for details and download instructions.")))
+  (asdf:operate 'asdf:load-op :asdf-system-connections))
+
 (defpackage #:local-time.system
-  (:use :common-lisp :asdf))
+  (:use :common-lisp :asdf :asdf-system-connections))
 
 (in-package #:local-time.system)
 
@@ -28,3 +39,8 @@
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :local-time))))
   nil)
 
+(defsystem-connection cl-postgres-and-local-time
+  :requires (:cl-postgres :local-time)
+  :components ((:module "src"
+                        :components ((:module "integration"
+                                      :components ((:file "cl-postgres")))))))
