@@ -8,7 +8,8 @@
   :version "0.9.3"
   :author "Daniel Lowe <dlowe@bitmuse.com>"
   :description "A library for manipulating dates and times, based on a paper by Erik Naggum"
-  :components ((:file "local-time"))
+  :components ((:module "src"
+                        :components ((:file "local-time"))))
   :depends-on (:cl-fad))
 
 (defsystem #:local-time.test
@@ -17,7 +18,8 @@
   :author "Daniel Lowe <dlowe@sanctuary.org>"
   :description "Testing code for the local-time library"
   :depends-on (:local-time :fiveam)
-  :components ((:file "tests")))
+  :components ((:module "tests"
+                        :components ((:file "tests")))))
 
 (defmethod perform ((op test-op) (system (eql (find-system :local-time))))
   (operate 'load-op '#:local-time.test)
