@@ -611,7 +611,7 @@
           (value (if (= (length change) 3)
                      (third change)
                      (fourth change))))
-      (unless (member part '(:nsec :sec :sec-of-day :hour :day :day-of-week :day-of-month :month :year))
+      (unless (member part '(:nsec :sec :sec-of-day :hour :day :day-of-week :day-of-month :month :year :timezone))
         (error "Unknown timestamp part ~S" part))
       (cond
         ((string= operation "SET")
@@ -715,7 +715,7 @@
                          (direct-adjust :day days-offset
                                         nsec new-sec day)))))))
            (safe-adjust (part offset time)
-             (with-decoded-timestamp (:nsec nsec :sec sec :hour hour :day day
+             (with-decoded-local-time (:nsec nsec :sec sec :hour hour :day day
                                        :month month :year year)
                  time
                (multiple-value-bind (month-new year-new)
@@ -727,7 +727,7 @@
                     year)
                  ;; Almost there. However, it is necessary to check for
                  ;; overflows first
-                 (encode-timestamp-into-values nsec sec month hour
+                 (encode-local-time-into-values nsec sec month hour
                                                 (fix-overflow-in-days day month-new year-new)
                                                 month-new year-new)))))
     (ecase part
