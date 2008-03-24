@@ -98,7 +98,24 @@
 
 (in-package :local-time)
 
-(declaim (inline now today encode-interval format-rfc3339-timestring)
+;;; Types
+
+(defclass timestamp ()
+  ((day :accessor day-of :initarg :day :initform 0 :type integer)
+   (sec :accessor sec-of :initarg :sec :initform 0 :type integer)
+   (nsec :accessor nsec-of :initarg :nsec :initform 0 :type (integer 0 999999999))))
+
+(defstruct timezone
+  (transitions nil :type list)
+  (subzones nil :type list)
+  (leap-seconds nil :type list)
+  (path nil)
+  (name "anonymous" :type string)
+  (loaded nil :type boolean))
+
+;;; Declaims
+
+(declaim (inline now today encode-duration format-rfc3339-timestring)
          (ftype (function * (values simple-base-string)) format-rfc3339-timestring)
          (ftype (function * (values simple-base-string)) format-timestring)
          (ftype (function * (values simple-base-string)) format-interval)
@@ -168,14 +185,6 @@
 ;; we currently just do the date arithmetic and don't adjust for the
 ;; time of day.
 (defparameter +modified-julian-date-offset+ -51604)
-
-(defstruct timezone
-  (transitions nil :type list)
-  (subzones nil :type list)
-  (leap-seconds nil :type list)
-  (path nil)
-  (name "anonymous" :type string)
-  (loaded nil :type boolean))
 
 (defun read-binary-integer (stream byte-count &optional (signed nil))
   "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
@@ -329,11 +338,6 @@
       ;; walk the Etc dir last, so they will be the first entries in the *timezone-offset->timezone* map
       (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) visitor :directories nil)
       (setf *timezone-repository* (sort *timezone-repository* #'string< :key #'first)))))
-
-(defclass timestamp ()
-  ((day :accessor day-of :initarg :day :initform 0 :type integer)
-   (sec :accessor sec-of :initarg :sec :initform 0 :type integer)
-   (nsec :accessor nsec-of :initarg :nsec :initform 0 :type (integer 0 999999999))))
 
 (defmacro make-timestamp (&rest args)
   `(make-instance 'timestamp ,@args))
