@@ -12,15 +12,15 @@
                (floor usecs +usecs-per-day+)
              (multiple-value-bind (secs usecs)
                  (floor usecs 1000000)
-               (local-time:make-local-time :nsec (* usecs 1000)
-                                           :sec secs
-                                           :day (+ days +postgres-day-offset-to-local-time+)
-                                           :timezone local-time:+utc-zone+)))))
+               (local-time:make-timestamp :nsec (* usecs 1000)
+                                          :sec secs
+                                          :day (+ days +postgres-day-offset-to-local-time+)
+                                          :timezone local-time:+utc-zone+)))))
     (cl-postgres:set-sql-datetime-readers
      :table table
      :date
      (lambda (days)
-       (local-time:make-local-time
+       (local-time:make-timestamp
         :nsec 0 :sec 0 :day (+ days +postgres-day-offset-to-local-time+)
         :timezone local-time:+utc-zone+))
      :timestamp #'timestamp-reader
@@ -36,11 +36,11 @@
          (assert (= days 0))
          (multiple-value-bind (secs usecs)
              (floor usecs 1000000)
-           (local-time:make-local-time
+           (local-time:make-timestamp
             :nsec (* usecs 1000)
             :sec secs
             :day 0
             :timezone local-time:+utc-zone+)))))))
 
-(defmethod cl-postgres:to-sql-string ((arg local-time:local-time))
+(defmethod cl-postgres:to-sql-string ((arg local-time:timestamp))
   (local-time:format-rfc3339-timestring arg))
