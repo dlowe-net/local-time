@@ -375,21 +375,21 @@
      (second subzone)
      (third subzone))))
 
-(defun %adjust-to-offset (sec day offset)
-  "Returns two values, the values of new DAY and SEC slots of the timestamp adjusted to the given timezone."
-  (declare (type integer sec day offset))
-  (multiple-value-bind (offset-day offset-sec)
-      (truncate (abs offset) +seconds-per-day+)
-    (let* ((offset-sign (signum offset))
-           (new-sec (+ sec (* offset-sign offset-sec)))
-           (new-day (+ day (* offset-sign offset-day))))
-      (cond ((minusp new-sec)
-             (incf new-sec +seconds-per-day+)
-             (decf new-day))
-            ((>= new-sec +seconds-per-day+)
-             (incf new-day)
-             (decf new-sec +seconds-per-day+)))
-      (values new-sec new-day))))
+(defun timestampzone (adjusted-timestamp
+                       &optional (timezone *default-timezone*))
+  "Return the local timezone adjustment applicable at the already adjusted-local-time. Used to reverse the effect of TIMEZONE and LOCAL-TIME-ADJUST."
+  (let* ((unix-time (unix-time adjusted-local-time))
+         (subzone-idx (or
+                       (second (find-if
+                                (lambda (tuple)
+                                  (> unix-time
+                                     (- (first tuple)
+                                        (first
+                                         (nth (second tuple)
+                                              (timezone-subzones timezone))))))
+                                (timezone-transitions timezone)))
+                       0)))
+    (first (nth subzone-idx (timezone-subzones timezone)))))
 
 (defun %adjust-to-timezone (source timezone)
   (%adjust-to-offset (sec-of source)
