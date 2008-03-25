@@ -716,7 +716,7 @@
                                         nsec new-sec day)))))))
            (safe-adjust (part offset time)
              (with-decoded-local-time (:nsec nsec :sec sec :hour hour :day day
-                                       :month month :year year)
+                                       :month month :year year :timezone timezone)
                  time
                (multiple-value-bind (month-new year-new)
                    (normalize-month-year-pair
@@ -729,7 +729,8 @@
                  ;; overflows first
                  (encode-local-time-into-values nsec sec month hour
                                                 (fix-overflow-in-days day month-new year-new)
-                                                month-new year-new)))))
+                                                month-new year-new
+                                                :timezone timezone)))))
     (ecase part
       ((:nsec :sec :minute :hour :day :day-of-week)
        (direct-adjust part offset
