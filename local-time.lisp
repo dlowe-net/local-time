@@ -125,6 +125,8 @@
                                                t t t))
                 decode-timestamp))
 
+;;; Variables
+
 (defparameter *project-home-directory*
   (make-pathname :directory (pathname-directory
                              (if (find-package "ASDF")
@@ -134,25 +136,25 @@
 
 ;;; Month information
 (defparameter +month-names+
-  '("" "January" "February" "March" "April" "May" "June" "July" "August"
+  #("" "January" "February" "March" "April" "May" "June" "July" "August"
     "September" "October" "November" "December"))
 (defparameter +short-month-names+
-  '("" "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov"
+  #("" "Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov"
     "Dec"))
-
-(defconstant +seconds-per-day+ 86400)
-
-(defconstant +seconds-per-hour+ 3600)
-
-(defconstant +seconds-per-minute+ 60)
-
-(defconstant +minutes-per-day+ 1440)
-
-(defconstant +minutes-per-hour+ 60)
-
-(defconstant +hours-per-day+ 24)
+(defparameter +day-names+
+  #("Sunday" "Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday"))
+(defparameter +day-names-as-keywords+
+  #(:sunday :monday :tuesday :wednesday :thursday :friday :saturday))
+(defparameter +short-day-names+
+  #("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat"))
 
 (defconstant +days-per-week+ 7)
+(defconstant +hours-per-day+ 24)
+(defconstant +minutes-per-day+ 1440)
+(defconstant +minutes-per-hour+ 60)
+(defconstant +seconds-per-day+ 86400)
+(defconstant +seconds-per-hour+ 3600)
+(defconstant +seconds-per-minute+ 60)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter +rotated-month-days-without-leap-day+ #.(coerce #(31 30 31 30 31 31 30 31 30 31 31 28)
@@ -165,16 +167,6 @@
                  for days :across +rotated-month-days-without-leap-day+
                  collect (incf sum days)))
      '(simple-array fixnum (*)))))
-
-;;; Day information
-(defparameter +day-names+
-  '("Sunday" "Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday"))
-
-(defparameter +day-names-as-keywords+
-  '(:sunday :monday :tuesday :wednesday :thursday :friday :saturday))
-
-(defparameter +short-day-names+
-  '("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat"))
 
 ;; The astronomical julian date offset is the number of days between
 ;; the current date and -4713-01-01T00:00:00+00:00
@@ -484,7 +476,7 @@
        (declare (ignore ,@ignores))
        ,@forms)))
 
-(defun encode-interval (&key (nsec 0) (usec 0) (msec 0) (sec 0) (minute 0) (hour 0) (day 0) (week 0))
+(defun encode-duration (&key (nsec 0) (usec 0) (msec 0) (sec 0) (minute 0) (hour 0) (day 0) (week 0))
   (+ (* +seconds-per-minute+
         (+ (* +minutes-per-hour+
               (+ (* +hours-per-day+
