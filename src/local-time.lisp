@@ -1253,7 +1253,7 @@
          (result))
     (setf result
           (with-output-to-string (str nil :element-type 'base-char)
-            (multiple-value-bind (nsec sec minute hour day month year day-of-week daylight-p zone)
+            (multiple-value-bind (nsec sec minute hour day month year day-of-week daylight-p)
                 (decode-timestamp timestamp :timezone timezone)
               (declare (ignore day-of-week daylight-p))
               (cond
