@@ -9,7 +9,7 @@
 (in-suite* #:local-time.make :in :local-time)
 
 (test make-timestamp
-  (let ((timestamp (make-timestamp :nsec 1 :sec 2 :day 3 :timezone *default-timezone*)))
+  (let ((timestamp (make-timestamp :nsec 1 :sec 2 :day 3)))
     (is-every =
       (nsec-of timestamp) 1
       (sec-of timestamp) 2
@@ -125,127 +125,125 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test encode-timestamp
-  (let ((timestamp (encode-timestamp 0 0 0 0 1 3 2000)))
+  (let ((timestamp (encode-timestamp 0 0 0 0 1 3 2000 :offset 0)))
     (is-every =
       (nsec-of timestamp) 0
       (day-of timestamp) 0
       (sec-of timestamp) 0))
-  (let ((timestamp (encode-timestamp 0 0 0 0 29 2 2000)))
+  (let ((timestamp (encode-timestamp 0 0 0 0 29 2 2000 :offset 0)))
     (is-every =
       (nsec-of timestamp) 0
       (day-of timestamp) -1
       (sec-of timestamp) 0))
-  (let ((timestamp (encode-timestamp 0 0 0 0 2 3 2000)))
+  (let ((timestamp (encode-timestamp 0 0 0 0 2 3 2000 :offset 0)))
     (is-every =
       (nsec-of timestamp) 0
       (sec-of timestamp) 0
       (day-of timestamp) 1))
-  (let ((timestamp (encode-timestamp 0 0 0 0 1 1 2000)))
+  (let ((timestamp (encode-timestamp 0 0 0 0 1 1 2000 :offset 0)))
     (is-every =
       (nsec-of timestamp) 0
       (sec-of timestamp) 0
       (day-of timestamp) -60))
-  (let ((timestamp (encode-timestamp 0 0 0 0 1 3 2001)))
+  (let ((timestamp (encode-timestamp 0 0 0 0 1 3 2001 :offset 0)))
     (is-every =
       (nsec-of timestamp) 0
       (sec-of timestamp) 0
       (day-of timestamp) 365)))
 
 (defmacro encode-decode-test (args &body body)
-  `(let ((timestamp (encode-timestamp ,@(subseq args 0 7))))
-    (is (equal (decode-timestamp timestamp)
-               (values ,@args ,@(let ((stars nil))
-                                     (dotimes (n (- 11 (length args)))
+  `(let ((timestamp (encode-timestamp ,@(subseq args 0 7) :offset 0)))
+    (is (equal (values ,@args ,@(let ((stars nil))
+                                     (dotimes (n (- 7 (length args)))
                                        (push '* stars))
-                                     stars))))
+                                     stars))
+               (decode-timestamp timestamp :timezone local-time:+utc-zone+)))
     ,@body))
 
 (test decode-timestamp
   (encode-decode-test (5 5 5 5 5 5 1990 6))
   (encode-decode-test (0 0 0 0 1 3 2001 4))
   (encode-decode-test (0 0 0 0 1 3 1998 0))
-  (encode-decode-test (1 2 3 4 5 6 2008 4)
-    (is (eq (timezone-of timestamp) *default-timezone*))
-    (is (= 3 (length (multiple-value-list (timezone timestamp))))))
-  (encode-decode-test (0 0 0 0 1 1 0)
-    (is (equal (multiple-value-list (decode-timestamp timestamp))
-               `(0 0 0 0 1 1 0 6
-                 ,(nth-value 1 (timezone timestamp))
-                 ,*default-timezone*
-                 ,(nth-value 2 (timezone timestamp))))))
+  (encode-decode-test (1 2 3 4 5 6 2008 4))
+  (encode-decode-test (0 0 0 0 1 1 1 1)))
+
+(test random-decode-timestamp
   (let ((timestamp (make-timestamp
                      :day (- (random 65535) 36767)
                      :sec (random 86400)
-                     :nsec (random 1000))))
-    (multiple-value-bind (ms ss mm hh day mon year) (decode-timestamp timestamp)
-      (is (timestamp= timestamp (encode-timestamp ms ss mm hh day mon year))))))
+                     :nsec (random 1000000000))))
+    (multiple-value-bind (ns ss mm hh day mon year)
+        (decode-timestamp timestamp :timezone local-time:+utc-zone+)
+      (is (timestamp= timestamp
+                      (encode-timestamp ns ss mm hh day mon year :offset 0))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test format-timestring
-  (is-every string=
-    "2008-06-05T04:03:02.000001"
-    (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008) :omit-timezone-part-p t)
+  (let ((local-time::*default-timezone* local-time::+utc-zone+))
+    (is-every string=
+      "2008-06-05T04:03:02.000001"
+      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t)
 
-    "2008-06-05T04:03:02.000001-05:00"
-    (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008
-                                          :timezone (timestamp::make-timezone
-                                                     :subzones `((,(* (* 60 5) -60) nil "anonymous" nil nil))
-                                                     :loaded t)))
+      "2008-06-05T04:03:02.000001-05:00"
 
-    "2008-06-05T04:03:02.000001Z"
-    (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :timezone +utc-zone+) :use-zulu-p t)
+      (let ((utc-5 (local-time::make-timezone :transitions nil
+                                              :subzones '((-18000 nil "UTC-5"))
+                                              :leap-seconds nil
+                                              :path nil
+                                              :name "UTC-5"
+                                              :loaded t)))
+        (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008
+                                             :offset (* 3600 -5))
+                           :timezone utc-5))
 
-    ;; note: nsec overflows here
-    "2008-06-05T04:03:03.234567+00:00"
-    (format-timestring (encode-timestamp 1234567890 2 3 4 5 6 2008 :timezone +utc-zone+) :use-zulu-p nil)
+      "2008-06-05T04:03:02.000001Z"
+      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0)
+                         :timezone local-time::+utc-zone+
+                         :use-zulu-p t)
 
-    "-06-05T04:03:02.000001"
-    (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008) :omit-timezone-part-p t :date-elements 2)
+      ;; note: nsec overflows here
+      "2008-06-05T04:03:03.234567+00:00"
+      (format-timestring (encode-timestamp 1234567890 2 3 4 5 6 2008 :offset 0) :use-zulu-p nil)
 
-    "-05T04:03:02.000001"
-    (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008) :omit-timezone-part-p t :date-elements 1)
+      "-06-05T04:03:02.000001"
+      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :date-elements 2)
 
-    "04:03:02.000001"
-    (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t)
+      "-05T04:03:02.000001"
+      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :date-elements 1)
 
-    "04:03:02"
-    (format-timestring (encode-timestamp 1 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t :time-elements 3)
+      "04:03:02.000001"
+      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :omit-date-part-p t)
 
-    "-0005-06-05T04:03:02.000001"
-    (format-timestring (encode-timestamp 1000 2 3 4 5 6 -5) :omit-timezone-part-p t)
+      "04:03:02"
+      (format-timestring (encode-timestamp 1 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :omit-date-part-p t :time-elements 3)
 
-    ""
-    (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008) :omit-time-part-p t :omit-date-part-p t)
+      "-0005-06-05T04:03:02.000001"
+      (format-timestring (encode-timestamp 1000 2 3 4 5 6 -5 :offset 0) :omit-timezone-part-p t)
 
-    "04"
-    (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t :time-elements 1)
+      ""
+      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-time-part-p t :omit-date-part-p t)
 
-    "04:03"
-    (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008) :omit-timezone-part-p t :omit-date-part-p t :time-elements 2)))
+      "04"
+      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :omit-date-part-p t :time-elements 1)
+
+      "04:03"
+      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :omit-date-part-p t :time-elements 2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(test timestampzone
-  ;; In 2005, April 4th is the start of daylight savings time.  The
-  ;; difference between daylight savings and non-daylight savings
-  ;; is one hour (for now)
-  (is (= 3600
-         (- (timestampzone (encode-timestamp 0 0 0 0 4 4 2005 :timezone +utc-zone+))
-            (timestampzone (encode-timestamp 0 0 0 0 3 4 2005 :timezone +utc-zone+))))))
-
 (test unix-time
-  (is (eql 0 (unix-time (encode-timestamp 0 0 0 0 1 1 1970)))))
+  (is (eql 0 (unix-time (encode-timestamp 0 0 0 0 1 1 1970 :offset 0)))))
 
 (test universal-time
   (is (equal (values 2 3 4 5 6 2008 3 * *)
-             (decode-universal-time (universal-time (encode-timestamp 1 2 3 4 5 6 2008))))))
+             (decode-universal-time (universal-time (encode-timestamp 1 2 3 4 5 6 2008 :offset 0)) 0))))
   
 (test timestamp
   (let ((now (now)))
     (setf (nsec-of now) 0)
     (is (timestamp= now
-                     (timestamp :unix (unix-time now)))))
+                     (timestamp :unix (unix-time now) :offset 0))))
   (let ((now (get-universal-time)))
     (is (equal now
                (universal-time (timestamp :universal now))))))
@@ -259,6 +257,7 @@
         (b (parse-timestring "2001-01-02T00:00:00")))
     (is (= 4 (timestamp-whole-year-difference a b)))))
 
+#+nil
 (test adjust-days
   (let ((sunday (parse-timestring "2006-12-17T01:02:03Z")))
     (is (timestamp= (parse-timestring "2006-12-11T01:02:03Z")
@@ -276,7 +275,7 @@
   (let ((timestamp (encode-timestamp 0 0 0 0 1 1 0)))
     (is (timestamp= timestamp
                      (parse-timestring "0000-01-01T00:00:00,0"))))
-  (let ((timestamp (encode-timestamp 0 0 0 0 1 1 0 :timezone +utc-zone+)))
+  (let ((timestamp (encode-timestamp 0 0 0 0 1 1 0 :offset 0)))
     (is (timestamp= timestamp
                      (parse-timestring "0000-01-01T00:00:00Z"))))
   (let ((timestamp (encode-timestamp 0 0 0 0 1 1 2006)))
@@ -293,30 +292,8 @@
                    (parse-timestring "--23T::02" :allow-missing-elements-p t)))
   (is (timestamp= (encode-timestamp 80000000 7 6 5 1 3 2000)
                    (parse-timestring "T05:06:07,08")))
-  (is (timestamp= (encode-timestamp 940703000 28 56 16 20 2 2008 :timezone +utc-zone+)
-                   (parse-timestring "2008-02-20T16:56:28.940703Z")))
-  (let ((value "2006-06-06T06:06:06-02:30"))
-    (is (string= value (format-timestring (parse-timestring value))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(test adjust-timestamp
-  (let ((utc-1 (timestamp::make-timezone :subzones '((-3600 NIL "UTC-1" T NIL))
-                                          :loaded t))
-        (utc+1 (timestamp::make-timezone :subzones '((+3600 NIL "UTC+1" T NIL))
-                                          :loaded t))
-        (epoch (timestamp :unix 0 :timezone +utc-zone+)))
-    (is (equal (decode-timestamp (adjust-timestamp epoch (set :timezone utc-1)))
-               ;; ms ss mm hh day mon year wday ds-p zone abbrev
-               (values 00 00 00 23 31 12 1969 3 nil utc-1 "UTC-1")))
-    (let ((timestamp (timestamp :unix 3600 :timezone +utc-zone+)))
-      (is (equal (decode-timestamp (adjust-timestamp timestamp (set :timezone utc-1)))
-                 ;; ms ss mm hh day mon year
-                 (values 00 00 00 00 01 01 1970 4 nil utc-1 "UTC-1"))))
-    (is (equal (decode-timestamp (adjust-timestamp epoch (set :timezone utc+1)))
-               ;; ms ss mm hh day mon year
-               (values 00 00 00 01 01 01 1970 4 nil utc+1 "UTC+1")))))
-
+  (is (timestamp= (encode-timestamp 940703000 28 56 16 20 2 2008 :offset 0)
+                   (parse-timestring "2008-02-20T16:56:28.940703Z"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -324,14 +301,14 @@
   (let ((now (now)))
     (is (timestamp= now
                      (with-input-from-string (ins (format-timestring now))
-                       (timestamp::read-timestring ins #\@))))))
+                       (local-time::read-timestring ins #\@))))))
 
 (test read-universal-time
   (let ((now (now)))
     (setf (nsec-of now) 0)
     (is (timestamp= now
                      (with-input-from-string (ins (princ-to-string (universal-time now)))
-                       (timestamp::read-universal-time ins #\@ nil))))))
+                       (local-time::read-universal-time ins #\@ nil))))))
 
 (test leap-year-printing
   (let ((timestamp (parse-timestring "2004-02-29")))
@@ -348,7 +325,7 @@
                                              (#.(* 4 365) 2004 02 29)
                                              (#.(1+ (* 4 365)) 2004 03 01))
         do (multiple-value-bind (year* month* day*)
-               (timestamp::timestamp-decode-date (make-timestamp :day total-day))
+               (local-time::timestamp-decode-date total-day)
              (is (= year year*))
              (is (= month month*))
              (is (= day day*)))))
@@ -387,11 +364,10 @@
         (is (= (nsec-of unix-time) 123456789))
         (is (= (nsec-of now-time) 123456789))))
 
-(defun test-parse/format-consistency (&key (start-day -100000) (end-day 100000)
-                                      (timezone +utc-zone+))
+(defun test-parse/format-consistency (&key (start-day -100000) (end-day 100000))
   (declare (optimize debug))
   (loop
-     with time = (make-timestamp :timezone timezone)
+     with time = (make-timestamp)
      for day from start-day upto end-day
      for index upfrom 0 do
        (setf (day-of time) day)
