@@ -70,9 +70,10 @@
            #:format-datestring
            #:format-rfc3339-timestring
            #:parse-rfc3339-timestring
-           #:universal-time
-           #:internal-time
-           #:unix-time
+           #:universal-to-timestamp
+           #:timestamp-to-universal
+           #:unix-to-timestamp
+           #:timestamp-to-unix
            #:timestamp-subtimezone
            #:define-timezone
            #:*default-timezone*
@@ -138,7 +139,6 @@
                                  (eval (read-from-string "(asdf:system-definition-pathname
                                                             (asdf:find-system '#:local-time))"))
                                  *load-pathname*))))
-
 ;;; Month information
 (defparameter +month-names+
   #("" "January" "February" "March" "April" "May" "June" "July" "August"
@@ -350,14 +350,6 @@
                  :sec (sec-of timestamp)
                  :day (day-of timestamp)))
 
-(defun unix-time (timestamp)
-  "Return the Unix time corresponding to the TIMESTAMP"
-  (declare (type timestamp timestamp))
-  (+ (* (+ (day-of timestamp)
-           11017)
-        +seconds-per-day+)
-     (sec-of timestamp)))
-
 (defun timestamp-subtimezone (timestamp timezone)
   "Return as multiple values the time zone as the number of seconds east of UTC, a boolean daylight-saving-p, and the customary abbreviation of the timezone."
   (declare (type timestamp timestamp)
@@ -365,7 +357,7 @@
   (realize-timezone timezone)
   (let* ((zone (realize-timezone (or timezone *default-timezone*)))
          (subzone-idx (or
-                       (second (assoc (unix-time timestamp)
+                       (second (assoc (timestamp-to-unix timestamp)
                                       (timezone-transitions zone)
                                       :test #'>))
                        0))
@@ -823,36 +815,46 @@
          :sec sec
          :day day))))
 
-(defun timestamp (&key universal unix (nsec 0) (offset (get-default-offset)))
-  "Produce a TIMESTAMP instance from the provided numeric time representation or try to extract the most accurate current time if none of them is provided."
-  (cond
-    (universal
-     ;; universal time is UTC seconds from 1900-01-01T00:00:00.  Offset is
-     ;; ignored in this case.
-     (let ((adjusted-universal (- universal #.(encode-universal-time 0 0 0 1 3 2000 0))))
-       (multiple-value-bind (day second)
-           (floor adjusted-universal +seconds-per-day+)
-         (make-timestamp :day day :sec second :nsec nsec))))
-    (unix
-     (let* ((adjusted-unix (- unix offset))
-            (days (floor adjusted-unix +seconds-per-day+))
-            (secs (- adjusted-unix (* days +seconds-per-day+))))
-       (make-timestamp :day (- days 11017) :sec secs :nsec nsec)))
-    (t #+sbcl
-       (multiple-value-bind (_ sec usec)
-           (sb-unix:unix-gettimeofday)
-         (declare (ignore _) (type (unsigned-byte 32) sec usec))
-         (timestamp :unix sec
-                    :nsec (or nsec (* usec 1000))
-                    :offset 0))
-       #-sbcl
-       (timestamp :universal (get-universal-time) :nsec nsec))))
+(defun universal-to-timestamp (universal &key (nsec 0))
+  "Returns a timestamp corresponding to the given universal time."
+  ;; universal time is seconds from 1900-01-01T00:00:00Z.
+  (let ((adjusted-universal (- universal #.(encode-universal-time 0 0 0 1 3 2000 0))))
+    (multiple-value-bind (day second)
+        (floor adjusted-universal +seconds-per-day+)
+      (make-timestamp :day day :sec second :nsec nsec))))
+
+(defun timestamp-to-universal (timestamp)
+  "Return the UNIVERSAL-TIME corresponding to the TIMESTAMP"
+  ;; universal time is seconds from 1900-01-01T00:00:00Z
+  (+ (* (day-of timestamp) +seconds-per-day+)
+     (sec-of timestamp)
+     #.(encode-universal-time 0 0 0 1 3 2000 0)))
+
+(defun unix-to-timestamp (unix &key (nsec 0))
+  ;; Unix time is seconds from 1970-01-01T00:00:00Z.
+  (multiple-value-bind (days secs)
+      (floor unix +seconds-per-day+)
+    (make-timestamp :day (- days 11017) :sec secs :nsec nsec)))
+
+(defun timestamp-to-unix (timestamp)
+  "Return the Unix time corresponding to the TIMESTAMP"
+  (declare (type timestamp timestamp))
+  (+ (* (+ (day-of timestamp)
+           11017)
+        +seconds-per-day+)
+     (sec-of timestamp)))
+
+(defun now (&key nsec)
+  #+sbcl
+  (multiple-value-bind (_ sec usec)
+      (sb-unix:unix-gettimeofday)
+    (declare (ignore _) (type (unsigned-byte 32) sec usec))
+    (unix-to-timestamp sec :nsec (or nsec (* usec 1000))))
+  #-sbcl
+  (universal-to-timestamp (get-universal-time) :nsec nsec))
 
 (defun today ()
   (minimize-time-part (now) :timezone +utc-zone+))
-
-(defun now ()
-  (timestamp))
 
 (defmacro defcomparator (name &body body)
   (let ((pair-comparator-name (intern (concatenate 'string "%" (string name)))))
@@ -1300,19 +1302,6 @@
 (defun format-datestring (date)
   (format-timestring date :omit-time-part-p t))
 
-(defun universal-time (timestamp)
-  "Return the UNIVERSAL-TIME corresponding to the TIMESTAMP"
-  ;; universal time is UTC seconds from 1900-01-01T00:00:00
-  (+ (* (day-of timestamp) +seconds-per-day+)
-     (sec-of timestamp)
-     #.(encode-universal-time 0 0 0 1 3 2000 0)))
-
-(defun internal-time (timestamp)
-  "Return the internal system time corresponding to the TIMESTAMP"
-  ;; FIXME: How to portably convert between internal and local time?
-  (declare (ignorable timestamp))
-  (error "Not implemented"))
-
 (defun read-timestring (stream char)
   (declare (ignore char))
   (parse-timestring
@@ -1325,7 +1314,7 @@
 
 (defun read-universal-time (stream char arg)
   (declare (ignore char arg))
-  (timestamp :universal
+  (universal-to-timestamp
               (parse-integer
                (with-output-to-string (str)
                  (loop for c = (read-char stream nil #\space)
