@@ -158,9 +158,9 @@
 (defconstant +minutes-per-day+ 1440)
 (defconstant +minutes-per-hour+ 60)
 (defconstant +seconds-per-day+ 86400)
-
 (defconstant +seconds-per-hour+ 3600)
 (defconstant +seconds-per-minute+ 60)
+(defconstant +usecs-per-day+ 86400000000)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter +rotated-month-days-without-leap-day+ #.(coerce #(31 30 31 30 31 31 30 31 30 31 31 28)
@@ -375,21 +375,21 @@
      (second subzone)
      (third subzone))))
 
-(defun timestampzone (adjusted-timestamp
-                       &optional (timezone *default-timezone*))
-  "Return the local timezone adjustment applicable at the already adjusted-local-time. Used to reverse the effect of TIMEZONE and LOCAL-TIME-ADJUST."
-  (let* ((unix-time (unix-time adjusted-local-time))
-         (subzone-idx (or
-                       (second (find-if
-                                (lambda (tuple)
-                                  (> unix-time
-                                     (- (first tuple)
-                                        (first
-                                         (nth (second tuple)
-                                              (timezone-subzones timezone))))))
-                                (timezone-transitions timezone)))
-                       0)))
-    (first (nth subzone-idx (timezone-subzones timezone)))))
+(defun %adjust-to-offset (sec day offset)
+  "Returns two values, the values of new DAY and SEC slots of the timestamp adjusted to the given timezone."
+  (declare (type integer sec day offset))
+  (multiple-value-bind (offset-day offset-sec)
+      (truncate (abs offset) +seconds-per-day+)
+    (let* ((offset-sign (signum offset))
+           (new-sec (+ sec (* offset-sign offset-sec)))
+           (new-day (+ day (* offset-sign offset-day))))
+      (cond ((minusp new-sec)
+             (incf new-sec +seconds-per-day+)
+             (decf new-day))
+            ((>= new-sec +seconds-per-day+)
+             (incf new-day)
+             (decf new-sec +seconds-per-day+)))
+      (values new-sec new-day))))
 
 (defun %adjust-to-timezone (source timezone)
   (%adjust-to-offset (sec-of source)
@@ -611,7 +611,8 @@
           (value (if (= (length change) 3)
                      (third change)
                      (fourth change))))
-      (unless (member part '(:nsec :sec :sec-of-day :hour :day :day-of-week :day-of-month :month :year :timezone))
+      (unless (or (consp part)
+                  (member part '(:nsec :sec :sec-of-day :minute :hour :day :day-of-week :day-of-month :month :year)))
         (error "Unknown timestamp part ~S" part))
       (cond
         ((string= operation "SET")
@@ -715,8 +716,8 @@
                          (direct-adjust :day days-offset
                                         nsec new-sec day)))))))
            (safe-adjust (part offset time)
-             (with-decoded-local-time (:nsec nsec :sec sec :hour hour :day day
-                                       :month month :year year :timezone timezone)
+             (with-decoded-timestamp (:nsec nsec :sec sec :minute minute :hour hour :day day
+                                      :month month :year year)
                  time
                (multiple-value-bind (month-new year-new)
                    (normalize-month-year-pair
@@ -727,10 +728,9 @@
                     year)
                  ;; Almost there. However, it is necessary to check for
                  ;; overflows first
-                 (encode-local-time-into-values nsec sec month hour
-                                                (fix-overflow-in-days day month-new year-new)
-                                                month-new year-new
-                                                :timezone timezone)))))
+                 (encode-timestamp-into-values nsec sec minute hour
+                                               (fix-overflow-in-days day month-new year-new)
+                                               month-new year-new)))))
     (ecase part
       ((:nsec :sec :minute :hour :day :day-of-week)
        (direct-adjust part offset
@@ -839,7 +839,7 @@
             (secs (- adjusted-unix (* days +seconds-per-day+))))
        (make-timestamp :day (- days 11017) :sec secs :nsec nsec)))
     (t #+sbcl
-       (multiple-value-bind (_ sec usec offset-minutes)
+       (multiple-value-bind (_ sec usec)
            (sb-unix:unix-gettimeofday)
          (declare (ignore _) (type (unsigned-byte 32) sec usec))
          (timestamp :unix sec
