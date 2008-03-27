@@ -53,10 +53,10 @@
            #:days-in-month
            #:timestamp-
            #:timestamp+
-           #:interval
-           #:decode-interval
-           #:parse-interval
-           #:format-interval
+           #:duration
+           #:decode-duration
+           #:parse-duration
+           #:format-duration
            #:maximize-time-part
            #:minimize-time-part
            #:first-day-of-year
@@ -118,7 +118,7 @@
 (declaim (inline now today encode-duration format-rfc3339-timestring)
          (ftype (function * (values simple-base-string)) format-rfc3339-timestring)
          (ftype (function * (values simple-base-string)) format-timestring)
-         (ftype (function * (values simple-base-string)) format-interval)
+         (ftype (function * (values simple-base-string)) format-duration)
          (ftype (function * (values fixnum)) local-timezone)
          (ftype (function (timestamp) (values (integer 0 999999999) (integer 0 59) (integer 0 59) (integer 0 23)
                                                (integer 1 31) (integer 1 12) (integer -1000000 1000000)
@@ -501,18 +501,18 @@
            msec)
         1000)))
 
-(defun decode-interval (interval)
-  "Returns the decoded interval as multiple values: nsec, usec, msec, sec, minute, hour, day, week."
-  (multiple-value-bind (second-interval second-remainder)
-      (floor interval)
-    (multiple-value-bind (minute-interval second)
-        (floor second-interval +seconds-per-minute+)
-      (multiple-value-bind (hour-interval minute)
-          (floor minute-interval +minutes-per-hour+)
-        (multiple-value-bind (day-interval hour)
-            (floor hour-interval +hours-per-day+)
+(defun decode-duration (duration)
+  "Returns the decoded duration as multiple values: nsec, usec, msec, sec, minute, hour, day, week."
+  (multiple-value-bind (second-duration second-remainder)
+      (floor duration)
+    (multiple-value-bind (minute-duration second)
+        (floor second-duration +seconds-per-minute+)
+      (multiple-value-bind (hour-duration minute)
+          (floor minute-duration +minutes-per-hour+)
+        (multiple-value-bind (day-duration hour)
+            (floor hour-duration +hours-per-day+)
           (multiple-value-bind (week day)
-              (floor day-interval +days-per-week+)
+              (floor day-duration +days-per-week+)
             (multiple-value-bind (msec msec-remainder)
                 (floor (* second-remainder 1000))
               (multiple-value-bind (usec usec-remainder)
@@ -523,11 +523,11 @@
                   (values nsec usec msec second minute hour day week))))))))))
 
 ;; TODO: factor out useful parts from split-timestring and refactor this code
-(defun parse-interval (intervalstr &key (date-separator #\-) (date-time-separator #\T))
-  (let* ((date-time-separator-index (position date-time-separator intervalstr))
+(defun parse-duration (durationstr &key (date-separator #\-) (date-time-separator #\T))
+  (let* ((date-time-separator-index (position date-time-separator durationstr))
          (extra-sec
           (if date-time-separator-index
-              (let ((datestr (subseq intervalstr 0 date-time-separator-index)))
+              (let ((datestr (subseq durationstr 0 date-time-separator-index)))
                 (* +seconds-per-day+
                    (multiple-value-bind (first-integer pos)
                        (parse-integer datestr :junk-allowed t)
@@ -539,14 +539,14 @@
                               (parse-integer datestr :start (1+ pos))))))))
               0)))
     (with-decoded-timestamp (:nsec nsec :sec sec :minute minute :hour hour)
-        (parse-timestring (subseq intervalstr (or date-time-separator-index 0)))
-      (encode-interval :nsec nsec :sec (+ extra-sec sec) :minute minute :hour hour))))
+        (parse-timestring (subseq durationstr (or date-time-separator-index 0)))
+      (encode-duration :nsec nsec :sec (+ extra-sec sec) :minute minute :hour hour))))
 
-(defun format-interval (interval &key (omit-date-part-p nil) (omit-time-part-p nil)
+(defun format-duration (duration &key (omit-date-part-p nil) (omit-time-part-p nil)
                         (date-elements (if omit-date-part-p 0 2)) (time-elements (if omit-time-part-p 0 4))
                         (date-separator #\-) (time-separator #\:) (date-time-separator #\T))
   (multiple-value-bind (nsec usec msec second minute hour day week)
-      (decode-interval interval)
+      (decode-duration duration)
     (with-output-to-string (str nil :element-type 'base-char)
       (when (zerop week)
         (decf date-elements)
@@ -792,19 +792,16 @@
 
 (defun timestamp- (time-a time-b)
   "Returns the difference between TIME-A and TIME-B in seconds"
-  (setf time-a (adjust-timestamp time-a (set :timezone (timezone-of time-b))))
-  (multiple-value-bind (sec-a day-a)
-      (adjust-to-timezone time-a (timezone-of time-b))
-    (let ((nsec (- (nsec-of time-a) (nsec-of time-b)))
-          (second (- sec-a (sec-of time-b)))
-          (day (- day-a (day-of time-b))))
-      (when (minusp nsec)
-        (decf second)
-        (incf nsec 1000000000))
-      (when (minusp second)
-        (decf day)
-        (incf second +seconds-per-day+))
-      (encode-interval :nsec nsec :sec second :day day))))
+  (let ((nsec (- (nsec-of time-a) (nsec-of time-b)))
+        (second (- (sec-of time-a) (sec-of time-b)))
+        (day (- (day-of time-a) (day-of time-b))))
+    (when (minusp nsec)
+      (decf second)
+      (incf nsec 1000000000))
+    (when (minusp second)
+      (decf day)
+      (incf second +seconds-per-day+))
+    (encode-duration :nsec nsec :sec second :day day)))
 
 (defun timestamp+ (time seconds)
   "Returns a new TIMESTAMP containing the sum of TIME and SECONDS"
