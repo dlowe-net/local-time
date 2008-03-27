@@ -1327,7 +1327,7 @@
   (set-dispatch-macro-character #\# #\@ 'read-universal-time)
   (values))
 
-(defparameter *debug-timestamp* t)
+(defvar *debug-timestamp* nil)
 
 (defmethod print-object ((object timestamp) stream)
   "Print the TIMESTAMP object using the standard reader notation"
