@@ -349,8 +349,9 @@
                 (loop for day :in '(1 2 3 27 28 29 30 31) do
                       (when (valid-date-p year month day)
                         (multiple-value-bind (nsec sec minute hour day* month* year* day-of-week)
-                            (decode-timestamp (encode-timestamp 0 0 0 0 day month year))
-                          (declare (ignore nsec sec minute hour day-of-week))
+                            (decode-timestamp (encode-timestamp 0 0 0 0 day month year :offset 0))
+                          (declare (ignore nsec sec minute day-of-week))
+                          (is (= hour 0))
                           (is (= year year*))
                           (is (= month month*))
                           (is (= day day*)))))))))
