@@ -13,7 +13,7 @@
 
 (defsystem :local-time
   :name "local-time"
-  :version "0.9.3"
+  :version "1.0.0d"
   :author "Daniel Lowe <dlowe@bitmuse.com>"
   :description "A library for manipulating dates and times, based on a paper by Erik Naggum"
   :components ((:module "src"
@@ -22,8 +22,8 @@
 
 (defsystem #:local-time.test
   :name "local-time.test"
-  :version "0.9.2"
-  :author "Daniel Lowe <dlowe@sanctuary.org>"
+  :version "1.0.0d"
+  :author "Daniel Lowe <dlowe@bitmuse.com>"
   :description "Testing code for the local-time library"
   :depends-on (:local-time :fiveam)
   :components ((:module "tests"
