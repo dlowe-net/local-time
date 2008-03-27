@@ -231,22 +231,21 @@
       (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :omit-date-part-p t :time-elements 2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(test unix-time
-  (is (eql 0 (unix-time (encode-timestamp 0 0 0 0 1 1 1970 :offset 0)))))
-
-(test universal-time
-  (is (equal (values 2 3 4 5 6 2008 3 * *)
-             (decode-universal-time (universal-time (encode-timestamp 1 2 3 4 5 6 2008 :offset 0)) 0))))
   
-(test timestamp
+(test timestamp-conversions
+  (is (eql 0 (timestamp-to-unix
+              (encode-timestamp 0 0 0 0 1 1 1970 :offset 0))))
+  (is (equal (values 2 3 4 5 6 2008 3 * *)
+             (decode-universal-time
+              (timestamp-to-universal
+               (encode-timestamp 1 2 3 4 5 6 2008 :offset 0)) 0)))
   (let ((now (now)))
     (setf (nsec-of now) 0)
     (is (timestamp= now
-                     (timestamp :unix (unix-time now) :offset 0))))
+                     (unix-to-timestamp (timestamp-to-unix now)))))
   (let ((now (get-universal-time)))
     (is (equal now
-               (universal-time (timestamp :universal now))))))
+               (timestamp-to-universal (universal-to-timestamp now))))))
 
 (test year-difference
   (let ((a (parse-timestring "2006-01-01T00:00:00"))
@@ -307,7 +306,7 @@
   (let ((now (now)))
     (setf (nsec-of now) 0)
     (is (timestamp= now
-                     (with-input-from-string (ins (princ-to-string (universal-time now)))
+                     (with-input-from-string (ins (princ-to-string (timestamp-to-universal now)))
                        (local-time::read-universal-time ins #\@ nil))))))
 
 (test leap-year-printing
@@ -357,10 +356,10 @@
                           (is (= day day*)))))))))
 
 (test timestamp-uses-nsec
-      (let ((universal-time (timestamp :universal (get-universal-time)
-                                        :nsec 123456789))
-            (unix-time (timestamp :unix 0 :nsec 123456789))
-            (now-time (timestamp :nsec 123456789)))
+      (let ((universal-time (universal-to-timestamp (get-universal-time)
+                                                    :nsec 123456789))
+            (unix-time (unix-to-timestamp 0 :nsec 123456789))
+            (now-time (now :nsec 123456789)))
         (is (= (nsec-of universal-time) 123456789))
         (is (= (nsec-of unix-time) 123456789))
         (is (= (nsec-of now-time) 123456789))))
