@@ -3,10 +3,7 @@
 ;;; try to load asdf-system-connections
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (asdf:find-system :asdf-system-connections nil)
-    (when (find-package :asdf-install)
-      (eval (read-from-string "(asdf-install:install '#:asdf-system-connections)")))
-    (unless (asdf:find-system :asdf-system-connections nil)
-      (error "The cl-postgres system requires asdf-system-connections. See http://www.cliki.net/asdf-system-connections for details and download instructions.")))
+    (error "The local-time system requires asdf-system-connections. See http://www.cliki.net/asdf-system-connections for details and download instructions."))
   (asdf:operate 'asdf:load-op :asdf-system-connections))
 
 (defpackage #:local-time.system
