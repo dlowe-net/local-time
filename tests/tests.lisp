@@ -300,14 +300,14 @@
   (let ((now (now)))
     (is (timestamp= now
                      (with-input-from-string (ins (format-timestring now))
-                       (local-time::read-timestring ins #\@))))))
+                       (local-time::%read-timestring ins #\@))))))
 
 (test read-universal-time
   (let ((now (now)))
     (setf (nsec-of now) 0)
     (is (timestamp= now
                      (with-input-from-string (ins (princ-to-string (timestamp-to-universal now)))
-                       (local-time::read-universal-time ins #\@ nil))))))
+                       (local-time::%read-universal-time ins #\@ nil))))))
 
 (test leap-year-printing
   (let ((timestamp (parse-timestring "2004-02-29")))
@@ -324,7 +324,7 @@
                                              (#.(* 4 365) 2004 02 29)
                                              (#.(1+ (* 4 365)) 2004 03 01))
         do (multiple-value-bind (year* month* day*)
-               (local-time::timestamp-decode-date total-day)
+               (local-time::%timestamp-decode-date total-day)
              (is (= year year*))
              (is (= month month*))
              (is (= day day*)))))

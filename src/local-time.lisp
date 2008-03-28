@@ -184,11 +184,11 @@
 ;; time of day.
 (defparameter +modified-julian-date-offset+ -51604)
 
-(defun get-default-offset ()
+(defun %get-default-offset ()
   (- (encode-universal-time 0 0 0 1 3 2000 0)
      (encode-universal-time 0 0 0 1 3 2000)))
 
-(defun read-binary-integer (stream byte-count &optional (signed nil))
+(defun %read-binary-integer (stream byte-count &optional (signed nil))
   "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
   (loop for offset from (* (1- byte-count) 8) downto 0 by 8
      with result = 0
@@ -197,7 +197,7 @@
                  (return (- result #x100000000))
                  (return result))))
 
-(defun string-from-unsigned-byte-vector (vector offset)
+(defun %string-from-unsigned-byte-vector (vector offset)
   "Returns a string created from the vector of unsigned bytes VECTOR starting at OFFSET which is terminated by a 0."
   (declare (type (vector (unsigned-byte 8)) vector))
   (let* ((null-pos (or (position 0 vector :start offset) (length vector)))
@@ -207,7 +207,7 @@
           do (setf (aref result output-index) (code-char (aref vector input-index))))
     result))
 
-(defun realize-timezone (zone &optional reload)
+(defun %realize-timezone (zone &optional reload)
   "If timezone has not already been loaded or RELOAD is non-NIL, loads the timezone information from its associated unix file."
   (when (or reload (not (timezone-loaded zone)))
     (with-open-file (inf (timezone-path zone)
@@ -222,41 +222,41 @@
       (let ((ignore-buf (make-array 16 :element-type 'unsigned-byte)))
         (read-sequence ignore-buf inf :start 0 :end 16))
       ;; read header values
-      (let ((utc-indicator-count (read-binary-integer inf 4))
-            (wall-indicator-count (read-binary-integer inf 4))
-            (leap-count (read-binary-integer inf 4))
-            (transition-count (read-binary-integer inf 4))
-            (type-count (read-binary-integer inf 4))
-            (abbrev-length (read-binary-integer inf 4)))
+      (let ((utc-indicator-count (%read-binary-integer inf 4))
+            (wall-indicator-count (%read-binary-integer inf 4))
+            (leap-count (%read-binary-integer inf 4))
+            (transition-count (%read-binary-integer inf 4))
+            (type-count (%read-binary-integer inf 4))
+            (abbrev-length (%read-binary-integer inf 4)))
         (let ((timezone-transitions
                ;; read transition times
                (loop for idx from 1 upto transition-count
-                     collect (read-binary-integer inf 4 t)))
+                     collect (%read-binary-integer inf 4 t)))
               ;; read local time indexes
               (timestamp-indexes
                (loop for idx from 1 upto transition-count
-                     collect (read-binary-integer inf 1)))
+                     collect (%read-binary-integer inf 1)))
               ;; read local time info
               (timestamp-info
                (loop for idx from 1 upto type-count
-                     collect (list (read-binary-integer inf 4 t)
-                                   (/= (read-binary-integer inf 1) 0)
-                                   (read-binary-integer inf 1))))
+                     collect (list (%read-binary-integer inf 4 t)
+                                   (/= (%read-binary-integer inf 1) 0)
+                                   (%read-binary-integer inf 1))))
               ;; read leap second info
               (leap-second-info
                (loop for idx from 1 upto leap-count
-                     collect (list (read-binary-integer inf 4)
-                                   (read-binary-integer inf 4))))
+                     collect (list (%read-binary-integer inf 4)
+                                   (%read-binary-integer inf 4))))
               (abbreviation-buf (make-array abbrev-length :element-type '(unsigned-byte 8))))
           (read-sequence abbreviation-buf inf :start 0 :end abbrev-length)
           (let ((wall-indicators
                  ;; read standard/wall indicators
                  (loop for idx from 1 upto wall-indicator-count
-                       collect (read-binary-integer inf 1)))
+                       collect (%read-binary-integer inf 1)))
                 ;; read UTC/local indicators
                 (local-indicators
                  (loop for idx from 1 upto utc-indicator-count
-                       collect (read-binary-integer inf 1))))
+                       collect (%read-binary-integer inf 1))))
             (setf (timezone-transitions zone)
                   (nreverse
                    (mapcar
@@ -269,7 +269,7 @@
                    (lambda (info wall utc)
                      (list (first info)
                            (second info)
-                           (string-from-unsigned-byte-vector abbreviation-buf (third info))
+                           (%string-from-unsigned-byte-vector abbreviation-buf (third info))
                            (/= wall 0)
                            (/= utc 0)))
                    timestamp-info
@@ -295,7 +295,7 @@
                                                         (string-downcase (symbol-name zone-name))
                                                         zone-name)))
       ,@(when load
-              `((realize-timezone ,zone-sym))))))
+              `((%realize-timezone ,zone-sym))))))
 
 (defvar *default-timezone*)
 (eval-when (:load-toplevel :execute)
@@ -326,7 +326,7 @@
            (visitor (lambda (file)
                       (let* ((full-name (subseq (princ-to-string file) cutoff-position))
                              (name (pathname-name file))
-                             (timezone (realize-timezone (make-timezone :path file :name name))))
+                             (timezone (%realize-timezone (make-timezone :path file :name name))))
                         (push (list full-name timezone) *timezone-repository*)
                         ;; TODO this entire *timezone-offset->timezone* is probably useless this way,
                         ;; we can't reverse map a +01:30 offset to a timezone struct, or can we?
@@ -354,8 +354,7 @@
   "Return as multiple values the time zone as the number of seconds east of UTC, a boolean daylight-saving-p, and the customary abbreviation of the timezone."
   (declare (type timestamp timestamp)
            (type (or null timezone) timezone))
-  (realize-timezone timezone)
-  (let* ((zone (realize-timezone (or timezone *default-timezone*)))
+  (let* ((zone (%realize-timezone (or timezone *default-timezone*)))
          (subzone-idx (or
                        (second (assoc (timestamp-to-unix timestamp)
                                       (timezone-transitions zone)
@@ -546,7 +545,7 @@
                                    usec))
                              nsec))))))
 
-(defun timestamp-compare (time-a time-b)
+(defun %timestamp-compare (time-a time-b)
   "Returns the symbols <, >, or =, describing the relationship between TIME-A and TIME-b."
   (declare (type timestamp time-a time-b))
   (cond
@@ -558,7 +557,7 @@
     ((> (nsec-of time-a) (nsec-of time-b)) '>)
     (t '=)))
 
-(defun normalize-month-year-pair (month year)
+(defun %normalize-month-year-pair (month year)
   "Normalizes the month/year pair: in case month is < 1 or > 12 the month and year are corrected to handle the overflow."
   (multiple-value-bind (year-offset month-minus-one)
       (floor (1- month) 12)
@@ -569,9 +568,9 @@
   "Returns the number of days in the given month of the specified year."
   ;; TODO dumb implementation, awaits optimization
   (multiple-value-bind (month1 year1)
-      (normalize-month-year-pair month year)
+      (%normalize-month-year-pair month year)
     (multiple-value-bind (month2 year2)
-        (normalize-month-year-pair (1+ month) year)
+        (%normalize-month-year-pair (1+ month) year)
       ;; month1-year1 pair represents the current month
       ;; month2-year2 pair represents the sequential month
       ;; now we get timestamps for the first days of these months
@@ -581,7 +580,7 @@
         (- (day-of timestamp2) (day-of timestamp1))))))
 
 ;; TODO scan all uses of FIX-OVERFLOW-IN-DAYS and decide where it's ok to silently fix and where should be and error reported
-(defun fix-overflow-in-days (day month year)
+(defun %fix-overflow-in-days (day month year)
   "In case the day number is higher than the maximal possible for the given month/year pair, returns the last day of the month."
   (let ((max-day (days-in-month month year)))
     (if (> day max-day)
@@ -589,61 +588,60 @@
         day)))
 
 (eval-when (:compile-toplevel :load-toplevel)
+  (defun %expand-adjust-timestamp-changes (timestamp changes visitor)
+    (dolist (change changes)
+      (unless (or (= (length change) 3)
+                  (and (= (length change) 4)
+                       (symbolp (third change))
+                       (or (string= (third change) "TO")
+                           (string= (third change) "BY"))))
+        (error "Syntax error in expression ~S" change))
+      (let ((operation (first change))
+            (part (second change))
+            (value (if (= (length change) 3)
+                       (third change)
+                       (fourth change))))
+        (unless (or (consp part)
+                    (member part '(:nsec :sec :sec-of-day :minute :hour :day :day-of-week :day-of-month :month :year)))
+          (error "Unknown timestamp part ~S" part))
+        (cond
+          ((string= operation "SET")
+           (funcall visitor `(%set-timestamp-part ,timestamp ,part ,value)))
+          ((string= operation "OFFSET")
+           (funcall visitor `(%offset-timestamp-part ,timestamp ,part ,value)))
+          (t (error "Unexpected operation ~S" operation))))))
 
-(defun expand-adjust-timestamp-changes (timestamp changes visitor)
-  (dolist (change changes)
-    (unless (or (= (length change) 3)
-                (and (= (length change) 4)
-                     (symbolp (third change))
-                     (or (string= (third change) "TO")
-                         (string= (third change) "BY"))))
-      (error "Syntax error in expression ~S" change))
-    (let ((operation (first change))
-          (part (second change))
-          (value (if (= (length change) 3)
-                     (third change)
-                     (fourth change))))
-      (unless (or (consp part)
-                  (member part '(:nsec :sec :sec-of-day :minute :hour :day :day-of-week :day-of-month :month :year)))
-        (error "Unknown timestamp part ~S" part))
-      (cond
-        ((string= operation "SET")
-         (funcall visitor `(%set-timestamp-part ,timestamp ,part ,value)))
-        ((string= operation "OFFSET")
-         (funcall visitor `(%offset-timestamp-part ,timestamp ,part ,value)))
-        (t (error "Unexpected operation ~S" operation))))))
-
-(defun expand-adjust-timestamp (timestamp changes &key functional)
-  (let* ((old (gensym "OLD"))
-         (new (if functional
-                  (gensym "NEW")
-                  old))
-         (forms (list)))
-    (expand-adjust-timestamp-changes old changes
-                                      (lambda (change)
-                                        (push
-                                         `(progn
-                                            (multiple-value-bind (nsec sec day)
-                                                ,change
-                                              (setf (nsec-of ,new) nsec)
-                                              (setf (sec-of ,new) sec)
-                                              (setf (day-of ,new) day))
-                                            ,@(when functional
-                                                `((setf ,old ,new))))
-                                         forms)))
-    (setf forms (nreverse forms))
-    `(let* ((,old ,timestamp)
-            ,@(when functional
-                `((,new (clone-timestamp ,old)))))
-       ,@forms
-       ,old)))
-) ; eval-when
+  (defun %expand-adjust-timestamp (timestamp changes &key functional)
+    (let* ((old (gensym "OLD"))
+           (new (if functional
+                    (gensym "NEW")
+                    old))
+           (forms (list)))
+      (%expand-adjust-timestamp-changes old changes
+                                       (lambda (change)
+                                         (push
+                                          `(progn
+                                             (multiple-value-bind (nsec sec day)
+                                                 ,change
+                                               (setf (nsec-of ,new) nsec)
+                                               (setf (sec-of ,new) sec)
+                                               (setf (day-of ,new) day))
+                                             ,@(when functional
+                                                     `((setf ,old ,new))))
+                                          forms)))
+      (setf forms (nreverse forms))
+      `(let* ((,old ,timestamp)
+              ,@(when functional
+                      `((,new (clone-timestamp ,old)))))
+         ,@forms
+         ,old)))
+  )                                     ; eval-when
 
 (defmacro adjust-timestamp (timestamp &body changes)
-  (expand-adjust-timestamp timestamp changes :functional t))
+  (%expand-adjust-timestamp timestamp changes :functional t))
 
 (defmacro adjust-timestamp! (timestamp &body changes)
-  (expand-adjust-timestamp timestamp changes :functional nil))
+  (%expand-adjust-timestamp timestamp changes :functional nil))
 
 (defun %set-timestamp-part (time part new-value)
   ;; TODO think about error signalling. when, how to disable if it makes sense, ...
@@ -667,9 +665,9 @@
          (:hour (setf hour new-value))
          (:day-of-month (setf day new-value))
          (:month (setf month new-value)
-                 (setf day (fix-overflow-in-days day month year)))
+                 (setf day (%fix-overflow-in-days day month year)))
          (:year (setf year new-value)
-                (setf day (fix-overflow-in-days day month year))))
+                (setf day (%fix-overflow-in-days day month year))))
        (encode-timestamp-into-values nsec sec minute hour day month year)))))
 
 (defun %offset-timestamp-part (time part offset)
@@ -712,7 +710,7 @@
                                       :month month :year year)
                  time
                (multiple-value-bind (month-new year-new)
-                   (normalize-month-year-pair
+                   (%normalize-month-year-pair
                     (+ (ecase part
                          (:month offset)
                          (:year (* 12 offset)))
@@ -721,7 +719,7 @@
                  ;; Almost there. However, it is necessary to check for
                  ;; overflows first
                  (encode-timestamp-into-values nsec sec minute hour
-                                               (fix-overflow-in-days day month-new year-new)
+                                               (%fix-overflow-in-days day month-new year-new)
                                                month-new year-new)))))
     (ecase part
       ((:nsec :sec :minute :hour :day :day-of-week)
@@ -765,6 +763,7 @@
 
 (defun timestamp-day-of-week (timestamp &key (timezone *default-timezone*))
   (mod (+ 3 (nth-value 1 (%adjust-to-timezone timestamp timezone))) 7))
+
 ;; TODO read
 ;; http://java.sun.com/j2se/1.4.2/docs/api/java/util/GregorianCalendar.html
 ;; (or something else, sorry :) this scheme only works back until
@@ -774,7 +773,7 @@
 ;; TODO support a :overflow-allowed and signal an error for invalid
 ;; values? (as opposed to silently adding to the bigger place-value
 ;; what we do now)
-(defun encode-timestamp-into-values (nsec sec minute hour day month year &key (offset (get-default-offset)))
+(defun encode-timestamp-into-values (nsec sec minute hour day month year &key (offset (%get-default-offset)))
   "Returns (VALUES NSEC SEC DAY ZONE) ready to be used for instantiating a new timestamp object."
   (declare (type integer nsec sec minute hour day month year offset))
   (if (> nsec 999999999)
@@ -799,7 +798,7 @@
         (%adjust-to-offset sec days-from-zero-point (- offset))
       (values nsec utc-sec utc-day))))
 
-(defun encode-timestamp (nsec sec minute hour day month year &key (offset (get-default-offset)) into)
+(defun encode-timestamp (nsec sec minute hour day month year &key (offset (%get-default-offset)) into)
   "Return a new TIMESTAMP instance corresponding to the specified time elements."
   (declare (type integer nsec sec minute hour day month year offset))
   (multiple-value-bind (nsec sec day)
@@ -856,7 +855,7 @@
 (defun today ()
   (minimize-time-part (now) :timezone +utc-zone+))
 
-(defmacro defcomparator (name &body body)
+(defmacro %defcomparator (name &body body)
   (let ((pair-comparator-name (intern (concatenate 'string "%" (string name)))))
     `(progn
       (declaim (inline ,pair-comparator-name))
@@ -879,23 +878,23 @@
                          while time-b
                          collect `(,',pair-comparator-name ,time-a ,time-b)))))))))
 
-(defcomparator timestamp<
-  (eql (timestamp-compare time-a time-b) '<))
+(%defcomparator timestamp<
+  (eql (%timestamp-compare time-a time-b) '<))
 
-(defcomparator timestamp<=
-  (not (null (member (timestamp-compare time-a time-b) '(< =)))))
+(%defcomparator timestamp<=
+  (not (null (member (%timestamp-compare time-a time-b) '(< =)))))
 
-(defcomparator timestamp>
-  (eql (timestamp-compare time-a time-b) '>))
+(%defcomparator timestamp>
+  (eql (%timestamp-compare time-a time-b) '>))
 
-(defcomparator timestamp>=
-  (not (null (member (timestamp-compare time-a time-b) '(> =)))))
+(%defcomparator timestamp>=
+  (not (null (member (%timestamp-compare time-a time-b) '(> =)))))
 
-(defcomparator timestamp=
-  (eql (timestamp-compare time-a time-b) '=))
+(%defcomparator timestamp=
+  (eql (%timestamp-compare time-a time-b) '=))
 
-(defcomparator timestamp/=
-  (not (eql (timestamp-compare time-a time-b) '=)))
+(%defcomparator timestamp/=
+  (not (eql (%timestamp-compare time-a time-b) '=)))
 
 ;; TODO timestamp-min/max could have a compiler macro
 (defun timestamp-min (time &rest times)
@@ -958,7 +957,7 @@
                years)
             (- remaining-days (* years 365)))))
 
-(defun timestamp-decode-date (days)
+(defun %timestamp-decode-date (days)
   (declare (type integer days))
   (multiple-value-bind (years remaining-days)
       (days-to-years days)
@@ -981,7 +980,7 @@
        1-based-month
        1-based-day))))
 
-(defun timestamp-decode-time (seconds)
+(defun %timestamp-decode-time (seconds)
   (declare (type integer seconds))
   (multiple-value-bind (hours hour-remainder)
       (floor seconds +seconds-per-hour+)
@@ -998,9 +997,9 @@
   (multiple-value-bind (adjusted-secs adjusted-days)
       (%adjust-to-timezone timestamp timezone)
     (multiple-value-bind (hours minutes seconds)
-        (timestamp-decode-time adjusted-secs)
+        (%timestamp-decode-time adjusted-secs)
       (multiple-value-bind (year month day)
-          (timestamp-decode-date adjusted-days)
+          (%timestamp-decode-date adjusted-days)
         (values
          (nsec-of timestamp)
          seconds minutes hours
@@ -1212,7 +1211,7 @@
      :offset (if offset-hour
                  (+ (* offset-hour 3600)
                     (* (or offset-minute 0) 60))
-                 (get-default-offset)))))
+                 (%get-default-offset)))))
 
 (defun parse-datestring (string)
   (let* ((*default-timezone* +utc-zone+)
@@ -1302,7 +1301,7 @@
 (defun format-datestring (date)
   (format-timestring date :omit-time-part-p t))
 
-(defun read-timestring (stream char)
+(defun %read-timestring (stream char)
   (declare (ignore char))
   (parse-timestring
    (with-output-to-string (str)
@@ -1312,7 +1311,7 @@
            finally (unread-char c stream)))
    :allow-missing-elements-p t))
 
-(defun read-universal-time (stream char arg)
+(defun %read-universal-time (stream char arg)
   (declare (ignore char arg))
   (universal-to-timestamp
               (parse-integer
@@ -1323,8 +1322,8 @@
                        finally (unread-char c stream))))))
 
 (defun enable-read-macros ()
-  (set-macro-character #\@ 'read-timestring)
-  (set-dispatch-macro-character #\# #\@ 'read-universal-time)
+  (set-macro-character #\@ '%read-timestring)
+  (set-dispatch-macro-character #\# #\@ '%read-universal-time)
   (values))
 
 (defvar *debug-timestamp* nil)
