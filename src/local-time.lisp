@@ -545,18 +545,6 @@
                                    usec))
                              nsec))))))
 
-(defun %timestamp-compare (time-a time-b)
-  "Returns the symbols <, >, or =, describing the relationship between TIME-A and TIME-b."
-  (declare (type timestamp time-a time-b))
-  (cond
-    ((< (day-of time-a) (day-of time-b)) '<)
-    ((> (day-of time-a) (day-of time-b)) '>)
-    ((< (sec-of time-a) (sec-of time-b)) '<)
-    ((> (sec-of time-a) (sec-of time-b)) '>)
-    ((< (nsec-of time-a) (nsec-of time-b)) '<)
-    ((> (nsec-of time-a) (nsec-of time-b)) '>)
-    (t '=)))
-
 (defun %normalize-month-year-pair (month year)
   "Normalizes the month/year pair: in case month is < 1 or > 12 the month and year are corrected to handle the overflow."
   (multiple-value-bind (year-offset month-minus-one)
@@ -877,6 +865,18 @@
             (and ,@(loop for (time-a time-b) :on vars
                          while time-b
                          collect `(,',pair-comparator-name ,time-a ,time-b)))))))))
+
+(defun %timestamp-compare (time-a time-b)
+  "Returns the symbols <, >, or =, describing the relationship between TIME-A and TIME-b."
+  (declare (type timestamp time-a time-b))
+  (cond
+    ((< (day-of time-a) (day-of time-b)) '<)
+    ((> (day-of time-a) (day-of time-b)) '>)
+    ((< (sec-of time-a) (sec-of time-b)) '<)
+    ((> (sec-of time-a) (sec-of time-b)) '>)
+    ((< (nsec-of time-a) (nsec-of time-b)) '<)
+    ((> (nsec-of time-a) (nsec-of time-b)) '>)
+    (t '=)))
 
 (%defcomparator timestamp<
   (eql (%timestamp-compare time-a time-b) '<))
