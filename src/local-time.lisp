@@ -896,24 +896,18 @@
 (%defcomparator timestamp/=
   (not (eql (%timestamp-compare time-a time-b) '=)))
 
+(defun contest (test list)
+  "Applies TEST to pairs of elements in list, keeping the element which last tested T.  Returns the winning element."
+  (reduce (lambda (a b) (if (funcall test a b) a b)) list))
+
 ;; TODO timestamp-min/max could have a compiler macro
 (defun timestamp-min (time &rest times)
-  (loop with winner = time
-        for candidate :in times
-        while candidate do
-        (if (and winner
-                 (timestamp< candidate winner))
-            (setf winner candidate))
-        finally (return winner)))
+  "Returns the earliest timestamp"
+  (contest #'timestamp< (cons time times)))
 
 (defun timestamp-max (time &rest times)
-  (loop with winner = time
-        for candidate :in times
-        while candidate do
-        (if (and winner
-                 (timestamp> candidate winner))
-            (setf winner candidate))
-        finally (return winner)))
+  "Returns the latest timestamp"
+  (contest #'timestamp> (cons time times)))
 
 (eval-when (:compile-toplevel :load-toplevel)
   (defun years-to-days (years)
