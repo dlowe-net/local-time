@@ -61,14 +61,27 @@
            #:minimize-time-part
            #:first-day-of-year
            #:last-day-of-year
-           #:encode-timestamp
-           #:decode-timestamp
            #:with-decoded-timestamp
+           #:decode-timestamp
+           #:timestamp-century
+           #:timestamp-day
+           #:timestamp-day-of-week
+           #:timestamp-decade
+           #:timestamp-hour
+           #:timestamp-microsecond
+           #:timestamp-millennium
+           #:timestamp-millisecond
+           #:timestamp-minute
+           #:timestamp-month
+           #:timestamp-second
+           #:timestamp-week
+           #:timestamp-year
            #:parse-timestring
            #:parse-datestring
            #:format-timestring
            #:format-datestring
            #:format-rfc3339-timestring
+           #:encode-timestamp
            #:parse-rfc3339-timestring
            #:universal-to-timestamp
            #:timestamp-to-universal
@@ -1002,6 +1015,65 @@
          seconds minutes hours
          day month year
          (timestamp-day-of-week timestamp :timezone timezone))))))
+
+(defun timestamp-year (timestamp &key timezone)
+  "Returns the cardinal year upon which the timestamp falls."
+  (nth-value 0
+             (%timestamp-decode-date
+              (nth-value 1 (%adjust-to-timezone timestamp timezone)))))
+
+(defun timestamp-century (timestamp &key timezone)
+  "Returns the ordinal century upon which the timestamp falls."
+  (let* ((year (timestamp-year timestamp :timezone timezone))
+         (sign (signum year)))
+    (+ sign
+       (* sign
+          (truncate (1- (abs year)) 100)))))
+
+(defun timestamp-millennium (timestamp &key timezone)
+  "Returns the ordinal millennium upon which the timestamp falls."
+  (let* ((year (timestamp-year timestamp :timezone timezone))
+         (sign (signum year)))
+    (+ sign
+       (* sign
+          (truncate (1- (abs year)) 1000)))))
+
+(defun timestamp-decade (timestamp &key timezone)
+  "Returns the cardinal decade upon which the timestamp falls."
+  (truncate (timestamp-year timestamp :timezone timezone) 10))
+
+(defun timestamp-month (timestamp &key timezone)
+  "Returns the month upon which the timestamp falls."
+  (nth-value 1
+             (%timestamp-decode-date
+              (nth-value 1 (%adjust-to-timezone timestamp timezone)))))
+
+(defun timestamp-day (timestamp &key timezone)
+  "Returns the day of the month upon which the timestamp falls."
+  (nth-value 2
+             (%timestamp-decode-date
+              (nth-value 1 (%adjust-to-timezone timestamp timezone)))))
+
+(defun timestamp-hour (timestamp &key timezone)
+  (nth-value 0
+             (%timestamp-decode-time
+              (nth-value 0 (%adjust-to-timezone timestamp timezone)))))
+
+(defun timestamp-minute (timestamp &key timezone)
+  (nth-value 1
+             (%timestamp-decode-time
+              (nth-value 0 (%adjust-to-timezone timestamp timezone)))))
+
+(defun timestamp-second (timestamp &key timezone)
+  (nth-value 2
+             (%timestamp-decode-time
+              (nth-value 0 (%adjust-to-timezone timestamp timezone)))))
+
+(defun timestamp-microsecond (timestamp)
+  (floor (nsec-of timestamp) 1000))
+
+(defun timestamp-millisecond (timestamp)
+  (floor (nsec-of timestamp) 1000000))
 
 (defun split-timestring (str &rest args)
   (declare (inline))
