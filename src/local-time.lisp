@@ -911,6 +911,7 @@
 
 (eval-when (:compile-toplevel :load-toplevel)
   (defun years-to-days (years)
+    "Given a number of years, returns the number of days in those years."
     (let* ((days (* years 365))
            (l1 (floor years 4))
            (l2 (floor years 100))
@@ -918,7 +919,7 @@
       (+ days l1 (- l2) l3))))
 
 (defun days-to-years (days)
-  "Returns (values years remaining-days-in-year)"
+  "Given a number of days, returns the number of years and the remaining days in that year."
   (let ((remaining-days days))
     (multiple-value-bind (400-years remaining-days)
         (floor remaining-days 146097)
@@ -952,6 +953,7 @@
             (- remaining-days (* years 365)))))
 
 (defun %timestamp-decode-date (days)
+  "Returns the day, month, and year, given the number of days from the epoch."
   (declare (type integer days))
   (multiple-value-bind (years remaining-days)
       (days-to-years days)
@@ -975,6 +977,7 @@
        1-based-day))))
 
 (defun %timestamp-decode-time (seconds)
+  "Returns the hours, minutes, and seconds, given the number of seconds since midnight."
   (declare (type integer seconds))
   (multiple-value-bind (hours hour-remainder)
       (floor seconds +seconds-per-hour+)
@@ -1316,6 +1319,7 @@
                        finally (unread-char c stream))))))
 
 (defun enable-read-macros ()
+  "Enables the local-time reader macros for literal timestamps and universal time."
   (set-macro-character #\@ '%read-timestring)
   (set-dispatch-macro-character #\# #\@ '%read-universal-time)
   (values))
@@ -1344,7 +1348,9 @@
             (mapcar #'third (timezone-subzones object)))))
 
 (defun astronomical-julian-date (timestamp)
+  "Returns the astronomical julian date referred to by the timestamp."
   (- (day-of timestamp) +astronomical-julian-date-offset+))
 
 (defun modified-julian-date (timestamp)
+  "Returns the modified julian date referred to by the timestamp."
   (- (day-of timestamp) +modified-julian-date-offset+))
