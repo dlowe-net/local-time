@@ -45,8 +45,8 @@
            #:timestamp>=
            #:timestamp=
            #:timestamp/=
-           #:timestamp-max
-           #:timestamp-min
+           #:timestamp-maximum
+           #:timestamp-minimum
            #:adjust-timestamp
            #:adjust-timestamp!
            #:timestamp-whole-year-difference
@@ -901,11 +901,11 @@
   (reduce (lambda (a b) (if (funcall test a b) a b)) list))
 
 ;; TODO timestamp-min/max could have a compiler macro
-(defun timestamp-min (time &rest times)
+(defun timestamp-minimum (time &rest times)
   "Returns the earliest timestamp"
   (contest #'timestamp< (cons time times)))
 
-(defun timestamp-max (time &rest times)
+(defun timestamp-maximum (time &rest times)
   "Returns the latest timestamp"
   (contest #'timestamp> (cons time times)))
 
