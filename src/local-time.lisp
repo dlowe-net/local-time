@@ -1303,9 +1303,9 @@
   (parse-timestring
    (with-output-to-string (str)
      (loop for c = (read-char stream nil #\space)
-           until (or (eql c #\space) (eql c #\)))
-           do (princ c str)
-           finally (unread-char c stream)))
+        while (or (digit-char-p c) (member c '(#\: #\T #\t #\: #\- #\+ #\Z #\.)))
+        do (princ c str)
+        finally (unread-char c stream)))
    :allow-missing-elements-p t))
 
 (defun %read-universal-time (stream char arg)

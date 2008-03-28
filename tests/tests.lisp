@@ -298,6 +298,7 @@
 
 (test read-timestring
   (let ((now (now)))
+    (setf (nsec-of now) 123456000)
     (is (timestamp= now
                      (with-input-from-string (ins (format-timestring now))
                        (local-time::%read-timestring ins #\@))))))
