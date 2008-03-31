@@ -973,7 +973,7 @@
             (- remaining-days (* years 365)))))
 
 (defun %timestamp-decode-date (days)
-  "Returns the day, month, and year, given the number of days from the epoch."
+  "Returns the year, month, and day, given the number of days from the epoch."
   (declare (type integer days))
   (multiple-value-bind (years remaining-days)
       (days-to-years days)
