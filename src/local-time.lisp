@@ -57,10 +57,8 @@
            #:decode-duration
            #:parse-duration
            #:format-duration
-           #:maximize-time-part
-           #:minimize-time-part
-           #:first-day-of-year
-           #:last-day-of-year
+           #:timestamp-minimize-part
+           #:timestamp-maximize-part
            #:with-decoded-timestamp
            #:decode-timestamp
            #:timestamp-century
