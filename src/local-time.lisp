@@ -439,15 +439,16 @@
     (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p)
         (decode-timestamp timestamp :timezone timezone)
       (declare (ignore nsec day-of-week daylight-saving-time-p))
-      (encode-timestamp 999999999
-                        (if (> part-count 0) 59 sec)
-                        (if (> part-count 1) 59 min)
-                        (if (> part-count 2) 23 hour)
-                        (if (> part-count 3) (days-in-month month year) day)
-                        (if (> part-count 4) 11 month)
-                        year
-                        :offset offset
-                        :into into))))
+      (let ((month (if (> part-count 4) 12 month)))
+        (encode-timestamp 999999999
+                          (if (> part-count 0) 59 sec)
+                          (if (> part-count 1) 59 min)
+                          (if (> part-count 2) 23 hour)
+                          (if (> part-count 3) (days-in-month month year) day)
+                          month
+                          year
+                          :offset offset
+                          :into into)))))
 
 (defmacro with-decoded-timestamp ((&key nsec sec minute hour day month year day-of-week daylight-p)
                                    timestamp &body forms)
