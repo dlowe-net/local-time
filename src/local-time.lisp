@@ -404,49 +404,52 @@
                      (day-of source)
                      (timestamp-subtimezone source timezone)))
 
-(defun maximize-time-part (timestamp &key (timezone *default-timezone*) into)
-  "Return a timestamp with the time part set to the beginning of the day."
-  (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p)
-      (decode-timestamp timestamp :timezone timezone)
-    (declare (ignore nsec sec min hour day-of-week daylight-saving-time-p))
-    (encode-timestamp 0 59 59 23 day month year
-                      :offset (timestamp-subtimezone timestamp timezone)
-                      :into into)))
+(defun timestamp-minimize-part (timestamp part &key
+                                (offset (%get-default-offset))
+                                (timezone *default-timezone*)
+                                into)
+  (let* ((timestamp-parts '(:nsec :sec :min :hour :day :month))
+         (part-count (position part timestamp-parts)))
+    (assert part-count nil
+            "timestamp-minimize-part called with invalid part ~a (expected one of ~a)"
+            part
+            timestamp-parts)
+    (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p)
+        (decode-timestamp timestamp :timezone timezone)
+      (declare (ignore nsec day-of-week daylight-saving-time-p))
+      (encode-timestamp 0
+                        (if (> part-count 0) 0 sec)
+                        (if (> part-count 1) 0 min)
+                        (if (> part-count 2) 0 hour)
+                        (if (> part-count 3) 1 day)
+                        (if (> part-count 4) 1 month)
+                        year
+                        :offset offset
+                        :into into))))
+  
 
-(defun minimize-time-part (timestamp &key (timezone *default-timezone*) into)
-  "Return a timestamp with the time part set to the beginning of the day."
-  (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p)
-      (decode-timestamp timestamp :timezone timezone)
-    (declare (ignore nsec sec min hour day-of-week daylight-saving-time-p))
-    (encode-timestamp 0 0 0 0 day month year
-                      :offset (timestamp-subtimezone timestamp timezone)
-                      :into into)))
-
-(defun first-day-of-year (timestamp-or-year &key (timezone *default-timezone*) into)
-  "Return a timestamp date with the month and day set to the first day of the year the input refers to."
-  (let ((year
-         (etypecase timestamp-or-year
-           (timestamp
-            (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p)
-                (decode-timestamp timestamp-or-year :timezone timezone)
-              (declare (ignore nsec sec min hour day month day-of-week daylight-saving-time-p))
-              year))
-           (integer
-            timestamp-or-year))))
-    (encode-timestamp 0 0 0 0 1 1 year :timezone timezone :into into)))
-
-(defun last-day-of-year (timestamp-or-year &key (timezone *default-timezone*) into)
-  "Return a timestamp date with the month and day set to the last day of the year the input refers to."
-  (let ((year
-         (etypecase timestamp-or-year
-           (timestamp
-            (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p)
-                (decode-timestamp timestamp-or-year)
-              (declare (ignore nsec sec min hour day month day-of-week daylight-saving-time-p))
-              year))
-           (integer
-            timestamp-or-year))))
-    (encode-timestamp 0 0 0 0 31 12 year :timezone timezone :into into)))
+(defun timestamp-maximize-part (timestamp part &key
+                                (offset (%get-default-offset))
+                                (timezone *default-timezone*)
+                                into)
+  (let* ((timestamp-parts '(:nsec :sec :min :hour :day :month))
+         (part-count (position part timestamp-parts)))
+    (assert part-count nil
+            "timestamp-maximize-part called with invalid part ~a (expected one of ~a)"
+            part
+            timestamp-parts)
+    (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p)
+        (decode-timestamp timestamp :timezone timezone)
+      (declare (ignore nsec day-of-week daylight-saving-time-p))
+      (encode-timestamp 999999999
+                        (if (> part-count 0) 59 sec)
+                        (if (> part-count 1) 59 min)
+                        (if (> part-count 2) 23 hour)
+                        (if (> part-count 3) (days-in-month month year) day)
+                        (if (> part-count 4) 11 month)
+                        year
+                        :offset offset
+                        :into into))))
 
 (defmacro with-decoded-timestamp ((&key nsec sec minute hour day month year day-of-week daylight-p)
                                    timestamp &body forms)
