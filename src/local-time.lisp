@@ -198,8 +198,12 @@
 (defparameter +modified-julian-date-offset+ -51604)
 
 (defun %get-default-offset ()
-  (- (encode-universal-time 0 0 0 1 3 2000 0)
-     (encode-universal-time 0 0 0 1 3 2000)))
+  (multiple-value-bind (sec min hour day mon year dow daylight-p zone)
+      (get-decoded-time)
+    (declare (ignore sec min hour day mon year dow))
+    (if daylight-p 
+        (* -3600 (1- zone))
+        (* -3600 zone))))
 
 (defun %read-binary-integer (stream byte-count &optional (signed nil))
   "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
