@@ -859,7 +859,7 @@
   (universal-to-timestamp (get-universal-time) :nsec nsec))
 
 (defun today ()
-  (minimize-time-part (now) :timezone +utc-zone+))
+  (timestamp-minimize-part (now) :hour))
 
 (defmacro %defcomparator (name &body body)
   (let ((pair-comparator-name (intern (concatenate 'string "%" (string name)))))
