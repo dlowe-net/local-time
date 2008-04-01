@@ -53,10 +53,6 @@
            #:days-in-month
            #:timestamp-
            #:timestamp+
-           #:duration
-           #:decode-duration
-           #:parse-duration
-           #:format-duration
            #:timestamp-minimize-part
            #:timestamp-maximize-part
            #:with-decoded-timestamp
@@ -75,9 +71,7 @@
            #:timestamp-week
            #:timestamp-year
            #:parse-timestring
-           #:parse-datestring
            #:format-timestring
-           #:format-datestring
            #:format-rfc3339-timestring
            #:encode-timestamp
            #:parse-rfc3339-timestring
@@ -126,10 +120,9 @@
 
 ;;; Declaims
 
-(declaim (inline now today encode-duration format-rfc3339-timestring)
+(declaim (inline now format-rfc3339-timestring)
          (ftype (function * (values simple-base-string)) format-rfc3339-timestring)
          (ftype (function * (values simple-base-string)) format-timestring)
-         (ftype (function * (values simple-base-string)) format-duration)
          (ftype (function * (values fixnum)) local-timezone)
          (ftype (function (timestamp &key (:timezone timezone))
                           (values (integer 0 999999999)
@@ -469,101 +462,6 @@
        (declare (ignore ,@ignores))
        ,@forms)))
 
-(defun encode-duration (&key (nsec 0) (usec 0) (msec 0) (sec 0) (minute 0) (hour 0) (day 0) (week 0))
-  (+ (* +seconds-per-minute+
-        (+ (* +minutes-per-hour+
-              (+ (* +hours-per-day+
-                    (+ (* +days-per-week+
-                          week)
-                       day))
-                 hour))
-           minute))
-     sec
-     (/ (+ (/ (+ (/ nsec
-                    1000)
-                 usec)
-              1000)
-           msec)
-        1000)))
-
-(defun decode-duration (duration)
-  "Returns the decoded duration as multiple values: nsec, usec, msec, sec, minute, hour, day, week."
-  (multiple-value-bind (second-duration second-remainder)
-      (floor duration)
-    (multiple-value-bind (minute-duration second)
-        (floor second-duration +seconds-per-minute+)
-      (multiple-value-bind (hour-duration minute)
-          (floor minute-duration +minutes-per-hour+)
-        (multiple-value-bind (day-duration hour)
-            (floor hour-duration +hours-per-day+)
-          (multiple-value-bind (week day)
-              (floor day-duration +days-per-week+)
-            (multiple-value-bind (msec msec-remainder)
-                (floor (* second-remainder 1000))
-              (multiple-value-bind (usec usec-remainder)
-                  (floor (* msec-remainder 1000))
-                (multiple-value-bind (nsec nsec-remainder)
-                    (floor (* usec-remainder 1000))
-                  (declare (ignore nsec-remainder))
-                  (values nsec usec msec second minute hour day week))))))))))
-
-;; TODO: factor out useful parts from split-timestring and refactor this code
-(defun parse-duration (durationstr &key (date-separator #\-) (date-time-separator #\T))
-  (let* ((date-time-separator-index (position date-time-separator durationstr))
-         (extra-sec
-          (if date-time-separator-index
-              (let ((datestr (subseq durationstr 0 date-time-separator-index)))
-                (* +seconds-per-day+
-                   (multiple-value-bind (first-integer pos)
-                       (parse-integer datestr :junk-allowed t)
-                     (if (= pos (length datestr))
-                         first-integer
-                         (progn
-                           (assert (char= date-separator (elt datestr pos)))
-                           (+ (* first-integer +days-per-week+)
-                              (parse-integer datestr :start (1+ pos))))))))
-              0)))
-    (with-decoded-timestamp (:nsec nsec :sec sec :minute minute :hour hour)
-        (parse-timestring (subseq durationstr (or date-time-separator-index 0)))
-      (encode-duration :nsec nsec :sec (+ extra-sec sec) :minute minute :hour hour))))
-
-(defun format-duration (duration &key (omit-date-part-p nil) (omit-time-part-p nil)
-                        (date-elements (if omit-date-part-p 0 2)) (time-elements (if omit-time-part-p 0 4))
-                        (date-separator #\-) (time-separator #\:) (date-time-separator #\T))
-  (multiple-value-bind (nsec usec msec second minute hour day week)
-      (decode-duration duration)
-    (with-output-to-string (str nil :element-type 'base-char)
-      (when (zerop week)
-        (decf date-elements)
-        (when (zerop day)
-          (decf date-elements)))
-      (when (> date-elements 1)
-        (format str "~2,'0d~c" week date-separator))
-      (when (> date-elements 0)
-        (format str "~2,'0d" day))
-      (when (and (plusp date-elements) (plusp time-elements))
-        (princ date-time-separator str))
-      (when (and (zerop date-elements)
-                 (zerop hour))
-        (decf time-elements)
-        (when (zerop minute)
-          (decf time-elements)
-          (when (zerop second)
-            (decf time-elements))))
-      (when (> time-elements 3)
-        (format str "~2,'0d~c" hour time-separator))
-      (when (> time-elements 2)
-        (format str "~2,'0d~c" minute time-separator))
-      (when (> time-elements 1)
-        (format str "~2,'0d" second))
-      (when (> time-elements 0)
-        (when (= time-elements 1)
-          (format str "0"))
-        (format str ".~d" (+ (* 1000
-                                (+ (* 1000 msec)
-                                   usec))
-                             nsec))))))
-
 (defun %normalize-month-year-pair (month year)
   "Normalizes the month/year pair: in case month is < 1 or > 12 the month and year are corrected to handle the overflow."
   (multiple-value-bind (year-offset month-minus-one)
@@ -762,7 +660,7 @@
     (when (minusp second)
       (decf day)
       (incf second +seconds-per-day+))
-    (encode-duration :nsec nsec :sec second :day day)))
+    (+ (* day +seconds-per-day+) second)))
 
 (defun timestamp+ (time amount unit)
   (multiple-value-bind (nsec sec day)
@@ -1298,15 +1196,6 @@
                     (* (or offset-minute 0) 60))
                  (%get-default-offset)))))
 
-(defun parse-datestring (string)
-  (let* ((*default-timezone* +utc-zone+)
-         (date (parse-timestring string)))
-    (unless (and date
-                 (zerop (sec-of date))
-                 (zerop (nsec-of date)))
-      (error "~S is not a valid date string" string))
-    date))
-
 (defun format-rfc3339-timestring (timestamp &key destination omit-date-part-p omit-time-part-p
                                   omit-timezone-part-p (use-zulu-p t))
   (format-timestring timestamp
@@ -1382,9 +1271,6 @@
     (when destination
       (write-string result destination))
     result))
-
-(defun format-datestring (date)
-  (format-timestring date :omit-time-part-p t))
 
 (defun %read-timestring (stream char)
   (declare (ignore char))
