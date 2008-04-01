@@ -217,7 +217,7 @@
     result))
 
 (defun %realize-timezone (zone &optional reload)
-  "If timezone has not already been loaded or RELOAD is non-NIL, loads the timezone information from its associated unix file."
+  "If timezone has not already been loaded or RELOAD is non-NIL, loads the timezone information from its associated unix file.  If the file is not a valid timezone file, the condition INVALID-TIMEZONE-FILE will be signaled."
   (when (or reload (not (timezone-loaded zone)))
     (with-open-file (inf (timezone-path zone)
                          :direction :input
@@ -314,7 +314,6 @@
         (defparameter *default-timezone* +utc-zone+))))
 
 (defparameter *timezone-repository* nil "A list of (list \"Europe/Budapest\" timezone) entries")
-(defparameter *timezone-offset->timezone* (make-hash-table))
 
 (defun timezone= (timezone-1 timezone-2)
   "Return two values indicating the relationship between timezone-1 and timezone-2. The first value is whether the two timezones are equal and the second value indicates whether it is sure or not.
@@ -336,17 +335,11 @@
                       (let* ((full-name (subseq (princ-to-string file) cutoff-position))
                              (name (pathname-name file))
                              (timezone (%realize-timezone (make-timezone :path file :name name))))
-                        (push (list full-name timezone) *timezone-repository*)
-                        ;; TODO this entire *timezone-offset->timezone* is probably useless this way,
-                        ;; we can't reverse map a +01:30 offset to a timezone struct, or can we?
-                        (dolist (subzone (timezone-subzones timezone))
-                          (pushnew timezone (gethash (first subzone) *timezone-offset->timezone*)))))))
+                        (push (list full-name timezone) *timezone-repository*)))))
       (setf *timezone-repository* nil)
-      (setf *timezone-offset->timezone* (make-hash-table))
       (cl-fad:walk-directory root-directory visitor :directories nil
                              :test (lambda (file)
                                      (not (find "Etc" (pathname-directory file) :test #'string=))))
-      ;; walk the Etc dir last, so they will be the first entries in the *timezone-offset->timezone* map
       (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) visitor :directories nil)
       (setf *timezone-repository* (sort *timezone-repository* #'string< :key #'first)))))
 
