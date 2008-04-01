@@ -167,8 +167,9 @@
 (defconstant +usecs-per-day+ 86400000000)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter +rotated-month-days-without-leap-day+ #.(coerce #(31 30 31 30 31 31 30 31 30 31 31 28)
-                                                                '(simple-array fixnum (*))))
+  (defparameter +rotated-month-days-without-leap-day+
+    #.(coerce #(31 30 31 30 31 31 30 31 30 31 31 28)
+              '(simple-array fixnum (*))))
 
   (defparameter +rotated-month-offsets-without-leap-day+
     (coerce
@@ -471,18 +472,14 @@
 
 (defun days-in-month (month year)
   "Returns the number of days in the given month of the specified year."
-  ;; TODO dumb implementation, awaits optimization
-  (multiple-value-bind (month1 year1)
-      (%normalize-month-year-pair month year)
-    (multiple-value-bind (month2 year2)
-        (%normalize-month-year-pair (1+ month) year)
-      ;; month1-year1 pair represents the current month
-      ;; month2-year2 pair represents the sequential month
-      ;; now we get timestamps for the first days of these months
-      ;; and find out what the difference in days is
-      (let ((timestamp1 (encode-timestamp 0 0 0 0 1 month1 year1))
-            (timestamp2 (encode-timestamp 0 0 0 0 1 month2 year2)))
-        (- (day-of timestamp2) (day-of timestamp1))))))
+  (let ((normal-days (aref +rotated-month-days-without-leap-day+
+                           (mod (+ month 9) 12))))
+    (if (and (= month 2)
+             (or (and (zerop (mod year 4))
+                      (plusp (mod year 100)))
+                 (zerop (mod year 400))))
+        (1+ normal-days)                ; February on a leap year
+        normal-days)))
 
 ;; TODO scan all uses of FIX-OVERFLOW-IN-DAYS and decide where it's ok to silently fix and where should be and error reported
 (defun %fix-overflow-in-days (day month year)
