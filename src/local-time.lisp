@@ -751,7 +751,7 @@
             year-difference
             (1- year-difference))))))
 
-(defun timestamp- (time-a time-b)
+(defun timestamp-difference (time-a time-b)
   "Returns the difference between TIME-A and TIME-B in seconds"
   (let ((nsec (- (nsec-of time-a) (nsec-of time-b)))
         (second (- (sec-of time-a) (sec-of time-b)))
@@ -764,9 +764,19 @@
       (incf second +seconds-per-day+))
     (encode-duration :nsec nsec :sec second :day day)))
 
-(defun timestamp+ (time seconds)
-  "Returns a new TIMESTAMP containing the sum of TIME and SECONDS"
-  (adjust-timestamp time (offset :sec seconds)))
+(defun timestamp+ (time amount unit)
+  (multiple-value-bind (nsec sec day)
+      (%offset-timestamp-part time unit amount)
+    (make-timestamp :nsec nsec
+                    :sec sec
+                    :day day)))
+
+(defun timestamp- (time amount unit)
+  (multiple-value-bind (nsec sec day)
+      (%offset-timestamp-part time unit (- amount))
+    (make-timestamp :nsec nsec
+                    :sec sec
+                    :day day)))
 
 (defun timestamp-day-of-week (timestamp &key (timezone *default-timezone*))
   (mod (+ 3 (nth-value 1 (%adjust-to-timezone timestamp timezone))) 7))
