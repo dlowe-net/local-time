@@ -187,9 +187,7 @@
 
       "2008-06-05T04:03:02.000001-05:00"
 
-      (let ((utc-5 (local-time::make-timezone :transitions nil
-                                              :subzones '((-18000 nil "UTC-5"))
-                                              :leap-seconds nil
+      (let ((utc-5 (local-time::make-timezone :subzones #((-18000 nil "UTC-5"))
                                               :path nil
                                               :name "UTC-5"
                                               :loaded t)))
