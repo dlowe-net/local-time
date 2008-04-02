@@ -938,13 +938,13 @@
          day month year
          (timestamp-day-of-week timestamp :timezone timezone))))))
 
-(defun timestamp-year (timestamp &key timezone)
+(defun timestamp-year (timestamp &key (timezone *default-timezone*))
   "Returns the cardinal year upon which the timestamp falls."
   (nth-value 0
              (%timestamp-decode-date
               (nth-value 1 (%adjust-to-timezone timestamp timezone)))))
 
-(defun timestamp-century (timestamp &key timezone)
+(defun timestamp-century (timestamp &key (timezone *default-timezone*))
   "Returns the ordinal century upon which the timestamp falls."
   (let* ((year (timestamp-year timestamp :timezone timezone))
          (sign (signum year)))
@@ -952,7 +952,7 @@
        (* sign
           (truncate (1- (abs year)) 100)))))
 
-(defun timestamp-millennium (timestamp &key timezone)
+(defun timestamp-millennium (timestamp &key (timezone *default-timezone*))
   "Returns the ordinal millennium upon which the timestamp falls."
   (let* ((year (timestamp-year timestamp :timezone timezone))
          (sign (signum year)))
@@ -960,33 +960,33 @@
        (* sign
           (truncate (1- (abs year)) 1000)))))
 
-(defun timestamp-decade (timestamp &key timezone)
+(defun timestamp-decade (timestamp &key (timezone *default-timezone*))
   "Returns the cardinal decade upon which the timestamp falls."
   (truncate (timestamp-year timestamp :timezone timezone) 10))
 
-(defun timestamp-month (timestamp &key timezone)
+(defun timestamp-month (timestamp &key (timezone *default-timezone*))
   "Returns the month upon which the timestamp falls."
   (nth-value 1
              (%timestamp-decode-date
               (nth-value 1 (%adjust-to-timezone timestamp timezone)))))
 
-(defun timestamp-day (timestamp &key timezone)
+(defun timestamp-day (timestamp &key (timezone *default-timezone*))
   "Returns the day of the month upon which the timestamp falls."
   (nth-value 2
              (%timestamp-decode-date
               (nth-value 1 (%adjust-to-timezone timestamp timezone)))))
 
-(defun timestamp-hour (timestamp &key timezone)
+(defun timestamp-hour (timestamp &key (timezone *default-timezone*))
   (nth-value 0
              (%timestamp-decode-time
               (nth-value 0 (%adjust-to-timezone timestamp timezone)))))
 
-(defun timestamp-minute (timestamp &key timezone)
+(defun timestamp-minute (timestamp &key (timezone *default-timezone*))
   (nth-value 1
              (%timestamp-decode-time
               (nth-value 0 (%adjust-to-timezone timestamp timezone)))))
 
-(defun timestamp-second (timestamp &key timezone)
+(defun timestamp-second (timestamp &key (timezone *default-timezone*))
   (nth-value 2
              (%timestamp-decode-time
               (nth-value 0 (%adjust-to-timezone timestamp timezone)))))
