@@ -118,6 +118,22 @@
   (name "anonymous" :type string)
   (loaded nil :type boolean))
 
+(define-condition invalid-timezone-file (error)
+  ((path :accessor path-of :initarg :path))
+  (:report (lambda (condition stream)
+             (format stream "The file at ~a is not a timezone file."
+                     (path-of condition)))))
+
+(define-condition invalid-time-specification (error)
+  ()
+  (:report "The time specification is invalid"))
+
+(define-condition invalid-timestring (error)
+  ((timestring :accessor timestring-of :initarg :timestring))
+  (:report (lambda (condition stream)
+             (format stream "Failed to parse ~S as an rfc3339 time"
+                     (timestring-of condition)))))
+
 ;;; Declaims
 
 (declaim (inline now format-rfc3339-timestring)
@@ -226,7 +242,7 @@
       (let ((magic-buf (make-array 4 :element-type 'unsigned-byte)))
         (read-sequence magic-buf inf :start 0 :end 4)
         (when (string/= (map 'string #'code-char magic-buf) "TZif" :end1 4)
-          (error "~a is not a timezone file." (timezone-path zone))))
+          (error 'invalid-timezone-file :path (timezone-path zone))))
       ;; skip 16 bytes for "future use"
       (let ((ignore-buf (make-array 16 :element-type 'unsigned-byte)))
         (read-sequence ignore-buf inf :start 0 :end 16))
@@ -485,20 +501,20 @@
 (eval-when (:compile-toplevel :load-toplevel)
   (defun %expand-adjust-timestamp-changes (timestamp changes visitor)
     (dolist (change changes)
-      (unless (or (= (length change) 3)
+      (assert (or (= (length change) 3)
                   (and (= (length change) 4)
                        (symbolp (third change))
                        (or (string= (third change) "TO")
                            (string= (third change) "BY"))))
-        (error "Syntax error in expression ~S" change))
+              nil "Syntax error in expression ~S" change)
       (let ((operation (first change))
             (part (second change))
             (value (if (= (length change) 3)
                        (third change)
                        (fourth change))))
-        (unless (or (consp part)
+        (assert (or (consp part)
                     (member part '(:nsec :sec :sec-of-day :minute :hour :day :day-of-week :day-of-month :month :year)))
-          (error "Unknown timestamp part ~S" part))
+                nil "Unknown timestamp part ~S" part)
         (cond
           ((string= operation "SET")
            (funcall visitor `(%set-timestamp-part ,timestamp ,part ,value)))
@@ -674,18 +690,21 @@
 ;; (or something else, sorry :) this scheme only works back until
 ;; 1582, the start of the gregorian calendar.  see also
 ;; DECODE-TIMESTAMP when fixing if fixing is desired at all.
+(defun valid-timestamp-p (nsec sec minute hour day month year)
+  "Returns T if the time values refer to a valid time, otherwise returns NIL."
+  (and (<= 0 nsec 999999999)
+       (<= 0 sec 59)
+       (<= 0 minute 59)
+       (<= 0 hour 23)
+       (<= 1 month 12)
+       (<= 1 day (days-in-month month year))
+       (/= year 0)))
 
-;; TODO support a :overflow-allowed and signal an error for invalid
-;; values? (as opposed to silently adding to the bigger place-value
-;; what we do now)
 (defun encode-timestamp-into-values (nsec sec minute hour day month year &key (offset (%get-default-offset)))
-  "Returns (VALUES NSEC SEC DAY ZONE) ready to be used for instantiating a new timestamp object."
+  "Returns (VALUES NSEC SEC DAY ZONE) ready to be used for instantiating a new timestamp object.  If the specified time is invalid, the condition INVALID-TIME-SPECIFICATION is raised."
   (declare (type integer nsec sec minute hour day month year offset))
-  (if (> nsec 999999999)
-      (multiple-value-bind (more-secs remaining-nsec)
-          (floor nsec 1000000000)
-        (setf nsec remaining-nsec)
-        (incf sec more-secs)))
+  (unless (valid-timestamp-p nsec sec minute hour day month year)
+    (error 'invalid-time-specification))
   (let* ((0-based-rotated-month (if (>= month 3)
                                     (- month 3)
                                     (+ month 9)))
@@ -983,15 +1002,17 @@
   (declare (inline))
   (apply #'%split-timestring (coerce str 'simple-string) args))
 
-(defun %split-timestring (time-string &key (start 0) (end (length time-string))
-                                      (fail-on-error t) (time-separator #\:)
-                                      (date-separator #\-)
-                                      (date-time-separator #\T)
-                                      (allow-missing-elements-p t)
-                                      (allow-missing-date-part-p allow-missing-elements-p)
-                                      (allow-missing-time-part-p allow-missing-elements-p)
-                                      (allow-missing-timezone-part-p allow-missing-elements-p))
-  "Based on http://www.ietf.org/rfc/rfc3339.txt including the function names used. Returns (values year month day hour minute second nsec offset-hour offset-minute). If the parsing fails, then either signals an error or returns nil based on FAIL-ON-ERROR."
+(defun %split-timestring (time-string &key
+                          (start 0)
+                          (end (length time-string))
+                          (fail-on-error t) (time-separator #\:)
+                          (date-separator #\-)
+                          (date-time-separator #\T)
+                          (allow-missing-elements-p t)
+                          (allow-missing-date-part-p allow-missing-elements-p)
+                          (allow-missing-time-part-p allow-missing-elements-p)
+                          (allow-missing-timezone-part-p allow-missing-elements-p))
+  "Based on http://www.ietf.org/rfc/rfc3339.txt including the function names used. Returns (values year month day hour minute second nsec offset-hour offset-minute). On parsing failure, signals INVALID-TIMESTRING if FAIL-ON-ERROR is NIL, otherwise returns NIL."
   (declare (type character date-time-separator time-separator date-separator)
            (type simple-string time-string)
            (optimize (speed 3)))
@@ -1156,7 +1177,7 @@
                            offset-minute (* offset-minute sign))))
                  (parse-error ()
                    (if fail-on-error
-                       (error "Failed to parse ~S as an rfc3339 time" time-string)
+                       (error 'invalid-timestring :timestring time-string)
                        (return-from %split-timestring nil)))
                  (done ()
                    (return-from %split-timestring (list year month day hour minute second nsec offset-hour offset-minute))))
@@ -1172,7 +1193,6 @@
   "Parse a timestring and return the corresponding TIMESTAMP. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value."
   (destructuring-bind (year month day hour minute second nsec offset-hour offset-minute)
       (apply #'split-timestring timestring args)
-    ;; TODO should we assert on month and leap rules here?
     (encode-timestamp
      (or nsec 0)
      (or second 0)
