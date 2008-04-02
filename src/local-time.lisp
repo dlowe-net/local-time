@@ -111,8 +111,9 @@
    (nsec :accessor nsec-of :initarg :nsec :initform 0 :type (integer 0 999999999))))
 
 (defstruct timezone
-  (transitions nil :type list)
-  (subzones nil :type list)
+  (transitions #(0) :type simple-vector)
+  (indexes #(0) :type simple-vector)
+  (subzones #(nil) :type simple-vector)
   (leap-seconds nil :type list)
   (path nil)
   (name "anonymous" :type string)
@@ -283,29 +284,28 @@
                  (loop for idx from 1 upto utc-indicator-count
                     collect (%read-binary-integer inf 1))))
             (setf (timezone-transitions zone)
-                  (nreverse
-                   (mapcar
-                    (lambda (info index)
-                      (list info index))
-                    timezone-transitions
-                    timestamp-indexes)))
+                  (coerce timezone-transitions 'simple-vector))
+            (setf (timezone-indexes zone)
+                  (coerce timestamp-indexes 'simple-vector))
             (setf (timezone-subzones zone)
-                  (mapcar
-                   (lambda (info wall utc)
-                     (list (first info)
-                           (second info)
-                           (%string-from-unsigned-byte-vector abbreviation-buf (third info))
-                           (/= wall 0)
-                           (/= utc 0)))
-                   timestamp-info
-                   wall-indicators
-                   local-indicators))
+                  (coerce 
+                   (mapcar
+                    (lambda (info wall utc)
+                      (list (first info)
+                            (second info)
+                            (%string-from-unsigned-byte-vector abbreviation-buf (third info))
+                            (/= wall 0)
+                            (/= utc 0)))
+                    timestamp-info
+                    wall-indicators
+                    local-indicators)
+                   'simple-vector))
             (setf (timezone-leap-seconds zone)
                   leap-second-info)))))
     (setf (timezone-loaded zone) t))
   zone)
 
-(defparameter +utc-zone+ (make-timezone :subzones '((0 nil "UTC" nil nil))
+(defparameter +utc-zone+ (make-timezone :subzones #((0 nil "UTC" nil nil))
                                         :name "UTC"
                                         :loaded t)
   "The zone for Coordinated Universal Time.")
@@ -368,17 +368,30 @@
                  :sec (sec-of timestamp)
                  :day (day-of timestamp)))
 
+(defun transition-position (needle haystack &optional (start 0) (end (1- (length haystack))))
+  (let ((middle (floor (+ end start) 2)))
+    (cond
+      ((> start end)
+       (if (minusp end)
+           0
+           end))
+      ((= needle (elt haystack middle))
+       middle)
+      ((> needle (elt haystack middle))
+       (transition-position needle haystack (1+ middle) end))
+      (t
+       (transition-position needle haystack start (1- middle))))))
+
 (defun timestamp-subtimezone (timestamp timezone)
   "Return as multiple values the time zone as the number of seconds east of UTC, a boolean daylight-saving-p, and the customary abbreviation of the timezone."
   (declare (type timestamp timestamp)
            (type (or null timezone) timezone))
   (let* ((zone (%realize-timezone (or timezone *default-timezone*)))
-         (subzone-idx (or
-                       (second (assoc (timestamp-to-unix timestamp)
-                                      (timezone-transitions zone)
-                                      :test #'>))
-                       0))
-         (subzone (nth subzone-idx (timezone-subzones zone))))
+         (unix-time (timestamp-to-unix timestamp))
+         (subzone-idx (elt (timezone-indexes zone)
+                           (transition-position unix-time
+                                                (timezone-transitions timezone))))
+         (subzone (elt (timezone-subzones zone) subzone-idx)))
     (values
      (first subzone)
      (second subzone)
