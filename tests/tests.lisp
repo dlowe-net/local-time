@@ -202,10 +202,6 @@
                          :timezone local-time::+utc-zone+
                          :use-zulu-p t)
 
-      ;; note: nsec overflows here
-      "2008-06-05T04:03:03.234567+00:00"
-      (format-timestring (encode-timestamp 1234567890 2 3 4 5 6 2008 :offset 0) :use-zulu-p nil)
-
       "-06-05T04:03:02.000001"
       (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :date-elements 2)
 
@@ -271,12 +267,12 @@
     (is (timestamp= timestamp
                      (parse-timestring
                       (format-timestring timestamp)))))
-  (let ((timestamp (encode-timestamp 0 0 0 0 1 1 0)))
+  (let ((timestamp (encode-timestamp 0 0 0 0 1 1 1)))
     (is (timestamp= timestamp
-                     (parse-timestring "0000-01-01T00:00:00,0"))))
-  (let ((timestamp (encode-timestamp 0 0 0 0 1 1 0 :offset 0)))
+                     (parse-timestring "0001-01-01T00:00:00,0"))))
+  (let ((timestamp (encode-timestamp 0 0 0 0 1 1 1 :offset 0)))
     (is (timestamp= timestamp
-                     (parse-timestring "0000-01-01T00:00:00Z"))))
+                     (parse-timestring "0001-01-01T00:00:00Z"))))
   (let ((timestamp (encode-timestamp 0 0 0 0 1 1 2006)))
     (is (timestamp= timestamp
                      (parse-timestring "2006-01-01T00:00:00,0"))))
