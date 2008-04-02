@@ -256,32 +256,32 @@
         (let ((timezone-transitions
                ;; read transition times
                (loop for idx from 1 upto transition-count
-                     collect (%read-binary-integer inf 4 t)))
+                  collect (%read-binary-integer inf 4 t)))
               ;; read local time indexes
               (timestamp-indexes
                (loop for idx from 1 upto transition-count
-                     collect (%read-binary-integer inf 1)))
+                  collect (%read-binary-integer inf 1)))
               ;; read local time info
               (timestamp-info
                (loop for idx from 1 upto type-count
-                     collect (list (%read-binary-integer inf 4 t)
-                                   (/= (%read-binary-integer inf 1) 0)
-                                   (%read-binary-integer inf 1))))
+                  collect (list (%read-binary-integer inf 4 t)
+                                (/= (%read-binary-integer inf 1) 0)
+                                (%read-binary-integer inf 1))))
               ;; read leap second info
               (leap-second-info
                (loop for idx from 1 upto leap-count
-                     collect (list (%read-binary-integer inf 4)
-                                   (%read-binary-integer inf 4))))
+                  collect (list (%read-binary-integer inf 4)
+                                (%read-binary-integer inf 4))))
               (abbreviation-buf (make-array abbrev-length :element-type '(unsigned-byte 8))))
           (read-sequence abbreviation-buf inf :start 0 :end abbrev-length)
           (let ((wall-indicators
                  ;; read standard/wall indicators
                  (loop for idx from 1 upto wall-indicator-count
-                       collect (%read-binary-integer inf 1)))
+                    collect (%read-binary-integer inf 1)))
                 ;; read UTC/local indicators
                 (local-indicators
                  (loop for idx from 1 upto utc-indicator-count
-                       collect (%read-binary-integer inf 1))))
+                    collect (%read-binary-integer inf 1))))
             (setf (timezone-transitions zone)
                   (nreverse
                    (mapcar
@@ -529,17 +529,17 @@
                     old))
            (forms (list)))
       (%expand-adjust-timestamp-changes old changes
-                                       (lambda (change)
-                                         (push
-                                          `(progn
-                                             (multiple-value-bind (nsec sec day)
-                                                 ,change
-                                               (setf (nsec-of ,new) nsec)
-                                               (setf (sec-of ,new) sec)
-                                               (setf (day-of ,new) day))
-                                             ,@(when functional
-                                                     `((setf ,old ,new))))
-                                          forms)))
+                                        (lambda (change)
+                                          (push
+                                           `(progn
+                                              (multiple-value-bind (nsec sec day)
+                                                  ,change
+                                                (setf (nsec-of ,new) nsec)
+                                                (setf (sec-of ,new) sec)
+                                                (setf (day-of ,new) day))
+                                              ,@(when functional
+                                                      `((setf ,old ,new))))
+                                           forms)))
       (setf forms (nreverse forms))
       `(let* ((,old ,timestamp)
               ,@(when functional
@@ -836,7 +836,6 @@
   "Applies TEST to pairs of elements in list, keeping the element which last tested T.  Returns the winning element."
   (reduce (lambda (a b) (if (funcall test a b) a b)) list))
 
-;; TODO timestamp-min/max could have a compiler macro
 (defun timestamp-minimum (time &rest times)
   "Returns the earliest timestamp"
   (contest #'timestamp< (cons time times)))
@@ -858,18 +857,18 @@
   "Given a number of days, returns the number of years and the remaining days in that year."
   (let ((remaining-days days))
     (multiple-value-bind (400-years remaining-days)
-        (floor remaining-days 146097)
-      (let* ((100-years (min 3 (floor remaining-days 36524)))
-             (remaining-days (- remaining-days (* 100-years 36524))))
+        (floor remaining-days #.(years-to-days 400))
+      (let* ((100-years (min (floor remaining-days #.(years-to-days 100)) 3))
+             (remaining-days (- remaining-days
+                                (* 100-years #.(years-to-days 100)))))
         (multiple-value-bind (4-years remaining-days)
-            (floor remaining-days 1461)
-          (let ((years (min 3 (floor remaining-days 365))))
+            (floor remaining-days #.(years-to-days 4))
+          (let ((years (min 3 (floor remaining-days #.(years-to-days 1)))))
             (values (+ (* 400-years 400)
                        (* 100-years 100)
                        (* 4-years 4)
                        years)
-                    (- remaining-days
-                       (* years 365))))))))
+                    (- remaining-days (* years 365))))))))
   ;; the above is the macroexpansion of the following. uses metabang BIND, but kept for clarity because the expansion is unreadable.
   #+nil
   (bind ((remaining-days days)
@@ -882,11 +881,11 @@
          ((values 4-years remaining-days) (floor remaining-days #.(years-to-days 4)))
          (years (min (floor remaining-days 365)
                      3)))
-    (values (+ (* 400-years 400)
-               (* 100-years 100)
-               (* 4-years 4)
-               years)
-            (- remaining-days (* years 365)))))
+        (values (+ (* 400-years 400)
+                   (* 100-years 100)
+                   (* 4-years 4)
+                   years)
+                (- remaining-days (* years 365)))))
 
 (defun %timestamp-decode-date (days)
   "Returns the year, month, and day, given the number of days from the epoch."
