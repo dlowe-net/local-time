@@ -36,6 +36,7 @@
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :local-time))))
   nil)
 
+#+:asdf-system-connections
 (defsystem-connection cl-postgres-and-local-time
   :requires (:cl-postgres :local-time)
   :components ((:module "src"
