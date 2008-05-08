@@ -138,9 +138,9 @@
 ;;; Declaims
 
 (declaim (inline now format-rfc3339-timestring)
-         (ftype (function * (values simple-base-string)) format-rfc3339-timestring)
-         (ftype (function * (values simple-base-string)) format-timestring)
-         (ftype (function * (values fixnum)) local-timezone)
+         (ftype (function * simple-base-string) format-rfc3339-timestring)
+         (ftype (function * simple-base-string) format-timestring)
+         (ftype (function * fixnum) local-timezone)
          (ftype (function (timestamp &key (:timezone timezone))
                           (values (integer 0 999999999)
                                   (integer 0 59)
