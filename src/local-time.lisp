@@ -219,8 +219,11 @@
   (loop for offset from (* (1- byte-count) 8) downto 0 by 8
      with result = 0
      do (setf (ldb (byte 8 offset) result) (read-byte stream))
-     finally (if (and signed (< #x80000000 result))
-                 (return (- result #x100000000))
+     finally (if signed
+                 (let ((high-bit (* byte-count 8)))
+                   (if (logbitp (1- high-bit) result)
+                       (return (- result (ash 1 high-bit)))
+                       (return result)))
                  (return result))))
 
 (defun %string-from-unsigned-byte-vector (vector offset)
