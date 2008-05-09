@@ -1352,7 +1352,7 @@
   (print-unreadable-object (object stream :type t)
     (format stream "~:[UNLOADED~;~{~a~^ ~}~]"
             (timezone-loaded object)
-            (mapcar #'third (timezone-subzones object)))))
+            (map 'list #'third (timezone-subzones object)))))
 
 (defun astronomical-julian-date (timestamp)
   "Returns the astronomical julian date referred to by the timestamp."
