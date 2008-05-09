@@ -154,7 +154,10 @@
                                   (integer 1 31)
                                   (integer 1 12)
                                   (integer -1000000 1000000)
-                                  t))
+                                  (integer 0 6)
+                                  t
+                                  (integer -43199 43199)
+                                  simple-string))
                 decode-timestamp))
 
 ;;; Variables
@@ -996,17 +999,22 @@
 (defun decode-timestamp (timestamp &key (timezone *default-timezone*))
   "Returns the decoded time as multiple values: nsec, ss, mm, hh, day, month, year, day-of-week"
   (declare (type timestamp timestamp))
-  (multiple-value-bind (adjusted-secs adjusted-days)
-      (%adjust-to-timezone timestamp timezone)
-    (multiple-value-bind (hours minutes seconds)
-        (%timestamp-decode-time adjusted-secs)
-      (multiple-value-bind (year month day)
-          (%timestamp-decode-date adjusted-days)
-        (values
-         (nsec-of timestamp)
-         seconds minutes hours
-         day month year
-         (timestamp-day-of-week timestamp :timezone timezone))))))
+  (multiple-value-bind (offset daylight-p abbreviation)
+      (timestamp-subtimezone timestamp timezone)
+      (multiple-value-bind (adjusted-secs adjusted-days)
+          (%adjust-to-timezone timestamp timezone)
+        (multiple-value-bind (hours minutes seconds)
+            (%timestamp-decode-time adjusted-secs)
+          (multiple-value-bind (year month day)
+              (%timestamp-decode-date adjusted-days)
+            (values
+             (nsec-of timestamp)
+             seconds minutes hours
+             day month year
+             (timestamp-day-of-week timestamp :timezone timezone)
+             daylight-p
+             offset
+             abbreviation))))))
 
 (defun timestamp-year (timestamp &key (timezone *default-timezone*))
   "Returns the cardinal year upon which the timestamp falls."
