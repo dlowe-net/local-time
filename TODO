@@ -1,11 +1,3 @@
-- Figure out what LOCAL-TIME-DESIGNATOR is supposed to do and
-  implement it
-
-- Figure out a sane and unambiguous way to support intervals
-    The problem: years are not always 365 days, months may be 28-31 days,
-    and days may not be 24 hours long.  That leaves doing all intervals
-    in seconds, which sucks.
-
 - Write a more flexible formatting function for times, perhaps something
   like strftime() except lispy
 
