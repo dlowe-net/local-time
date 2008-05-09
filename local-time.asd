@@ -26,8 +26,7 @@
   :author "Daniel Lowe <dlowe@bitmuse.com>"
   :description "Testing code for the local-time library"
   :depends-on (:local-time :fiveam)
-  :components ((:module "tests"
-                        :components ((:file "tests")))))
+  :components ((:file "tests" :pathname "tests/tests")))
 
 (defmethod perform ((op test-op) (system (eql (find-system :local-time))))
   (operate 'load-op '#:local-time.test)
