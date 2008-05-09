@@ -305,9 +305,15 @@
     (setf (timezone-loaded zone) t))
   zone)
 
-(defparameter +utc-zone+ (make-timezone :subzones #((0 nil "UTC" nil nil))
-                                        :name "UTC"
-                                        :loaded t)
+(eval-when (:load-toplevel :compile-toplevel)
+  (defun %make-simple-timezone (name abbrev offset)
+    (local-time::make-timezone
+     :subzones (make-array 1 :initial-contents `((,offset nil ,abbrev nil nil)))
+     :path nil
+     :name name
+     :loaded t)))
+
+(defparameter +utc-zone+ (%make-simple-timezone "UTC" "UTC" 0)
   "The zone for Coordinated Universal Time.")
 
 (defmacro define-timezone (zone-name zone-file &key (load nil))

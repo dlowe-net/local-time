@@ -124,6 +124,24 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(test read-binary-integer
+  (let ((tmp-file-path #p"/tmp/local-time-test"))
+    (with-open-file (ouf tmp-file-path
+                         :direction :output
+                         :element-type 'unsigned-byte
+                         :if-exists :supersede)
+      (dotimes (i 14)
+        (write-byte 200 ouf)))
+  (with-open-file (inf tmp-file-path :element-type 'unsigned-byte)
+    (is (eql (local-time::%read-binary-integer inf 1) 200))
+    (is (eql (local-time::%read-binary-integer inf 1 t) -56))
+    (is (eql (local-time::%read-binary-integer inf 2) 51400))
+    (is (eql (local-time::%read-binary-integer inf 2 t) -14136))
+    (is (eql (local-time::%read-binary-integer inf 4) 3368601800))
+    (is (eql (local-time::%read-binary-integer inf 4 t) -926365496)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (test encode-timestamp
   (let ((timestamp (encode-timestamp 0 0 0 0 1 3 2000 :offset 0)))
     (is-every =
@@ -177,6 +195,28 @@
       (is (timestamp= timestamp
                       (encode-timestamp ns ss mm hh day mon year :offset 0))))))
 
+(test decode-timestamp-dst
+  ;; Testing DST calculation with a known timezone
+  (let ((test-cases '(
+                      ;; Spring forward
+                      ((2008 3 9 6 58) (2008 3 9 1 58))
+                      ((2008 3 9 6 59) (2008 3 9 1 59))
+                      ((2008 3 9 7  0) (2008 3 9 3  0))
+                      ((2008 3 9 7  1) (2008 3 9 3  1))
+                      ;; Fall back
+                      ((2008 11 2 5 59) (2008 11 2 1 59))
+                      ((2008 11 2 6  0) (2008 11 2 1  0))
+                      ((2008 11 2 6  1) (2008 11 2 1  1))))
+        (eastern-tz nil))
+    (local-time::define-timezone eastern-tz #p"/home/dlowe/code/local-time/zoneinfo/EST5EDT")
+    (dolist (test-case test-cases)
+      (is (equal 
+         (let ((timestamp
+                (apply 'local-time:encode-timestamp
+                       `(0 0 ,@(reverse (first test-case)) :offset 0))))
+           (local-time:decode-timestamp timestamp :timezone eastern-tz))
+         (apply 'values `(0 0 ,@(reverse (second test-case)))))))))
+    
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test format-timestring
@@ -187,10 +227,7 @@
 
       "2008-06-05T04:03:02.000001-05:00"
 
-      (let ((utc-5 (local-time::make-timezone :subzones #((-18000 nil "UTC-5"))
-                                              :path nil
-                                              :name "UTC-5"
-                                              :loaded t)))
+      (let ((utc-5 (local-time::%make-simple-timezone "UTC-5" "UTC-5" -18000)))
         (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008
                                              :offset (* 3600 -5))
                            :timezone utc-5))
