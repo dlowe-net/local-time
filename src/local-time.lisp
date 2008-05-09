@@ -110,10 +110,15 @@
    (sec :accessor sec-of :initarg :sec :initform 0 :type integer)
    (nsec :accessor nsec-of :initarg :nsec :initform 0 :type (integer 0 999999999))))
 
+(defstruct subzone
+  (abbrev nil)
+  (offset nil)
+  (daylight-p nil))
+
 (defstruct timezone
   (transitions #(0) :type simple-vector)
   (indexes #(0) :type simple-vector)
-  (subzones #(nil) :type simple-vector)
+  (subzones #() :type simple-vector)
   (leap-seconds nil :type list)
   (path nil)
   (name "anonymous" :type string)
@@ -236,85 +241,122 @@
           do (setf (aref result output-index) (code-char (aref vector input-index))))
     result))
 
+(defun %find-first-std-offset (timezone-indexes timestamp-info)
+  (let ((subzone-idx (find-if 'subzone-daylight-p
+                              timezone-indexes
+                              :key (lambda (x) (aref timestamp-info x)))))
+    (subzone-offset (aref timestamp-info (or subzone-idx 0)))))
+
+(defun %tz-verify-magic-number (inf zone)
+  ;; read and verify magic number
+  (let ((magic-buf (make-array 4 :element-type 'unsigned-byte)))
+    (read-sequence magic-buf inf :start 0 :end 4)
+    (when (string/= (map 'string #'code-char magic-buf) "TZif" :end1 4)
+      (error 'invalid-timezone-file :path (timezone-path zone))))
+  ;; skip 16 bytes for "future use"
+  (let ((ignore-buf (make-array 16 :element-type 'unsigned-byte)))
+    (read-sequence ignore-buf inf :start 0 :end 16)))
+
+(defun %tz-read-header (inf)
+  `(:utc-count ,(%read-binary-integer inf 4)
+         :wall-count ,(%read-binary-integer inf 4)
+         :leap-count ,(%read-binary-integer inf 4)
+         :transition-count ,(%read-binary-integer inf 4)
+         :type-count ,(%read-binary-integer inf 4)
+         :abbrev-length ,(%read-binary-integer inf 4)))
+
+(defun %tz-read-transitions (inf count)
+  (make-array count
+              :initial-contents
+              (loop for idx from 1 upto count
+                 collect (%read-binary-integer inf 4 t))))
+
+(defun %tz-read-indexes (inf count)
+  (make-array count
+              :initial-contents
+              (loop for idx from 1 upto count
+                 collect (%read-binary-integer inf 1))))
+
+(defun %tz-read-subzone (inf count)
+  (loop for idx from 1 upto count
+     collect (list (%read-binary-integer inf 4 t)
+                   (%read-binary-integer inf 1)
+                   (%read-binary-integer inf 1))))
+
+(defun %tz-read-leap-seconds (inf count)
+  (loop for idx from 1 upto count
+     collect (list (%read-binary-integer inf 4)
+                   (%read-binary-integer inf 4))))
+
+(defun %tz-read-abbrevs (inf length)
+  (let ((a (make-array length :element-type '(unsigned-byte 8))))
+    (read-sequence a inf
+                   :start 0
+                   :end length)
+    a))
+
+(defun %tz-read-indicators (inf length)
+  ;; read standard/wall indicators
+  (let ((buf (make-array length :element-type '(unsigned-byte 8))))
+    (read-sequence buf inf
+                   :start 0
+                   :end length)
+    (make-array length
+                :element-type 'bit
+                :initial-contents buf)))
+
+(defun %tz-make-subzones (raw-info abbrevs gmt-indicators std-indicators)
+  (declare (ignore gmt-indicators std-indicators))
+  ;; TODO: handle TZ environment variables, which use the gmt and std
+  ;; indicators
+  (make-array (length raw-info)
+              :element-type 'subzone
+              :initial-contents
+              (loop for info in raw-info collect
+                   (make-subzone
+                    :offset (first info)
+                    :daylight-p (/= (second info) 0)
+                    :abbrev (%string-from-unsigned-byte-vector abbrevs (third info))))))
+
 (defun %realize-timezone (zone &optional reload)
   "If timezone has not already been loaded or RELOAD is non-NIL, loads the timezone information from its associated unix file.  If the file is not a valid timezone file, the condition INVALID-TIMEZONE-FILE will be signaled."
   (when (or reload (not (timezone-loaded zone)))
     (with-open-file (inf (timezone-path zone)
                          :direction :input
                          :element-type 'unsigned-byte)
-      ;; read and verify magic number
-      (let ((magic-buf (make-array 4 :element-type 'unsigned-byte)))
-        (read-sequence magic-buf inf :start 0 :end 4)
-        (when (string/= (map 'string #'code-char magic-buf) "TZif" :end1 4)
-          (error 'invalid-timezone-file :path (timezone-path zone))))
-      ;; skip 16 bytes for "future use"
-      (let ((ignore-buf (make-array 16 :element-type 'unsigned-byte)))
-        (read-sequence ignore-buf inf :start 0 :end 16))
+      (%tz-verify-magic-number inf zone)
+
       ;; read header values
-      (let ((utc-indicator-count (%read-binary-integer inf 4))
-            (wall-indicator-count (%read-binary-integer inf 4))
-            (leap-count (%read-binary-integer inf 4))
-            (transition-count (%read-binary-integer inf 4))
-            (type-count (%read-binary-integer inf 4))
-            (abbrev-length (%read-binary-integer inf 4)))
-        (let ((timezone-transitions
-               ;; read transition times
-               (loop for idx from 1 upto transition-count
-                  collect (%read-binary-integer inf 4 t)))
-              ;; read local time indexes
-              (timestamp-indexes
-               (loop for idx from 1 upto transition-count
-                  collect (%read-binary-integer inf 1)))
-              ;; read local time info
-              (timestamp-info
-               (loop for idx from 1 upto type-count
-                  collect (list (%read-binary-integer inf 4 t)
-                                (/= (%read-binary-integer inf 1) 0)
-                                (%read-binary-integer inf 1))))
-              ;; read leap second info
-              (leap-second-info
-               (loop for idx from 1 upto leap-count
-                  collect (list (%read-binary-integer inf 4)
-                                (%read-binary-integer inf 4))))
-              (abbreviation-buf (make-array abbrev-length :element-type '(unsigned-byte 8))))
-          (read-sequence abbreviation-buf inf :start 0 :end abbrev-length)
-          (let ((wall-indicators
-                 ;; read standard/wall indicators
-                 (loop for idx from 1 upto wall-indicator-count
-                    collect (%read-binary-integer inf 1)))
-                ;; read UTC/local indicators
-                (local-indicators
-                 (loop for idx from 1 upto utc-indicator-count
-                    collect (%read-binary-integer inf 1))))
-            (setf (timezone-transitions zone)
-                  (coerce timezone-transitions 'simple-vector))
-            (setf (timezone-indexes zone)
-                  (coerce timestamp-indexes 'simple-vector))
-            (setf (timezone-subzones zone)
-                  (coerce 
-                   (mapcar
-                    (lambda (info wall utc)
-                      (list (first info)
-                            (second info)
-                            (%string-from-unsigned-byte-vector abbreviation-buf (third info))
-                            (/= wall 0)
-                            (/= utc 0)))
-                    timestamp-info
-                    wall-indicators
-                    local-indicators)
-                   'simple-vector))
-            (setf (timezone-leap-seconds zone)
-                  leap-second-info)))))
-    (setf (timezone-loaded zone) t))
+      (let* ((header (%tz-read-header inf))
+             (timezone-transitions (%tz-read-transitions inf (getf header :transition-count)))
+             (subzone-indexes (%tz-read-indexes inf (getf header :transition-count)))
+             (subzone-raw-info (%tz-read-subzone inf (getf header :type-count)))
+             (leap-second-info (%tz-read-leap-seconds inf (getf header :leap-count)))
+             (abbreviation-buf (%tz-read-abbrevs inf (getf header :abbrev-length)))
+             (std-indicators (%tz-read-indicators inf (getf header :wall-count)))
+             (gmt-indicators (%tz-read-indicators inf (getf header :utc-count)))
+             (subzone-info (%tz-make-subzones subzone-raw-info
+                                              abbreviation-buf
+                                              gmt-indicators
+                                              std-indicators)))
+
+        (setf (timezone-transitions zone) timezone-transitions)
+        (setf (timezone-indexes zone) subzone-indexes)
+        (setf (timezone-subzones zone) subzone-info)
+        (setf (timezone-leap-seconds zone) leap-second-info))
+      (setf (timezone-loaded zone) t)))
   zone)
 
 (eval-when (:load-toplevel :compile-toplevel)
   (defun %make-simple-timezone (name abbrev offset)
+    (let ((subzone (local-time::make-subzone :offset offset
+                                           :daylight-p nil
+                                           :abbrev abbrev)))
     (local-time::make-timezone
-     :subzones (make-array 1 :initial-contents `((,offset nil ,abbrev nil nil)))
+     :subzones (make-array 1 :initial-contents (list subzone))
      :path nil
      :name name
-     :loaded t)))
+     :loaded t))))
 
 (defparameter +utc-zone+ (%make-simple-timezone "UTC" "UTC" 0)
   "The zone for Coordinated Universal Time.")
@@ -402,9 +444,9 @@
                                                 (timezone-transitions timezone))))
          (subzone (elt (timezone-subzones zone) subzone-idx)))
     (values
-     (first subzone)
-     (second subzone)
-     (third subzone))))
+     (subzone-offset subzone)
+     (subzone-daylight-p subzone)
+     (subzone-abbrev subzone))))
 
 (defun %adjust-to-offset (sec day offset)
   "Returns two values, the values of new DAY and SEC slots of the timestamp adjusted to the given timezone."
@@ -1355,7 +1397,7 @@
   (print-unreadable-object (object stream :type t)
     (format stream "~:[UNLOADED~;~{~a~^ ~}~]"
             (timezone-loaded object)
-            (map 'list #'third (timezone-subzones object)))))
+            (map 'list #'subzone-abbrev (timezone-subzones object)))))
 
 (defun astronomical-julian-date (timestamp)
   "Returns the astronomical julian date referred to by the timestamp."
