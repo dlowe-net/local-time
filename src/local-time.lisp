@@ -162,8 +162,9 @@
 (defparameter *project-home-directory*
   (make-pathname :directory (pathname-directory
                              (if (find-package "ASDF")
-                                 (eval (read-from-string "(asdf:system-definition-pathname
-                                                            (asdf:find-system '#:local-time))"))
+                                 (truename
+                                  (eval (read-from-string "(asdf:system-definition-pathname
+                                                            (asdf:find-system '#:local-time))")))
                                  *load-pathname*))))
 ;;; Month information
 (defparameter +month-names+
