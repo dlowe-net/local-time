@@ -179,11 +179,11 @@
     ,@body))
 
 (test decode-timestamp
-  (encode-decode-test (5 5 5 5 5 5 1990 6))
-  (encode-decode-test (0 0 0 0 1 3 2001 4))
-  (encode-decode-test (0 0 0 0 1 3 1998 0))
-  (encode-decode-test (1 2 3 4 5 6 2008 4))
-  (encode-decode-test (0 0 0 0 1 1 1 1)))
+  (encode-decode-test (5 5 5 5 5 5 1990 6 nil 0 "UTC"))
+  (encode-decode-test (0 0 0 0 1 3 2001 4 nil 0 "UTC"))
+  (encode-decode-test (0 0 0 0 1 3 1998 0 nil 0 "UTC"))
+  (encode-decode-test (1 2 3 4 5 6 2008 4 nil 0 "UTC"))
+  (encode-decode-test (0 0 0 0 1 1 1 1 nil 0 "UTC")))
 
 (test random-decode-timestamp
   (let ((timestamp (make-timestamp
