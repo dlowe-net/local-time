@@ -155,13 +155,13 @@ The following constraints apply to the specific types:
 @itemize
 
 @item
-@emph{date}: must have a @code{+utc-zone+} timezone and the @code{sec}
+@emph{date}: must have a @var{+utc-zone+} timezone and the @var{sec}
 slot must be the first second of a day; In other words, the time
 elements of the @code{timestamp} value must have their least possible
 values.
 
 @item
-@emph{time}: the @code{day} slot must be zero.
+@emph{time}: the @var{day} slot must be zero.
 
 @end itemize
 @end deftp
@@ -201,9 +201,9 @@ UTC.
 @itindex define-timezone
 @defmac define-timezone zone-name zone-file &key (load nil)
 
-Define @code{zone-name} (a symbol or a string) as a new timezone,
-lazy-loaded from @code{zone-file} (a pathname designator relative to
-the zoneinfo directory on this system.  If @code{load} is true, load
+Define @var{zone-name} (a symbol or a string) as a new timezone,
+lazy-loaded from @var{zone-file} (a pathname designator relative to
+the zoneinfo directory on this system.  If @var{load} is true, load
 immediately.
 
 @end defmac
@@ -268,7 +268,7 @@ Expands to an expression that creates an instance of a
 @itindex clone-timestamp
 @defmac clone-timestamp timestamp
 
-Expands to an expression that creates another copy of @code{timestamp}
+Expands to an expression that creates another copy of @var{timestamp}
 that is @code{timestamp=} to it.
 @end defmac
 
@@ -302,7 +302,7 @@ the nanoseconds range from 0 to 999999999.
 @itindex timestamp-to-universal
 @defun timestamp-to-universal timestamp
 
-This returns the date/time specified in @code{timestamp} encoded as
+This returns the date/time specified in @var{timestamp} encoded as
 the number of seconds since January 1st, 1900 12:00am UTC.
 @end defun
 
@@ -326,7 +326,7 @@ the customary abbreviation of the timezone.
 @itindex with-decoded-timestamp
 @defmac with-decoded-timestamp (&key nsec sec minute hour day month year day-of-week daylight-p timezone) timestamp &body body
 
-This macro binds variables to the decoded elements of @code{timestamp}.  The timezone argument is used for decoding the timestamp, and is not bound by the macro.
+This macro binds variables to the decoded elements of @var{timestamp}.  The timezone argument is used for decoding the timestamp, and is not bound by the macro.
 @end defmac
 
 
@@ -467,7 +467,7 @@ created.
 
 Alters various parts of @var{timestamp}, given a list of changes.  The
 changes are in the format @code{(offset part value)} and @code{(set
-part value)}. 
+part value)}.
 
 @lisp
 ;; Return a new @code{timestamp} value that points to the previous Monday
@@ -483,8 +483,7 @@ expected. Also note that it's possible to specify multiple commands.
 
 The list of possible places to manipulate are: @code{:nsec}
 @code{:sec} @code{:sec-of-day} @code{:minute} @code{:hour}
-@code{:day} @code{:day-of-month} @code{:month} @code{:year}
-@code{:timezone}.
+@code{:day} @code{:day-of-month} @code{:month} @code{:year}.
 @end defmac
 
 
@@ -492,7 +491,7 @@ The list of possible places to manipulate are: @code{:nsec}
 @defmac adjust-timestamp! timestamp &body changes
 
 Just like @code{adjust-timestamp}, but instead of returning a freshly
-constructed value, it alters the provided @code{timestamp} value (and
+constructed value, it alters the provided @var{timestamp} value (and
 returns it).
 @end defmac
 
@@ -500,7 +499,7 @@ returns it).
 @itindex timestamp-whole-year-difference
 @defun timestamp-whole-year-difference time-a time-b
 
-Returns the number of whole years elapsed between @code{time-a} and @code{time-b}.
+Returns the number of whole years elapsed between @var{time-a} and @var{time-b}.
 @quotation Note
 This is useful for calculating anniversaries and birthdays.
 @end quotation
@@ -522,21 +521,21 @@ Returns the number of days in a given month of the specified year.
 @itindex +iso-8601-format+
 @defvr Constant +iso-8601-format+
 
-The constant @var{+iso-8601-format+} is bound to a description of the ISO 8601 format.  An output with this format will look like this: @code{2008-03-01T19:42:34.608506+01:00}.  This is the default format for the @code{format-timestring} function.
+The constant @var{+iso-8601-format+} is bound to a description of the ISO 8601 format.  An output with this format will look like this: @samp{2008-03-01T19:42:34.608506+01:00}.  This is the default format for the @code{format-timestring} function.
 
 @end defvr
 
 @itindex +asctime-format+
 @defvr Constant +asctime-format+
 
-The constant @var{+asctime-format+} is bound to a format mirroring the output of the POSIX asctime() function.  An output with this format will look like this: @code{Sat Mar  1 19:42:34 2008}.
+The constant @var{+asctime-format+} is bound to a format mirroring the output of the POSIX asctime() function.  An output with this format will look like this: @samp{Sat Mar  1 19:42:34 2008}.
 
 @end defvr
 
 @itindex +rfc-1123-format+
 @defvr Constant +rfc-1123-format+
 
-The constant @var{+rfc-1123-format+} is bound to a description of the format defined in RFC 1123 for Internet timestamps.  An output with this format will look like this: @code{Sat, 01 Mar 2008 19:42:34 EDT}.
+The constant @var{+rfc-1123-format+} is bound to a description of the format defined in RFC 1123 for Internet timestamps.  An output with this format will look like this: @samp{Sat, 01 Mar 2008 19:42:34 EDT}.
 
 @end defvr
 
@@ -544,8 +543,8 @@ The constant @var{+rfc-1123-format+} is bound to a description of the format def
 @defun parse-timestring timestring &key (start 0) end junk-allowed
 
 Parses a timestring and returns the corresponding @code{timestamp}.
-Parsing begins at @code{start} and stops at the @code{end}
-position. If @code{junk-allowed} is @code{T}, ignores any invalid characters
+Parsing begins at @var{start} and stops at the @var{end}
+position. If @var{junk-allowed} is @code{T}, ignores any invalid characters
 within @code{timestring}.
 @end defun
 
@@ -557,38 +556,63 @@ Constructs a string representation of TIMESTAMP according to FORMAT and returns 
 
 FORMAT is a list containing one or more of strings, characters, and keywords.  Strings and characters are output literally, while keywords are replaced by the values here:
 
-  :YEAR  - *year                     :HOUR - *hour        
-  :MONTH - *numeric month            :MIN  - *minutes     
-  :DAY   - *day of month             :SEC  - *seconds     
-  :WDAY  - *numeric day of week      :MSEC - *milliseconds
-                                     :USEC - *microseconds
-                                     :NSEC - *nanoseconds 
-  :LONG-WEEKDAY      long form of weekday (e.g. Sunday, Monday)
-  :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
-  :LONG-MONTH        long form of month (e.g. January, February)
-  :SHORT-MONTH       short form of month (e.g. Jan, Feb)
-  :HOUR12            hour on a 12-hour clock
-  :AMPM              am/pm marker in lowercase
-  :GMT-OFFSET        the gmt-offset of the time, in +00:00 form
-  :GMT-OFFSET-OR-Z   like :GMT-OFFSET, but is Z when UTC
-  :TIMEZONE          timezone abbrevation for the time
+@table @code
+@item :year
+*year
+@item :month
+*numeric month
+@item :day
+*day of month
+@item :wday
+*numeric day of week
+@item :hour
+*hour
+@item :min
+*minutes
+@item :sec
+*seconds
+@item :msec
+*milliseconds
+@item :usec
+*microseconds
+@item :nsec
+*nanoseconds
+@item :long-weekday
+long form of weekday (e.g. Sunday, Monday)
+@item :short-weekday
+short form of weekday (e.g. Sun, Mon)
+@item :long-month
+long form of month (e.g. January, February)
+@item :short-month
+short form of month (e.g. Jan, Feb)
+@item :hour12
+hour on a 12-hour clock
+@item :ampm
+am/pm marker in lowercase
+@item :gmt-offset
+the gmt-offset of the time, in +00:00 form
+@item :gmt-offset-or-z
+like :gmt-offset, but is Z when UTC
+@item :timezone
+timezone abbrevation for the time
+@end table
 
 Elements marked by * can be placed in a list in the form:
 @lisp
-   (:keyword padding &optional (padchar #\0))
+(:keyword padding &optional (padchar #\0))
 @end lisp
 The string representation of the value will be padded with the padchar.
 
-You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMAT+.
+You can see examples by examining the values in @var{+iso-8601-format+}, @var{+asctime-format+}, and @var{+rfc-1123-format+}.
 
-Produces on @code{stream} the timestring corresponding to the @code{timestamp} with
-the given options.  If @code{stream} is @code{nil}, only returns a string containing what
-would have been the output.  If @code{stream} is @code{t}, prints the string to
-@code{*standard-output*}.
+Produces on @var{stream} the timestring corresponding to the @var{timestamp} with
+the given options.  If @var{stream} is @code{nil}, only returns a string containing what
+would have been the output.  If @var{stream} is @code{t}, prints the string to
+@var{*standard-output*}.
 
 Example output:
 @lisp
-TIMESTAMP> (format-timestring nil (now))
+LOCAL-TIME> (format-timestring nil (now))
 "2008-03-01T19:42:34.608506+01:00"
 @end lisp
 @end defun
