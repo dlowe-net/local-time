@@ -519,6 +519,27 @@ Returns the number of days in a given month of the specified year.
 @section Parsing and Formatting
 
 
+@itindex +iso-8601-format+
+@defvr Constant +iso-8601-format+
+
+The constant @var{+iso-8601-format+} is bound to a description of the ISO 8601 format.  An output with this format will look like this: @code{2008-03-01T19:42:34.608506+01:00}.  This is the default format for the @code{format-timestring} function.
+
+@end defvr
+
+@itindex +asctime-format+
+@defvr Constant +asctime-format+
+
+The constant @var{+asctime-format+} is bound to a format mirroring the output of the POSIX asctime() function.  An output with this format will look like this: @code{Sat Mar  1 19:42:34 2008}.
+
+@end defvr
+
+@itindex +rfc-1123-format+
+@defvr Constant +rfc-1123-format+
+
+The constant @var{+rfc-1123-format+} is bound to a description of the format defined in RFC 1123 for Internet timestamps.  An output with this format will look like this: @code{Sat, 01 Mar 2008 19:42:34 EDT}.
+
+@end defvr
+
 @itindex parse-timestring
 @defun parse-timestring timestring &key (start 0) end junk-allowed
 
@@ -530,7 +551,35 @@ within @code{timestring}.
 
 
 @itindex format-timestring
-@defun format-timestring (timestamp &key destination timezone (omit-date-part-p nil) (omit-time-part-p nil) (omit-timezone-part-p omit-time-part-p) (use-zulu-p t) (date-elements (if omit-date-part-p 0 3)) (time-elements (if omit-time-part-p 0 4)) (date-separator #\-) (time-separator #\:) (date-time-separator #\T))
+@defun format-timestring (destination timestamp &key (format +iso-8601-format+) (timezone *default-timezone*))
+
+Constructs a string representation of TIMESTAMP according to FORMAT and returns it.  If destination is T, the string is written to *standard-output*.  If destination is a stream, the string is written to the stream.
+
+FORMAT is a list containing one or more of strings, characters, and keywords.  Strings and characters are output literally, while keywords are replaced by the values here:
+
+  :YEAR  - *year                     :HOUR - *hour        
+  :MONTH - *numeric month            :MIN  - *minutes     
+  :DAY   - *day of month             :SEC  - *seconds     
+  :WDAY  - *numeric day of week      :MSEC - *milliseconds
+                                     :USEC - *microseconds
+                                     :NSEC - *nanoseconds 
+  :LONG-WEEKDAY      long form of weekday (e.g. Sunday, Monday)
+  :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
+  :LONG-MONTH        long form of month (e.g. January, February)
+  :SHORT-MONTH       short form of month (e.g. Jan, Feb)
+  :HOUR12            hour on a 12-hour clock
+  :AMPM              am/pm marker in lowercase
+  :GMT-OFFSET        the gmt-offset of the time, in +00:00 form
+  :GMT-OFFSET-OR-Z   like :GMT-OFFSET, but is Z when UTC
+  :TIMEZONE          timezone abbrevation for the time
+
+Elements marked by * can be placed in a list in the form:
+@lisp
+   (:keyword padding &optional (padchar #\0))
+@end lisp
+The string representation of the value will be padded with the padchar.
+
+You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMAT+.
 
 Produces on @code{stream} the timestring corresponding to the @code{timestamp} with
 the given options.  If @code{stream} is @code{nil}, only returns a string containing what
@@ -539,17 +588,16 @@ would have been the output.  If @code{stream} is @code{t}, prints the string to
 
 Example output:
 @lisp
-TIMESTAMP> (format-timestring (now))
+TIMESTAMP> (format-timestring nil (now))
 "2008-03-01T19:42:34.608506+01:00"
 @end lisp
 @end defun
 
 
 @itindex format-rfc3339-timestring
-@defun format-rfc3339-timestring (timestamp &key destination omit-date-part-p omit-time-part-p omit-timezone-part-p (use-zulu-p t))
+@defun format-rfc3339-timestring (destination timestamp &key omit-date-part-p omit-time-part-p omit-timezone-part-p (use-zulu-p t))
 
-Very similar to @code{format-timestring} but it formats the time
-according to RFC 3339.
+Formats the time like format-timestring, but in RFC 3339 format.  The options control valid options in the RFC.
 @end defun
 
 
