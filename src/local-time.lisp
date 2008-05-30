@@ -97,6 +97,9 @@
            #:+minutes-per-hour+
            #:+hours-per-day+
            #:+days-per-week+
+           #:+iso-8601-format+
+           #:+asctime-format+
+           #:+rfc-1123-format+
            #:astronomical-julian-date
            #:modified-julian-date
            #:astronomical-modified-julian-date))
@@ -146,6 +149,10 @@
          (ftype (function * simple-base-string) format-rfc3339-timestring)
          (ftype (function * simple-base-string) format-timestring)
          (ftype (function * fixnum) local-timezone)
+         (ftype (function * (values 
+                             (integer -43199 43199)
+                             boolean
+                             string)) timestamp-subzone)
          (ftype (function (timestamp &key (:timezone timezone))
                           (values (integer 0 999999999)
                                   (integer 0 59)
@@ -191,6 +198,18 @@
 (defconstant +seconds-per-hour+ 3600)
 (defconstant +seconds-per-minute+ 60)
 (defconstant +usecs-per-day+ 86400000000)
+
+(defparameter +iso-8601-format+
+  '((:year 4) #\- (:month 2) #\- (:day 2) #\T
+    (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
+    (:usec 6) :gmt-offset-or-z))
+(defparameter +asctime-format+
+  '(:short-weekday #\space :short-month #\space (:day 2 #\space) #\space
+    (:hour 2) #\: (:min 2) #\: (:sec 2) #\space
+    (:year 4)))
+(defparameter +rfc-1123-format+
+  '(:short-weekday ", " (:day 2) #\space :short-month #\space (:year 4) #\space
+    (:hour 2) #\: (:min 2) #\: (:sec 2) #\space :timezone))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter +rotated-month-days-without-leap-day+
@@ -1283,81 +1302,126 @@
                     (* (or offset-minute 0) 60))
                  (%get-default-offset)))))
 
-(defun format-rfc3339-timestring (timestamp &key destination omit-date-part-p omit-time-part-p
-                                  omit-timezone-part-p (use-zulu-p t))
-  (format-timestring timestamp
-                     :destination destination
-                     :omit-date-part-p omit-date-part-p
-                     :omit-time-part-p omit-time-part-p
-                     :omit-timezone-part-p omit-timezone-part-p
-                     :use-zulu-p use-zulu-p))
-
-(defun format-timestring (timestamp &key
-                          destination
-                          (timezone *default-timezone*)
-                          (omit-date-part-p nil)
-                          (omit-time-part-p nil)
-                          (omit-timezone-part-p omit-time-part-p)
-                          (use-zulu-p t)
-                          (date-elements (if omit-date-part-p 0 3))
-                          (time-elements (if omit-time-part-p 0 4))
-                          (date-separator #\-)
-                          (time-separator #\:)
-                          (date-time-separator #\T))
-  "Produces on stream the timestring corresponding to the TIMESTAMP with the given options. If DESTINATION is NIL, returns a string containing what would have been output.  If DESTINATION is T, prints the string to *standard-output*."
-  (declare (type (or null stream) destination)
-           (type (integer 0 3) date-elements)
-           (type (integer 0 4) time-elements)
-           (type timestamp timestamp)
+(defun %construct-timestring (timestamp format timezone)
+  "Constructs a string representing TIMESTAMP given the FORMAT of the string and the TIMEZONE.  See the documentation of FORMAT-TIMESTRING for the structure of FORMAT."
+  (declare (type timestamp timestamp)
            (optimize (speed 3)))
-  (let* ((*print-pretty* nil)
-         (*print-circle* nil)
-         (result))
-    (setf result
-          (with-output-to-string (str nil :element-type 'base-char)
-            (multiple-value-bind (nsec sec minute hour day month year day-of-week daylight-p)
-                (decode-timestamp timestamp :timezone timezone)
-              (declare (ignore day-of-week daylight-p))
-              (cond
-                ((> date-elements 2)
-                 (format str "~:[~;-~]~4,'0d~c"
-                         (minusp year)
-                         (abs year)
-                         date-separator))
-                ((plusp date-elements)
-                 ;; if the year is not shown, but other parts of the date are,
-                 ;; the year is replaced with a hyphen
-                 (princ "-" str)))
-              (when (> date-elements 1)
-                (format str "~2,'0d~c" month date-separator))
-              (when (> date-elements 0)
-                (format str "~2,'0d" day))
-              (when (and (plusp date-elements) (plusp time-elements))
-                (princ date-time-separator str))
-              (when (> time-elements 0)
-                (format str "~2,'0d" hour))
-              (when (> time-elements 1)
-                (format str "~c~2,'0d" time-separator minute))
-              (when (> time-elements 2)
-                (format str "~c~2,'0d" time-separator sec))
-              (when (and (> time-elements 3)
-                         (not (zerop nsec)))
-                (format str ".~6,'0d" (floor nsec 1000)))
-              (unless omit-timezone-part-p
-                (let ((offset (timestamp-subtimezone timestamp timezone)))
-                  (multiple-value-bind (offset-hours offset-secs)
-                      (floor offset +seconds-per-hour+)
-                    (if (and use-zulu-p (zerop offset))
-                        (princ #\Z str)
-                        (format str "~c~2,'0d~c~2,'0d"
-                                (if (minusp offset-hours) #\- #\+)
-                                (abs offset-hours)
-                                time-separator
-                                (truncate (abs offset-secs)
-                                          +seconds-per-minute+)))))))))
+  (multiple-value-bind (nsec sec minute hour day month year weekday daylight-p offset abbrev)
+      (decode-timestamp timestamp :timezone timezone)
+    (declare (ignore daylight-p))
+    (let ((*print-pretty* nil)
+          (*print-circle* nil))
+      (with-output-to-string (result nil :element-type 'base-char)
+        (dolist (fmt format)
+          (cond
+            ((or (eql fmt :gmt-offset)
+                 (eql fmt :gmt-offset-or-z))
+             (multiple-value-bind (offset-hours offset-secs)
+                 (floor offset +seconds-per-hour+)
+               (declare (fixnum offset-hours offset-secs))
+               (if (and (eql fmt :gmt-offset-or-z) (zerop offset))
+                   (princ #\Z result)
+                   (format result "~c~2,'0d:~2,'0d"
+                           (if (minusp offset-hours) #\- #\+)
+                           (abs offset-hours)
+                           (truncate (abs offset-secs)
+                                     +seconds-per-minute+)))))
+            ((eql fmt :long-month)
+             (princ (aref +month-names+ month) result))
+            ((eql fmt :short-month)
+             (princ (aref +short-month-names+ month) result))
+            ((eql fmt :long-weekday)
+             (princ (aref +day-names+ weekday) result))
+            ((eql fmt :short-weekday)
+             (princ (aref +short-day-names+ weekday) result))
+            ((eql fmt :timezone)
+             (princ abbrev result))
+            ((eql fmt :hour12)
+             (princ (1+ (mod (1- hour) 12)) result))
+            ((eql fmt :ampm)
+             (princ (if (< hour 12) "am" "pm") result))
+            ((or (stringp fmt) (characterp fmt))
+             (princ fmt result))
+            (t
+             (let ((val (ecase (if (consp fmt) (car fmt) fmt)
+                          (:nsec nsec)
+                          (:usec (floor nsec 1000))
+                          (:msec (floor nsec 1000000))
+                          (:sec sec)
+                          (:min minute)
+                          (:hour hour)
+                          (:day day)
+                          (:month month)
+                          (:year year))))
+               (cond
+                 ((atom fmt)
+                  (princ val result))
+                 ((minusp val)
+                  (format result "-~v,vd"
+                          (second fmt)
+                          (or (third fmt) #\0)
+                          (abs val)))
+                 (t
+                  (format result "~v,vd"
+                          (second fmt)
+                          (or (third fmt) #\0)
+                          val)))))))))))
+
+
+(defun format-timestring (destination timestamp &key
+                          (format +iso-8601-format+)
+                          (timezone *default-timezone*))
+  "Constructs a string representation of TIMESTAMP according to FORMAT and returns it.  If destination is T, the string is written to *standard-output*.  If destination is a stream, the string is written to the stream.
+
+FORMAT is a list containing one or more of strings, characters, and keywords.  Strings and characters are output literally, while keywords are replaced by the values here:
+
+  :YEAR  - *year                     :HOUR - *hour        
+  :MONTH - *numeric month            :MIN  - *minutes     
+  :DAY   - *day of month             :SEC  - *seconds     
+  :WDAY  - *numeric day of week      :MSEC - *milliseconds
+                                     :USEC - *microseconds
+                                     :NSEC - *nanoseconds 
+  :LONG-WEEKDAY      long form of weekday (e.g. Sunday, Monday)
+  :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
+  :LONG-MONTH        long form of month (e.g. January, February)
+  :SHORT-MONTH       short form of month (e.g. Jan, Feb)
+  :HOUR12            hour on a 12-hour clock
+  :AMPM              am/pm marker in lowercase
+  :GMT-OFFSET        the gmt-offset of the time, in +00:00 form
+  :GMT-OFFSET-OR-Z   like :GMT-OFFSET, but is Z when UTC
+  :TIMEZONE          timezone abbrevation for the time
+
+Elements marked by * can be placed in a list in the form:
+   (:keyword padding &optional (padchar #\0))
+The string representation of the value will be padded with the padchar.
+
+You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMAT+.
+"
+  (declare (type (or boolean stream) destination))
+  (let ((result (%construct-timestring timestamp format timezone)))
     (when destination
       (write-string result destination))
-    result))
+    (coerce result 'simple-base-string)))
+
+(defun format-rfc3339-timestring (destination timestamp &key
+                                  omit-date-part-p
+                                  omit-time-part-p
+                                  omit-timezone-part-p
+                                  (use-zulu-p t)
+                                  (timezone *default-timezone*))
+  "Formats a timestring in the RFC 3339 format, a restricted form of the ISO-8601 timestring specification for Internet timestamps."
+  (let ((rfc3339 (append
+                  (unless omit-date-part-p '((:year 4) #\-
+                                             (:month 2) #\-
+                                             (:day 2)))
+                  (unless (or omit-date-part-p omit-time-part-p) '(#\T))
+                  (unless omit-time-part-p '((:hour 2) #\:
+                                             (:min 2) #\:
+                                             (:sec 2) #\.
+                                             (:usec 6)))
+                  (unless omit-timezone-part-p
+                    (if use-zulu-p '(:gmt-offset-or-z) '(:gmt-offset))))))
+    (format-timestring destination timestamp rfc3339 :timezone timezone)))
 
 (defun %read-timestring (stream char)
   (declare (ignore char))
@@ -1399,7 +1463,7 @@
     (t
      (when *print-escape*
        (princ "@" stream))
-     (format-timestring object :destination stream))))
+     (format-rfc3339-timestring stream object))))
 
 (defmethod print-object ((object timezone) stream)
   "Print the TIMEZONE object in a reader-rejected manner."

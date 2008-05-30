@@ -222,46 +222,35 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test format-timestring
-  (let ((local-time::*default-timezone* local-time::+utc-zone+))
+  (let ((local-time::*default-timezone* local-time:+utc-zone+)
+        (test-timestamp (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0)))
     (is-every string=
-      "2008-06-05T04:03:02.000001"
-      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t)
+      "2008-06-05T04:03:02.000001Z"
+      (format-timestring nil test-timestamp)
 
       "2008-06-05T04:03:02.000001-05:00"
-
       (let ((utc-5 (local-time::%make-simple-timezone "UTC-5" "UTC-5" -18000)))
-        (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008
-                                             :offset (* 3600 -5))
+        (format-timestring nil (encode-timestamp 1000 2 3 4 5 6 2008
+                                                 :offset (* 3600 -5))
                            :timezone utc-5))
 
-      "2008-06-05T04:03:02.000001Z"
-      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0)
-                         :timezone local-time::+utc-zone+
-                         :use-zulu-p t)
+      "Thu Jun  5 04:03:02 2008"
+      (format-timestring nil test-timestamp :format +asctime-format+)
 
-      "-06-05T04:03:02.000001"
-      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :date-elements 2)
-
-      "-05T04:03:02.000001"
-      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :date-elements 1)
-
-      "04:03:02.000001"
-      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :omit-date-part-p t)
-
-      "04:03:02"
-      (format-timestring (encode-timestamp 1 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :omit-date-part-p t :time-elements 3)
-
-      "-0005-06-05T04:03:02.000001"
-      (format-timestring (encode-timestamp 1000 2 3 4 5 6 -5 :offset 0) :omit-timezone-part-p t)
+      "Thu, 05 Jun 2008 04:03:02 UTC"
+      (format-timestring nil test-timestamp :format +rfc-1123-format+)
 
       ""
-      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-time-part-p t :omit-date-part-p t)
+      (format-timestring nil test-timestamp
+                         :format nil)
 
       "04"
-      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :omit-date-part-p t :time-elements 1)
+      (format-timestring nil test-timestamp
+                         :format '((:hour 2)))
 
       "04:03"
-      (format-timestring (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0) :omit-timezone-part-p t :omit-date-part-p t :time-elements 2))))
+      (format-timestring nil test-timestamp
+                         :format '((:hour 2) #\: (:min 2))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   
@@ -303,7 +292,7 @@
   (let ((timestamp (now)))
     (is (timestamp= timestamp
                      (parse-timestring
-                      (format-timestring timestamp)))))
+                      (format-timestring nil timestamp)))))
   (let ((timestamp (encode-timestamp 0 0 0 0 1 1 1)))
     (is (timestamp= timestamp
                      (parse-timestring "0001-01-01T00:00:00,0"))))
@@ -333,7 +322,7 @@
   (let ((now (now)))
     (setf (nsec-of now) 123456000)
     (is (timestamp= now
-                     (with-input-from-string (ins (format-timestring now))
+                     (with-input-from-string (ins (format-timestring nil now))
                        (local-time::%read-timestring ins #\@))))))
 
 (test read-universal-time
@@ -345,7 +334,7 @@
 
 (test leap-year-printing
   (let ((timestamp (parse-timestring "2004-02-29")))
-    (is (timestamp= timestamp (parse-timestring (format-timestring timestamp))))))
+    (is (timestamp= timestamp (parse-timestring (format-timestring nil timestamp))))))
 
 (test decode-date
   (loop for (total-day year month day) :in '((-1 2000 02 29)
@@ -459,6 +448,6 @@
        (setf (day-of time) day)
        (when (zerop (mod index 1000))
          (print time))
-       (let ((parsed (parse-timestring (format-timestring time))))
+       (let ((parsed (parse-timestring (format-timestring nil time))))
          (unless (timestamp= parsed time)
            (error "oops, mismatch: ~A ~A" parsed time)))))
