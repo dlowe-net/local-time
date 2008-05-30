@@ -540,7 +540,7 @@
                           :offset offset
                           :into into)))))
 
-(defmacro with-decoded-timestamp ((&key nsec sec minute hour day month year day-of-week daylight-p)
+(defmacro with-decoded-timestamp ((&key nsec sec minute hour day month year day-of-week daylight-p timezone)
                                    timestamp &body forms)
   (let ((ignores)
         (variables))
@@ -555,7 +555,8 @@
                     (setf ignores (nreverse ignores))
                     (setf variables (nreverse variables)))))
       (initialize nsec sec minute hour day month year day-of-week daylight-p))
-    `(multiple-value-bind (,@variables) (decode-timestamp ,timestamp)
+    `(multiple-value-bind (,@variables)
+         (decode-timestamp ,timestamp :timezone ,(or timezone '*default-timezone*))
        (declare (ignore ,@ignores))
        ,@forms)))
 
