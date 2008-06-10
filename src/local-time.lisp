@@ -9,7 +9,7 @@
 ;;; Authored by Daniel Lowe <dlowe@bitmuse.com>
 ;;;
 ;;; Copyright (c) 2005-2008 Daniel Lowe
-;;; 
+;;;
 ;;; Permission is hereby granted, free of charge, to any person obtaining
 ;;; a copy of this software and associated documentation files (the
 ;;; "Software"), to deal in the Software without restriction, including
@@ -17,10 +17,10 @@
 ;;; distribute, sublicense, and/or sell copies of the Software, and to
 ;;; permit persons to whom the Software is furnished to do so, subject to
 ;;; the following conditions:
-;;; 
+;;;
 ;;; The above copyright notice and this permission notice shall be
 ;;; included in all copies or substantial portions of the Software.
-;;; 
+;;;
 ;;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 ;;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 ;;; MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -149,7 +149,7 @@
          (ftype (function * simple-base-string) format-rfc3339-timestring)
          (ftype (function * simple-base-string) format-timestring)
          (ftype (function * fixnum) local-timezone)
-         (ftype (function * (values 
+         (ftype (function * (values
                              (integer -43199 43199)
                              boolean
                              string)) timestamp-subzone)
@@ -238,7 +238,7 @@
   (multiple-value-bind (sec min hour day mon year dow daylight-p zone)
       (get-decoded-time)
     (declare (ignore sec min hour day mon year dow))
-    (if daylight-p 
+    (if daylight-p
         (* -3600 (1- zone))
         (* -3600 zone))))
 
@@ -514,7 +514,7 @@
                         year
                         :offset offset
                         :into into))))
-  
+
 
 (defun timestamp-maximize-part (timestamp part &key
                                 (offset (%get-default-offset))
@@ -1376,12 +1376,12 @@
 
 FORMAT is a list containing one or more of strings, characters, and keywords.  Strings and characters are output literally, while keywords are replaced by the values here:
 
-  :YEAR  - *year                     :HOUR - *hour        
-  :MONTH - *numeric month            :MIN  - *minutes     
-  :DAY   - *day of month             :SEC  - *seconds     
+  :YEAR  - *year                     :HOUR - *hour
+  :MONTH - *numeric month            :MIN  - *minutes
+  :DAY   - *day of month             :SEC  - *seconds
   :WDAY  - *numeric day of week      :MSEC - *milliseconds
                                      :USEC - *microseconds
-                                     :NSEC - *nanoseconds 
+                                     :NSEC - *nanoseconds
   :LONG-WEEKDAY      long form of weekday (e.g. Sunday, Monday)
   :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
   :LONG-MONTH        long form of month (e.g. January, February)
