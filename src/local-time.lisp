@@ -1422,7 +1422,7 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
                                              (:usec 6)))
                   (unless omit-timezone-part-p
                     (if use-zulu-p '(:gmt-offset-or-z) '(:gmt-offset))))))
-    (format-timestring destination timestamp rfc3339 :timezone timezone)))
+    (format-timestring destination timestamp :format rfc3339 :timezone timezone)))
 
 (defun %read-timestring (stream char)
   (declare (ignore char))
