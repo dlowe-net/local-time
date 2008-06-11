@@ -2,8 +2,8 @@
 
 (export 'set-local-time-cl-postgres-readers :local-time)
 
-;; Postgresql days are measured from 01-01-2000, whereas local-time
-;; uses 01-03-2000. We expect the database server to be in the UTC timezone.
+;; Postgresql days are measured from 2000-01-01, whereas local-time
+;; uses 2000-03-01. We expect the database server to be in the UTC timezone.
 (defconstant +postgres-day-offset-to-local-time+ -60)
 
 (defun set-local-time-cl-postgres-readers (&optional (table cl-postgres:*sql-readtable*))
@@ -14,15 +14,13 @@
                  (floor usecs 1000000)
                (local-time:make-timestamp :nsec (* usecs 1000)
                                           :sec secs
-                                          :day (+ days +postgres-day-offset-to-local-time+)
-                                          :timezone local-time:+utc-zone+)))))
+                                          :day (+ days +postgres-day-offset-to-local-time+))))))
     (cl-postgres:set-sql-datetime-readers
      :table table
-     :date
-     (lambda (days)
-       (local-time:make-timestamp
-        :nsec 0 :sec 0 :day (+ days +postgres-day-offset-to-local-time+)
-        :timezone local-time:+utc-zone+))
+     :date (lambda (days)
+             (local-time:make-timestamp
+              :nsec 0 :sec 0
+              :day (+ days +postgres-day-offset-to-local-time+)))
      :timestamp #'timestamp-reader
      :timestamp-with-timezone #'timestamp-reader
      :interval
@@ -39,8 +37,7 @@
            (local-time:make-timestamp
             :nsec (* usecs 1000)
             :sec secs
-            :day 0
-            :timezone local-time:+utc-zone+)))))))
+            :day 0)))))))
 
 (defmethod cl-postgres:to-sql-string ((arg local-time:timestamp))
-  (local-time:format-rfc3339-timestring nil arg :timezone +utc-zone+))
+  (local-time:format-rfc3339-timestring arg))
