@@ -40,4 +40,5 @@
             :day 0)))))))
 
 (defmethod cl-postgres:to-sql-string ((arg local-time:timestamp))
-  (local-time:format-rfc3339-timestring nil arg :timezone +utc-zone+)))
+  (format nil "'~a'"
+          (local-time:format-rfc3339-timestring nil arg :timezone +utc-zone+)))
