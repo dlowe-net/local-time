@@ -1105,10 +1105,10 @@
                           (fail-on-error t) (time-separator #\:)
                           (date-separator #\-)
                           (date-time-separator #\T)
-                          (allow-missing-elements-p t)
-                          (allow-missing-date-part-p allow-missing-elements-p)
-                          (allow-missing-time-part-p allow-missing-elements-p)
-                          (allow-missing-timezone-part-p allow-missing-elements-p))
+                          (allow-missing-elements t)
+                          (allow-missing-date-part allow-missing-elements)
+                          (allow-missing-time-part allow-missing-elements)
+                          (allow-missing-timezone-part allow-missing-elements))
   "Based on http://www.ietf.org/rfc/rfc3339.txt including the function names used. Returns (values year month day hour minute second nsec offset-hour offset-minute). On parsing failure, signals INVALID-TIMESTRING if FAIL-ON-ERROR is NIL, otherwise returns NIL."
   (declare (type character date-time-separator time-separator date-separator)
            (type simple-string time-string)
@@ -1138,7 +1138,7 @@
                                     (values))
                                (values)))
                            (progn
-                             (passert allow-missing-elements-p)
+                             (passert allow-missing-elements)
                              (values))))))
                  (with-parts-and-count ((start end split-chars) &body body)
                    `(multiple-value-bind (parts count) (split ,start ,end ,split-chars)
@@ -1172,20 +1172,20 @@
                      (cond ((= count 2)
                             (if (first parts)
                                 (full-date (first parts))
-                                (passert allow-missing-date-part-p))
+                                (passert allow-missing-date-part))
                             (if (second parts)
                                 (full-time (second parts))
-                                (passert allow-missing-time-part-p))
+                                (passert allow-missing-time-part))
                             (done))
                            ((and (= count 1)
-                                 allow-missing-date-part-p
+                                 allow-missing-date-part
                                  (find time-separator time-string
                                        :start (car (first parts))
                                        :end (cdr (first parts))))
                             (full-time (first parts))
                             (done))
                            ((and (= count 1)
-                                 allow-missing-time-part-p
+                                 allow-missing-time-part
                                  (find date-separator time-string
                                        :start (car (first parts))
                                        :end (cdr (first parts))))
@@ -1222,7 +1222,7 @@
                            (setf offset-hour 0
                                  offset-minute 0))
                          (if (= count 1)
-                             (passert allow-missing-timezone-part-p)
+                             (passert allow-missing-timezone-part)
                              (let* ((entry (second parts))
                                     (start (car entry))
                                     (end (cdr entry)))
@@ -1265,7 +1265,7 @@
                            (setf nsec 0)))))
                  (time-offset (start-end sign)
                    (with-parts-and-count ((car start-end) (cdr start-end) time-separator)
-                     (passert (or allow-missing-timezone-part-p (= count 2)))
+                     (passert (or allow-missing-timezone-part (= count 2)))
                      (parse-integer-into (first parts) offset-hour 0 23)
                      (if (second parts)
                          (parse-integer-into (second parts) offset-minute 0 59)
@@ -1281,10 +1281,11 @@
           (parse))))))
 
 (defun parse-rfc3339-timestring (timestring &key (fail-on-error t)
-                                            (allow-missing-time-part-p nil))
+                                            (allow-missing-time-part nil))
   (parse-timestring timestring :fail-on-error fail-on-error
-                    :allow-missing-timezone-part-p nil
-                    :allow-missing-time-part-p allow-missing-time-part-p :allow-missing-date-part-p nil))
+                    :allow-missing-timezone-part nil
+                    :allow-missing-time-part allow-missing-time-part
+                    :allow-missing-date-part nil))
 
 (defun parse-timestring (timestring &rest args)
   "Parse a timestring and return the corresponding TIMESTAMP. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value."
@@ -1405,24 +1406,31 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
     (coerce result 'simple-base-string)))
 
 (defun format-rfc3339-timestring (destination timestamp &key
-                                  omit-date-part-p
-                                  omit-time-part-p
-                                  omit-timezone-part-p
-                                  (use-zulu-p t)
+                                  omit-date-part
+                                  omit-time-part
+                                  omit-timezone-part
+                                  (use-zulu t)
                                   (timezone *default-timezone*))
   "Formats a timestring in the RFC 3339 format, a restricted form of the ISO-8601 timestring specification for Internet timestamps."
-  (let ((rfc3339 (append
-                  (unless omit-date-part-p '((:year 4) #\-
-                                             (:month 2) #\-
-                                             (:day 2)))
-                  (unless (or omit-date-part-p omit-time-part-p) '(#\T))
-                  (unless omit-time-part-p '((:hour 2) #\:
-                                             (:min 2) #\:
-                                             (:sec 2) #\.
-                                             (:usec 6)))
-                  (unless omit-timezone-part-p
-                    (if use-zulu-p '(:gmt-offset-or-z) '(:gmt-offset))))))
-    (format-timestring destination timestamp :format rfc3339 :timezone timezone)))
+  (let ((rfc3339-format
+         (append
+          (unless omit-date-part
+            '((:year 4) #\-
+              (:month 2) #\-
+              (:day 2)))
+          (unless (or omit-date-part
+                      omit-time-part)
+            '(#\T))
+          (unless omit-time-part
+            '((:hour 2) #\:
+              (:min 2) #\:
+              (:sec 2) #\.
+              (:usec 6)))
+          (unless omit-timezone-part
+            (if use-zulu
+                '(:gmt-offset-or-z)
+                '(:gmt-offset))))))
+    (format-timestring destination timestamp :format rfc3339-format :timezone timezone)))
 
 (defun %read-timestring (stream char)
   (declare (ignore char))
@@ -1432,7 +1440,7 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
         while (or (digit-char-p c) (member c '(#\: #\T #\t #\: #\- #\+ #\Z #\.)))
         do (princ c str)
         finally (unread-char c stream)))
-   :allow-missing-elements-p t))
+   :allow-missing-elements t))
 
 (defun %read-universal-time (stream char arg)
   (declare (ignore char arg))
