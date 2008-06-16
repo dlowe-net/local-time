@@ -540,12 +540,16 @@ The constant @var{+rfc-1123-format+} is bound to a description of the format def
 @end defvr
 
 @itindex parse-timestring
-@defun parse-timestring timestring &key (start 0) end junk-allowed
+@defun parse-timestring timestring &key (start 0) end (fail-on-error t) (offset 0)
 
 Parses a timestring and returns the corresponding @code{timestamp}.
 Parsing begins at @var{start} and stops at the @var{end}
-position. If @var{junk-allowed} is @code{T}, ignores any invalid characters
-within @code{timestring}.
+position. If there are invalid characters within @code{timestring}
+and @var{fail-on-error} is @code{T}, then an @code{invalid-timestring}
+error is signaled, otherwise @code{NIL} is returned.
+
+If there is no timezone specified in @code{timestring} then
+@var{offset} is used as the default timezone offset (in seconds).
 @end defun
 
 
@@ -619,9 +623,9 @@ LOCAL-TIME> (format-timestring nil (now))
 
 
 @itindex format-rfc3339-timestring
-@defun format-rfc3339-timestring (destination timestamp &key omit-date-part-p omit-time-part-p omit-timezone-part-p (use-zulu-p t))
+@defun format-rfc3339-timestring (destination timestamp &key omit-date-part omit-time-part omit-timezone-part (use-zulu t))
 
-Formats the time like format-timestring, but in RFC 3339 format.  The options control valid options in the RFC.
+Formats the time like format-timestring, but in RFC 3339 format. The options control valid options in the RFC.
 @end defun
 
 
