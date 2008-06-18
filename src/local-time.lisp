@@ -614,9 +614,6 @@
             (value (if (%list-length= 3 change)
                        (third change)
                        (fourth change))))
-        (assert (or (consp part)
-                    (member part '(:nsec :sec :sec-of-day :minute :hour :day :day-of-week :day-of-month :month :year)))
-                nil "Unknown timestamp part ~S" part)
         (cond
           ((string= operation "SET")
            (funcall visitor `(%set-timestamp-part ,timestamp ,part ,value)))
