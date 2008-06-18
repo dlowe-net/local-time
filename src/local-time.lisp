@@ -53,6 +53,7 @@
            #:days-in-month
            #:timestamp-
            #:timestamp+
+           #:timestamp-difference
            #:timestamp-minimize-part
            #:timestamp-maximize-part
            #:with-decoded-timestamp
@@ -741,6 +742,7 @@
                       (day-of time)))
       ((:month :year) (safe-adjust part offset time)))))
 
+;; TODO merge this functionality into timestamp-difference
 (defun timestamp-whole-year-difference (time-a time-b)
   "Returns the number of whole years elapsed between time-a and time-b (hint: anniversaries)."
   (declare (type timestamp time-b time-a))
