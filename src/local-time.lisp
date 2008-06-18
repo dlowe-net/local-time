@@ -98,6 +98,8 @@
            #:+hours-per-day+
            #:+days-per-week+
            #:+iso-8601-format+
+           #:+rfc3339-format+
+           #:+rfc3339-format/date-only+
            #:+asctime-format+
            #:+rfc-1123-format+
            #:astronomical-julian-date
@@ -203,6 +205,12 @@
   '((:year 4) #\- (:month 2) #\- (:day 2) #\T
     (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
     (:usec 6) :gmt-offset-or-z))
+(defparameter +rfc3339-format+
+  '((:year 4) #\- (:month 2) #\- (:day 2) #\T
+    (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
+    (:usec 6) :gmt-offset-or-z))
+(defparameter +rfc3339-format/date-only+
+  '((:year 4) #\- (:month 2) #\- (:day 2)))
 (defparameter +asctime-format+
   '(:short-weekday #\space :short-month #\space (:day 2 #\space) #\space
     (:hour 2) #\: (:min 2) #\: (:sec 2) #\space
@@ -1434,23 +1442,28 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
                                   (timezone *default-timezone*))
   "Formats a timestring in the RFC 3339 format, a restricted form of the ISO-8601 timestring specification for Internet timestamps."
   (let ((rfc3339-format
-         (append
-          (unless omit-date-part
-            '((:year 4) #\-
-              (:month 2) #\-
-              (:day 2)))
-          (unless (or omit-date-part
-                      omit-time-part)
-            '(#\T))
-          (unless omit-time-part
-            '((:hour 2) #\:
-              (:min 2) #\:
-              (:sec 2) #\.
-              (:usec 6)))
-          (unless omit-timezone-part
-            (if use-zulu
-                '(:gmt-offset-or-z)
-                '(:gmt-offset))))))
+         (if (and use-zulu
+                  (not omit-date-part)
+                  (not omit-time-part)
+                  (not omit-timezone-part))
+             +rfc3339-format+ ; micro optimization
+             (append
+              (unless omit-date-part
+                '((:year 4) #\-
+                  (:month 2) #\-
+                  (:day 2)))
+              (unless (or omit-date-part
+                          omit-time-part)
+                '(#\T))
+              (unless omit-time-part
+                '((:hour 2) #\:
+                  (:min 2) #\:
+                  (:sec 2) #\.
+                  (:usec 6)))
+              (unless omit-timezone-part
+                (if use-zulu
+                    '(:gmt-offset-or-z)
+                    '(:gmt-offset)))))))
     (format-timestring destination timestamp :format rfc3339-format :timezone timezone)))
 
 (defun %read-timestring (stream char)
