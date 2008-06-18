@@ -146,6 +146,9 @@
              (format stream "Failed to parse ~S as an rfc3339 time"
                      (timestring-of condition)))))
 
+(defmethod make-load-form ((self timestamp) &optional environment)
+  (make-load-form-saving-slots self :environment environment))
+
 ;;; Declaims
 
 (declaim (inline now format-rfc3339-timestring)
