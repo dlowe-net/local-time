@@ -667,7 +667,7 @@
        (values nsec sec day)))
     (otherwise
      (with-decoded-timestamp (:nsec nsec :sec sec :minute minute :hour hour
-                                    :day day :month month :year year)
+                              :day day :month month :year year :timezone +utc-zone+)
          time
        (ecase part
          (:sec (setf sec new-value))
@@ -678,13 +678,13 @@
                  (setf day (%fix-overflow-in-days day month year)))
          (:year (setf year new-value)
                 (setf day (%fix-overflow-in-days day month year))))
-       (encode-timestamp-into-values nsec sec minute hour day month year)))))
+       (encode-timestamp-into-values nsec sec minute hour day month year :offset 0)))))
 
 (defun %offset-timestamp-part (time part offset)
   "Returns a time adjusted by the specified OFFSET. Takes care of different kinds of overflows. The setting :day-of-week is possible using a keyword symbol name of a week-day (see +DAY-NAMES-AS-KEYWORDS+) as value. In that case point the result to the previous day given by OFFSET."
   (labels ((direct-adjust (part offset nsec sec day)
              (cond ((eq part :day-of-week)
-                    (with-decoded-timestamp (:day-of-week day-of-week)
+                    (with-decoded-timestamp (:day-of-week day-of-week :timezone +utc-zone+)
                         time
                       (let ((position (position offset +day-names-as-keywords+ :test #'eq)))
                         (assert position (position) "~S is not a valid day name" offset)
@@ -717,7 +717,7 @@
                                         nsec new-sec day)))))))
            (safe-adjust (part offset time)
              (with-decoded-timestamp (:nsec nsec :sec sec :minute minute :hour hour :day day
-                                      :month month :year year)
+                                      :month month :year year :timezone +utc-zone+)
                  time
                (multiple-value-bind (month-new year-new)
                    (%normalize-month-year-pair
@@ -730,7 +730,8 @@
                  ;; overflows first
                  (encode-timestamp-into-values nsec sec minute hour
                                                (%fix-overflow-in-days day month-new year-new)
-                                               month-new year-new)))))
+                                               month-new year-new
+                                               :offset 0)))))
     (ecase part
       ((:nsec :sec :minute :hour :day :day-of-week)
        (direct-adjust part offset
