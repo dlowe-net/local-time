@@ -278,6 +278,11 @@
         (b (parse-timestring "2001-01-02T00:00:00")))
     (is (= 4 (timestamp-whole-year-difference a b)))))
 
+(test adjust-timestamp/bug1
+  (let* ((timestamp (parse-timestring "2006-01-01T00:00:00Z"))
+         (modified-timestamp (adjust-timestamp timestamp (offset :year 1))))
+    (timestamp= (parse-timestring "2007-01-01T00:00:00Z") modified-timestamp)))
+
 #+nil
 (test adjust-days
   (let ((sunday (parse-timestring "2006-12-17T01:02:03Z")))
