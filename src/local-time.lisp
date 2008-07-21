@@ -665,7 +665,7 @@
            (day (day-of time)))
        (case part
          (:nsec (setf nsec (coerce new-value '(integer 0 999999999))))
-         (:sec-of-day (setf sec (coerce new-value '(integer 0 #.+seconds-per-day+))))
+         (:sec-of-day (setf sec (coerce new-value `(integer 0 ,+seconds-per-day+))))
          (:day (setf day new-value)))
        (values nsec sec day)))
     (otherwise
@@ -820,7 +820,7 @@
                  (* minute +seconds-per-minute+)
                  sec))
          (days-from-zero-point (+ years-as-days
-                                  (aref #.+rotated-month-offsets-without-leap-day+ 0-based-rotated-month)
+                                  (aref +rotated-month-offsets-without-leap-day+ 0-based-rotated-month)
                                   (1- day))))
     (multiple-value-bind (utc-sec utc-day)
         (%adjust-to-offset sec days-from-zero-point (- offset))
@@ -999,13 +999,13 @@
     (let* ((leap-day-p (= remaining-days 365))
            (rotated-1-based-month (if leap-day-p
                                       12 ; march is the first month and february is the last
-                                      (position remaining-days #.+rotated-month-offsets-without-leap-day+ :test #'<)))
+                                      (position remaining-days +rotated-month-offsets-without-leap-day+ :test #'<)))
            (1-based-month (if (>= rotated-1-based-month 11)
                               (- rotated-1-based-month 10)
                               (+ rotated-1-based-month 2)))
            (1-based-day (if leap-day-p
                             29
-                            (1+ (- remaining-days (aref #.+rotated-month-offsets-without-leap-day+
+                            (1+ (- remaining-days (aref +rotated-month-offsets-without-leap-day+
                                                         (1- rotated-1-based-month)))))))
       (values
        (+ years
