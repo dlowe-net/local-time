@@ -871,6 +871,18 @@
         +seconds-per-day+)
      (sec-of timestamp)))
 
+(defun %unix-gettimeofday ()
+  #+cmu
+  (unix:unix-gettimeofday)
+  #+sbcl
+  (sb-unix:unix-gettimeofday)
+  #+ccl
+  (ccl::rlet ((tv :timeval))
+    (#_gettimeofday tv (ccl::%null-ptr))
+    (values t (ccl::pref tv :timeval.tv_sec) (ccl::pref tv :timeval.tv_usec)))
+  #-(or sbcl ccl cmu)
+  (values nil 0 0))
+
 (defun now (&key nsec)
   #+sbcl
   (multiple-value-bind (_ sec usec)
