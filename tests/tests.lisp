@@ -300,24 +300,31 @@
                       (format-timestring nil timestamp)))))
   (let ((timestamp (encode-timestamp 0 0 0 0 1 1 1)))
     (is (timestamp= timestamp
-                     (parse-timestring "0001-01-01T00:00:00,0"))))
+                     (parse-timestring "0001-01-01T00:00:00,0"
+                                       :offset (local-time::%get-default-offset)))))
   (let ((timestamp (encode-timestamp 0 0 0 0 1 1 1 :offset 0)))
     (is (timestamp= timestamp
                      (parse-timestring "0001-01-01T00:00:00Z"))))
   (let ((timestamp (encode-timestamp 0 0 0 0 1 1 2006)))
     (is (timestamp= timestamp
-                     (parse-timestring "2006-01-01T00:00:00,0"))))
+                     (parse-timestring "2006-01-01T00:00:00,0"
+                                       :offset (local-time::%get-default-offset)))))
   (is (eql (day-of (encode-timestamp 0 0 0 0 1 1 2006))
            (day-of (parse-timestring "xxxx 2006-01-01T00:00:00,0 xxxx"
                                      :start 5
-                                     :end 15))))
+                                     :end 15
+                                     :offset (local-time::%get-default-offset)))))
   (is (eql (day-of (parse-timestring "2006-06-06TZ")) 2288))
   (is (timestamp= (encode-timestamp 20000000 3 4 5 6 7 2008)
-                   (parse-timestring "2008-07-06T05:04:03,02")))
+                   (parse-timestring "2008-07-06T05:04:03,02"
+                                     :offset (local-time::%get-default-offset))))
   (is (timestamp= (encode-timestamp 0 02 0 0 23 3 2000)
-                   (parse-timestring "--23T::02" :allow-missing-elements-p t)))
+                   (parse-timestring "--23T::02"
+                                     :allow-missing-elements t
+                                     :offset (local-time::%get-default-offset))))
   (is (timestamp= (encode-timestamp 80000000 7 6 5 1 3 2000)
-                   (parse-timestring "T05:06:07,08")))
+                   (parse-timestring "T05:06:07,08"
+                                     :offset (local-time::%get-default-offset))))
   (is (timestamp= (encode-timestamp 940703000 28 56 16 20 2 2008 :offset 0)
                    (parse-timestring "2008-02-20T16:56:28.940703Z"))))
 
