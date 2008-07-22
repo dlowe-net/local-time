@@ -884,13 +884,11 @@
   (values nil 0 0))
 
 (defun now (&key nsec)
-  #+sbcl
-  (multiple-value-bind (_ sec usec)
-      (sb-unix:unix-gettimeofday)
-    (declare (ignore _) (type (unsigned-byte 32) sec usec))
-    (unix-to-timestamp sec :nsec (or nsec (* usec 1000))))
-  #-sbcl
-  (universal-to-timestamp (get-universal-time) :nsec nsec))
+  (multiple-value-bind (supported-p sec usec) (%unix-gettimeofday)
+    (declare (type (unsigned-byte 32) sec usec))
+    (if supported-p
+        (unix-to-timestamp sec :nsec (or nsec (* usec 1000)))
+        (universal-to-timestamp (get-universal-time) :nsec (or nsec 0)))))
 
 (defun today ()
   (timestamp-minimize-part (now) :hour))
