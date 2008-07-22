@@ -858,6 +858,7 @@
      #.(encode-universal-time 0 0 0 1 3 2000 0)))
 
 (defun unix-to-timestamp (unix &key (nsec 0))
+  "Return a TIMESTAMP corresponding to UNIX, which is the number of seconds since the unix epoch."
   ;; Unix time is seconds from 1970-01-01T00:00:00Z.
   (multiple-value-bind (days secs)
       (floor unix +seconds-per-day+)
@@ -872,6 +873,7 @@
      (sec-of timestamp)))
 
 (defun %unix-gettimeofday ()
+  "Cross-implementation gettimeofday abstraction"
   #+cmu
   (unix:unix-gettimeofday)
   #+sbcl
@@ -880,17 +882,18 @@
   (ccl::rlet ((tv :timeval))
     (#_gettimeofday tv (ccl::%null-ptr))
     (values t (ccl::pref tv :timeval.tv_sec) (ccl::pref tv :timeval.tv_usec)))
-  #-(or sbcl ccl cmu)
-  (values nil 0 0))
+  #-(or cmu sbcl ccl)
+  (values t (get-universal-time) 0))
 
 (defun now (&key nsec)
-  (multiple-value-bind (supported-p sec usec) (%unix-gettimeofday)
+  "Returns a timestamp representing the present moment."
+  (multiple-value-bind (success-p sec usec) (%unix-gettimeofday)
     (declare (type (unsigned-byte 32) sec usec))
-    (if supported-p
-        (unix-to-timestamp sec :nsec (or nsec (* usec 1000)))
-        (universal-to-timestamp (get-universal-time) :nsec (or nsec 0)))))
+    (assert success-p nil "gettimeofday failure!")
+    (unix-to-timestamp sec :nsec (or nsec (* usec 1000)))))
 
 (defun today ()
+  "Returns a timestamp representing the present day."
   (timestamp-minimize-part (now) :hour))
 
 (defmacro %defcomparator (name &body body)
