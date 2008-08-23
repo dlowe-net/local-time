@@ -83,6 +83,7 @@
            #:timestamp-subtimezone
            #:define-timezone
            #:*default-timezone*
+           #:find-timezone-by-location-name
            #:now
            #:today
            #:enable-read-macros
@@ -415,7 +416,14 @@
         (define-timezone *default-timezone* default-timezone-file :load t)
         (defparameter *default-timezone* +utc-zone+))))
 
-(defparameter *timezone-repository* nil "A list of (list \"Europe/Budapest\" timezone) entries")
+(defparameter *location-name->timezone* (make-hash-table :test 'equal)
+  "A hashtable with entries like \"Europe/Budapest\" -> timezone-instance")
+
+(defparameter *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal)
+  "A hashtable of \"CEST\" -> list of timezones with \"CEST\" subzone")
+
+(defun find-timezone-by-location-name (name)
+  (gethash name *location-name->timezone*))
 
 (defun timezone= (timezone-1 timezone-2)
   "Return two values indicating the relationship between timezone-1 and timezone-2. The first value is whether the two timezones are equal and the second value indicates whether it is sure or not.
@@ -431,19 +439,23 @@
 
 (eval-when (:load-toplevel :execute)
   (defun reread-timezone-repository ()
-    (let* ((root-directory (merge-pathnames "zoneinfo/" *project-home-directory*))
+    (let* ((root-directory (truename (merge-pathnames "zoneinfo/" *project-home-directory*)))
            (cutoff-position (length (princ-to-string root-directory)))
            (visitor (lambda (file)
                       (let* ((full-name (subseq (princ-to-string file) cutoff-position))
                              (name (pathname-name file))
                              (timezone (%realize-timezone (make-timezone :path file :name name))))
-                        (push (list full-name timezone) *timezone-repository*)))))
-      (setf *timezone-repository* nil)
+                        (setf (gethash full-name *location-name->timezone*) timezone)
+                        (map nil (lambda (subzone)
+                                   (push timezone (gethash (subzone-abbrev subzone)
+                                                           *abbreviated-subzone-name->timezone-list*)))
+                             (timezone-subzones timezone))))))
+      (setf *location-name->timezone* (make-hash-table :test 'equal))
+      (setf *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal))
       (cl-fad:walk-directory root-directory visitor :directories nil
                              :test (lambda (file)
                                      (not (find "Etc" (pathname-directory file) :test #'string=))))
-      (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) visitor :directories nil)
-      (setf *timezone-repository* (sort *timezone-repository* #'string< :key #'first)))))
+      (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) visitor :directories nil))))
 
 (defmacro make-timestamp (&rest args)
   `(make-instance 'timestamp ,@args))
