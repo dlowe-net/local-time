@@ -567,21 +567,31 @@
 (defmacro with-decoded-timestamp ((&key nsec sec minute hour day month year day-of-week daylight-p timezone)
                                    timestamp &body forms)
   (let ((ignores)
+        (types)
         (variables))
     (macrolet ((initialize (&rest vars)
                  `(progn
-                    ,@(loop for var :in vars
-                            collect `(progn
-                                       (unless ,var
-                                         (setf ,var (gensym))
-                                         (push ,var ignores))
-                                       (push ,var variables)))
+                    ,@(loop
+                         :for var :in vars
+                         :collect `(progn
+                                     (unless ,var
+                                       (setf ,var (gensym))
+                                       (push ,var ignores))
+                                     (push ,var variables)))
                     (setf ignores (nreverse ignores))
-                    (setf variables (nreverse variables)))))
+                    (setf variables (nreverse variables))))
+               (declare-fixnum-type (&rest vars)
+                 `(progn
+                    ,@(loop
+                         :for var :in vars
+                         :collect `(when ,var
+                                     (push `(type fixnum ,,var) types)))
+                    (setf types (nreverse types)))))
+      (declare-fixnum-type nsec sec minute hour day month year)
       (initialize nsec sec minute hour day month year day-of-week daylight-p))
     `(multiple-value-bind (,@variables)
          (decode-timestamp ,timestamp :timezone ,(or timezone '*default-timezone*))
-       (declare (ignore ,@ignores))
+       (declare (ignore ,@ignores) ,@types)
        ,@forms)))
 
 (defun %normalize-month-year-pair (month year)
