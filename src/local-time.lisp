@@ -1154,7 +1154,7 @@
                           (allow-missing-elements t)
                           (allow-missing-date-part allow-missing-elements)
                           (allow-missing-time-part allow-missing-elements)
-                          (allow-missing-timezone-part allow-missing-elements))
+                          (allow-missing-timezone-part allow-missing-time-part))
   "Based on http://www.ietf.org/rfc/rfc3339.txt including the function names used. Returns (values year month day hour minute second nsec offset-hour offset-minute). On parsing failure, signals INVALID-TIMESTRING if FAIL-ON-ERROR is NIL, otherwise returns NIL."
   (declare (type character date-time-separator time-separator date-separator)
            (type simple-string time-string)
@@ -1268,7 +1268,7 @@
                            (setf offset-hour 0
                                  offset-minute 0))
                          (if (= count 1)
-                             (passert allow-missing-timezone-part)
+                             (passert (or zulup allow-missing-timezone-part))
                              (let* ((entry (second parts))
                                     (start (car entry))
                                     (end (cdr entry)))
