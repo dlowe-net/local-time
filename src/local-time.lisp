@@ -880,8 +880,7 @@
      #.(encode-universal-time 0 0 0 1 3 2000 0)))
 
 (defun unix-to-timestamp (unix &key (nsec 0))
-  "Return a TIMESTAMP corresponding to UNIX, which is the number of seconds since the unix epoch."
-  ;; Unix time is seconds from 1970-01-01T00:00:00Z.
+  "Return a TIMESTAMP corresponding to UNIX, which is the number of seconds since the unix epoch, 1970-01-01T00:00:00Z."
   (multiple-value-bind (days secs)
       (floor unix +seconds-per-day+)
     (make-timestamp :day (- days 11017) :sec secs :nsec nsec)))
