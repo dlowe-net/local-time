@@ -1345,30 +1345,32 @@
                          (allow-missing-timezone-part allow-missing-elements)
                          (offset 0))
   "Parse a timestring and return the corresponding TIMESTAMP. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value, and timezone offset is 0 (UTC) unless explicitly specified in the input string."
-  (destructuring-bind (year month day hour minute second nsec offset-hour offset-minute)
-      (%split-timestring (coerce timestring 'simple-string)
-                         :start start
-                         :end end
-                         :fail-on-error fail-on-error
-                         :time-separator time-separator
-                         :date-separator date-separator
-                         :date-time-separator date-time-separator
-                         :allow-missing-elements allow-missing-elements
-                         :allow-missing-date-part allow-missing-date-part
-                         :allow-missing-time-part allow-missing-time-part
-                         :allow-missing-timezone-part allow-missing-timezone-part)
-    (encode-timestamp
-     (or nsec 0)
-     (or second 0)
-     (or minute 0)
-     (or hour 0)
-     (or day 1)
-     (or month 3)
-     (or year 2000)
-     :offset (if offset-hour
-                 (+ (* offset-hour 3600)
-                    (* (or offset-minute 0) 60))
-                 offset))))
+  (let ((parts (%split-timestring (coerce timestring 'simple-string)
+                                  :start start
+                                  :end end
+                                  :fail-on-error fail-on-error
+                                  :time-separator time-separator
+                                  :date-separator date-separator
+                                  :date-time-separator date-time-separator
+                                  :allow-missing-elements allow-missing-elements
+                                  :allow-missing-date-part allow-missing-date-part
+                                  :allow-missing-time-part allow-missing-time-part
+                                  :allow-missing-timezone-part allow-missing-timezone-part)))
+    (when parts
+      (destructuring-bind (year month day hour minute second nsec offset-hour offset-minute)
+          parts
+        (encode-timestamp
+         (or nsec 0)
+         (or second 0)
+         (or minute 0)
+         (or hour 0)
+         (or day 1)
+         (or month 3)
+         (or year 2000)
+         :offset (if offset-hour
+                     (+ (* offset-hour 3600)
+                        (* (or offset-minute 0) 60))
+                     offset))))))
 
 (defun %construct-timestring (timestamp format timezone)
   "Constructs a string representing TIMESTAMP given the FORMAT of the string and the TIMEZONE.  See the documentation of FORMAT-TIMESTRING for the structure of FORMAT."
