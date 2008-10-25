@@ -7,7 +7,7 @@
   (asdf:operate 'asdf:load-op :asdf-system-connections))
 
 (defpackage #:local-time.system
-  (:use :common-lisp :asdf :asdf-system-connections))
+  (:use :common-lisp :asdf))
 
 (in-package #:local-time.system)
 
