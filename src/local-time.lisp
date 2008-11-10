@@ -197,14 +197,15 @@
 (defparameter +short-day-names+
   #("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat"))
 
-(defconstant +days-per-week+ 7)
-(defconstant +hours-per-day+ 24)
-(defconstant +minutes-per-day+ 1440)
-(defconstant +minutes-per-hour+ 60)
-(defconstant +seconds-per-day+ 86400)
-(defconstant +seconds-per-hour+ 3600)
-(defconstant +seconds-per-minute+ 60)
-(defconstant +usecs-per-day+ 86400000000)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defconstant +days-per-week+ 7)
+  (defconstant +hours-per-day+ 24)
+  (defconstant +minutes-per-day+ 1440)
+  (defconstant +minutes-per-hour+ 60)
+  (defconstant +seconds-per-day+ 86400)
+  (defconstant +seconds-per-hour+ 3600)
+  (defconstant +seconds-per-minute+ 60)
+  (defconstant +usecs-per-day+ 86400000000))
 
 (defparameter +iso-8601-format+
   '((:year 4) #\- (:month 2) #\- (:day 2) #\T
