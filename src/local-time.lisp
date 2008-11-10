@@ -180,7 +180,7 @@
   (make-pathname :directory (pathname-directory
                              (if (find-package "ASDF")
                                  (truename
-                                  (eval (read-from-string "(asdf:system-definition-pathname
+                                  (eval (read-from-string "(asdf:component-pathname
                                                             (asdf:find-system '#:local-time))")))
                                  *load-pathname*))))
 ;;; Month information
