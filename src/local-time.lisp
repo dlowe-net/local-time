@@ -73,6 +73,8 @@
            #:timestamp-year
            #:parse-timestring
            #:format-timestring
+           #:format-http-timestring
+           #:to-http-timestring
            #:format-rfc3339-timestring
            #:encode-timestamp
            #:parse-rfc3339-timestring
@@ -153,7 +155,7 @@
 
 ;;; Declaims
 
-(declaim (inline now format-rfc3339-timestring)
+(declaim (inline now format-timestring format-rfc3339-timestring)
          (ftype (function * simple-base-string) format-rfc3339-timestring)
          (ftype (function * simple-base-string) format-timestring)
          (ftype (function * fixnum) local-timezone)
@@ -1444,7 +1446,6 @@
                           (or (third fmt) #\0)
                           val)))))))))))
 
-
 (defun format-timestring (destination timestamp &key
                           (format +iso-8601-format+)
                           (timezone *default-timezone*))
@@ -1478,7 +1479,15 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
   (let ((result (%construct-timestring timestamp format timezone)))
     (when destination
       (write-string result destination))
-    (coerce result 'simple-base-string)))
+    result))
+
+(defun format-http-timestring (destination timestamp)
+  (format-timestring destination timestamp
+                     :format +rfc-1123-format+
+                     :timezone +gmt-zone+))
+
+(defun to-http-timestring (timestamp)
+  (format-http-timestring nil timestamp))
 
 (defun format-rfc3339-timestring (destination timestamp &key
                                   omit-date-part
@@ -1568,3 +1577,5 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
 (defun modified-julian-date (timestamp)
   "Returns the modified julian date referred to by the timestamp."
   (- (day-of timestamp) +modified-julian-date-offset+))
+
+(declaim (notinline format-timestring))
