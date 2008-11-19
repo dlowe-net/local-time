@@ -801,7 +801,12 @@
     (when (minusp second)
       (decf day)
       (incf second +seconds-per-day+))
-    (+ (* day +seconds-per-day+) second)))
+    (let ((result (+ (* day +seconds-per-day+)
+                     second)))
+      (unless (zerop nsec)
+        ;; this incf turns the result into a float, so only do this when necessary
+        (incf result (/ nsec 1000000000d0)))
+      result)))
 
 (defun timestamp+ (time amount unit)
   (multiple-value-bind (nsec sec day)
