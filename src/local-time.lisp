@@ -575,6 +575,7 @@
 
 (defmacro with-decoded-timestamp ((&key nsec sec minute hour day month year day-of-week daylight-p timezone)
                                    timestamp &body forms)
+  "This macro binds variables to the decoded elements of TIMESTAMP. The TIMEZONE argument is used for decoding the timestamp, and is not bound by the macro. The value of DAY-OF-WEEK starts from 0 which means Sunday."
   (let ((ignores)
         (types)
         (variables))
