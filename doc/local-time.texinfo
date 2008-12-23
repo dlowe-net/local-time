@@ -326,7 +326,10 @@ the customary abbreviation of the timezone.
 @itindex with-decoded-timestamp
 @defmac with-decoded-timestamp (&key nsec sec minute hour day month year day-of-week daylight-p timezone) timestamp &body body
 
-This macro binds variables to the decoded elements of @var{timestamp}.  The timezone argument is used for decoding the timestamp, and is not bound by the macro.
+This macro binds variables to the decoded elements of @var{timestamp}.
+The timezone argument is used for decoding the timestamp, and is not
+bound by the macro. The value of @var{day-of-week} starts from 0 which
+means Sunday.
 @end defmac
 
 
