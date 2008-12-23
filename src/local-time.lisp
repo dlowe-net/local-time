@@ -1435,6 +1435,7 @@
                           (:min minute)
                           (:hour hour)
                           (:day day)
+                          (:weekday weekday)
                           (:month month)
                           (:year year))))
                (cond
@@ -1461,9 +1462,9 @@ FORMAT is a list containing one or more of strings, characters, and keywords.  S
   :YEAR  - *year                     :HOUR - *hour
   :MONTH - *numeric month            :MIN  - *minutes
   :DAY   - *day of month             :SEC  - *seconds
-  :WDAY  - *numeric day of week      :MSEC - *milliseconds
-                                     :USEC - *microseconds
-                                     :NSEC - *nanoseconds
+  :WEEKDAY  - *numeric day of week   :MSEC - *milliseconds
+    starting from index 0, which     :USEC - *microseconds
+    means Sunday                     :NSEC - *nanoseconds
   :LONG-WEEKDAY      long form of weekday (e.g. Sunday, Monday)
   :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
   :LONG-MONTH        long form of month (e.g. January, February)
