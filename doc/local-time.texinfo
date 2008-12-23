@@ -567,8 +567,8 @@ FORMAT is a list containing one or more of strings, characters, and keywords.  S
 *numeric month
 @item :day
 *day of month
-@item :wday
-*numeric day of week
+@item :weekday
+*numeric day of week, starting from 0 which means Sunday
 @item :hour
 *hour
 @item :min
