@@ -1,6 +1,3 @@
-- Write a more flexible formatting function for times, perhaps something
-  like strftime() except lispy
-
 - PARSE-TIMESTRING works fine, but we need a more human-friendly parser that
   can handle stuff like "08/03/2006 1:54pm CST"
 
@@ -10,5 +7,11 @@
   as well as the time functions in the venerable and honored clsql library.
   This may be a tall order.
 
-- We should integrate local-time with http://common-lisp.net/project/cl-l10n/
-  and drop time/timezone related functionality from cl-l10n.
+- Integrate local-time with http://common-lisp.net/project/cl-l10n/
+  Also drop time/timezone related functionality from cl-l10n.
+
+- Make local-time work with olsen timezone rules
+  Right now, we're using zic compiled files, which have a limited
+   scope.  They may also be larger than the corresponding rule files.
+
+- Support timespecs
