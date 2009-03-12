@@ -2,9 +2,8 @@
 
 ;;; try to load asdf-system-connections
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (unless (asdf:find-system :asdf-system-connections nil)
-    (error "The local-time system requires asdf-system-connections. See http://www.cliki.net/asdf-system-connections for details and download instructions."))
-  (asdf:operate 'asdf:load-op :asdf-system-connections))
+  (when (asdf:find-system :asdf-system-connections nil)
+    (asdf:operate 'asdf:load-op :asdf-system-connections)))
 
 (defpackage #:local-time.system
   (:use :common-lisp :asdf))
