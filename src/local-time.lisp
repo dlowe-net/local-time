@@ -908,6 +908,13 @@
         +seconds-per-day+)
      (sec-of timestamp)))
 
+;; Make %unix-gettimeofday compile under Lispworks 5.1, which
+;; apparently doesn't ignore the #_ (assumed to be a reader macro) in
+;; #_gettimeofday correctly.
+#-ccl
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (set-dispatch-macro-character #\# #\_ (constantly nil)))
+
 (defun %unix-gettimeofday ()
   "Cross-implementation gettimeofday abstraction"
   #+cmu
@@ -919,7 +926,12 @@
     (#_gettimeofday tv (ccl::%null-ptr))
     (values t (ccl::pref tv :timeval.tv_sec) (ccl::pref tv :timeval.tv_usec)))
   #-(or cmu sbcl ccl)
-  (values t (get-universal-time) 0))
+  (values t
+          ;; CL's get-universal-time uses an epoch of 1/1/1900,
+          ;; whereas Unix uses an epoch of 1/1/1970.
+          (- (get-universal-time)
+             #.(encode-universal-time 0 0 0 1 1 1970 0))
+          0))
 
 (defun now (&key nsec)
   "Returns a timestamp representing the present moment."
