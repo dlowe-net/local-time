@@ -908,13 +908,6 @@
         +seconds-per-day+)
      (sec-of timestamp)))
 
-;; KLUDGE: Make %unix-gettimeofday compile under Lispworks 5.1, which
-;; apparently doesn't ignore the #_ (assumed to be a reader macro) in
-;; #_gettimeofday correctly.
-#+lispworks
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (set-dispatch-macro-character #\# #\_ (constantly nil)))
-
 (defun %unix-gettimeofday ()
   "Cross-implementation gettimeofday abstraction"
   #+cmu
