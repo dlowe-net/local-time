@@ -27,6 +27,14 @@
   :depends-on (:local-time :fiveam)
   :components ((:file "tests" :pathname "tests/tests")))
 
+#+lispworks
+(defmethod perform :around ((op compile-op) c)
+  ;; Make %unix-gettimeofday compile under Lispworks, which doesn't ignore the
+  ;; #_ reader macro in #_gettimeofday.
+  (let ((*readtable* (copy-readtable)))
+    (set-dispatch-macro-character #\# #\_ (constantly nil))
+    (call-next-method)))
+
 (defmethod perform ((op test-op) (system (eql (find-system :local-time))))
   (operate 'load-op '#:local-time.test)
   (funcall (read-from-string "5am:run!")))
