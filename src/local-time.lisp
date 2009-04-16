@@ -597,7 +597,9 @@
                          :collect `(when ,var
                                      (push `(type fixnum ,,var) types)))
                     (setf types (nreverse types)))))
-      (declare-fixnum-type nsec sec minute hour day month year)
+      (when nsec
+        (push `(type (integer 0 999999999) ,nsec) types))
+      (declare-fixnum-type sec minute hour day month year)
       (initialize nsec sec minute hour day month year day-of-week daylight-p))
     `(multiple-value-bind (,@variables)
          (decode-timestamp ,timestamp :timezone ,(or timezone '*default-timezone*))
