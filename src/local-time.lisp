@@ -1543,10 +1543,10 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
   (declare (ignore char))
   (parse-timestring
    (with-output-to-string (str)
-     (loop for c = (read-char stream nil #\space)
-        while (or (digit-char-p c) (member c '(#\: #\T #\t #\: #\- #\+ #\Z #\.)))
+     (loop for c = (read-char stream nil)
+        while (and c (or (digit-char-p c) (member c '(#\: #\T #\t #\: #\- #\+ #\Z #\.))))
         do (princ c str)
-        finally (unread-char c stream)))
+        finally (when c (unread-char c stream))))
    :allow-missing-elements t))
 
 (defun %read-universal-time (stream char arg)
@@ -1554,10 +1554,10 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
   (universal-to-timestamp
               (parse-integer
                (with-output-to-string (str)
-                 (loop for c = (read-char stream nil #\space)
-                       while (digit-char-p c)
+                 (loop for c = (read-char stream nil)
+                       while (and c (digit-char-p c))
                        do (princ c str)
-                       finally (unread-char c stream))))))
+                       finally (when c (unread-char c stream)))))))
 
 (defun enable-read-macros ()
   "Enables the local-time reader macros for literal timestamps and universal time."
