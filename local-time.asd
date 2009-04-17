@@ -27,16 +27,6 @@
   :depends-on (:local-time :fiveam)
   :components ((:file "tests" :pathname "tests/tests")))
 
-#+lispworks
-(defmethod perform :around ((op compile-op) c)
-  ;; KLUDGE: Installing an :around method on a type that has not been defined by
-  ;; us is not nice, but it's needed to make %unix-gettimeofday compile under
-  ;; Lispworks, which doesn't ignore the #_ reader macro in #_gettimeofday.
-  ;; It should be removed eventually.
-  (let ((*readtable* (copy-readtable)))
-    (set-dispatch-macro-character #\# #\_ (constantly nil))
-    (call-next-method)))
-
 (defmethod perform ((op test-op) (system (eql (find-system :local-time))))
   (operate 'load-op '#:local-time.test)
   (funcall (read-from-string "5am:run!")))

@@ -918,7 +918,11 @@
   (sb-unix:unix-gettimeofday)
   #+ccl
   (ccl::rlet ((tv :timeval))
-    (#_gettimeofday tv (ccl::%null-ptr))
+    (#.(let ((ccl-external-func (get-dispatch-macro-character #\# #\_)))
+         (when ccl-external-func
+           (with-input-from-string (sym "gettimeofday")
+             (funcall ccl-external-func sym #\_ nil))))
+       tv (ccl::%null-ptr))
     (values t (ccl::pref tv :timeval.tv_sec) (ccl::pref tv :timeval.tv_usec)))
   #-(or cmu sbcl ccl)
   (values t
