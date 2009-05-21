@@ -155,7 +155,7 @@
 
 ;;; Declaims
 
-(declaim (inline now format-timestring format-rfc3339-timestring)
+(declaim (inline now format-timestring format-rfc3339-timestring %get-current-time)
          (ftype (function * simple-base-string) format-rfc3339-timestring)
          (ftype (function * simple-base-string) format-timestring)
          (ftype (function * fixnum) local-timezone)
@@ -400,7 +400,14 @@
      :subzones (make-array 1 :initial-contents (list subzone))
      :path nil
      :name name
-     :loaded t))))
+     :loaded t)))
+
+  ;; to be used as #+#.(local-time::package-with-symbol? "SB-EXT" "GET-TIME-OF-DAY")
+  (defun package-with-symbol? (package name)
+    (if (and (find-package package)
+             (find-symbol name package))
+        '(:and)
+        '(:or))))
 
 (defparameter +utc-zone+ (%make-simple-timezone "Coordinated Universal Time" "UTC" 0))
 
@@ -909,12 +916,21 @@
         +seconds-per-day+)
      (sec-of timestamp)))
 
-(defun %unix-gettimeofday ()
-  "Cross-implementation gettimeofday abstraction"
+(defun %get-current-time ()
+  "Cross-implementation abstraction to get the current time measured from the unix epoch (1/1/1970). Should return (values sec nano-sec)."
   #+cmu
-  (unix:unix-gettimeofday)
+  (multiple-value-bind (success? sec usec) (unix:unix-gettimeofday)
+    (assert success? () "unix:unix-gettimeofday reported failure?!")
+    (values sec (* 1000 usec)))
   #+sbcl
-  (sb-unix:unix-gettimeofday)
+  (progn
+    #+#.(local-time::package-with-symbol? "SB-EXT" "GET-TIME-OF-DAY") ; available from sbcl 1.0.28.66
+    (multiple-value-bind (sec nsec) (sb-ext:get-time-of-day)
+      (values sec (* 1000 nsec)))
+    #+#.(local-time::package-with-symbol? "SB-UNIX" "UNIX-GETTIMEOFDAY") ; obsolete, scheduled to be deleted at the end of 2009
+    (multiple-value-bind (success? sec nsec) (sb-unix:unix-gettimeofday)
+      (assert success? () "sb-unix:unix-gettimeofday reported failure?!")
+      (values sec (* 1000 nsec))))
   #+ccl
   (ccl::rlet ((tv :timeval))
     (#.(let ((ccl-external-func (get-dispatch-macro-character #\# #\_)))
@@ -922,21 +938,18 @@
            (with-input-from-string (sym "gettimeofday")
              (funcall ccl-external-func sym #\_ nil))))
        tv (ccl::%null-ptr))
-    (values t (ccl::pref tv :timeval.tv_sec) (ccl::pref tv :timeval.tv_usec)))
+    (values (ccl::pref tv :timeval.tv_sec) (* 1000 (ccl::pref tv :timeval.tv_usec))))
   #-(or cmu sbcl ccl)
-  (values t
-          ;; CL's get-universal-time uses an epoch of 1/1/1900,
-          ;; whereas Unix uses an epoch of 1/1/1970.
-          (- (get-universal-time)
+  (values (- (get-universal-time)
+             ;; CL's get-universal-time uses an epoch of 1/1/1900, so adjust the result to the Unix epoch
              #.(encode-universal-time 0 0 0 1 1 1970 0))
           0))
 
-(defun now (&key nsec)
+(defun now ()
   "Returns a timestamp representing the present moment."
-  (multiple-value-bind (success-p sec usec) (%unix-gettimeofday)
-    (declare (type (unsigned-byte 32) sec usec))
-    (assert success-p nil "gettimeofday failure!")
-    (unix-to-timestamp sec :nsec (or nsec (* usec 1000)))))
+  (multiple-value-bind (sec nsec) (%get-current-time)
+    (assert (and sec nsec) () "Failed to get the current time from the operating system. How did this happen?")
+    (unix-to-timestamp sec :nsec nsec)))
 
 (defun today ()
   "Returns a timestamp representing the present day."
