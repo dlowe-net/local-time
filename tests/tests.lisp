@@ -442,15 +442,6 @@
                           (is (= month month*))
                           (is (= day day*)))))))))
 
-(test timestamp-uses-nsec
-      (let ((universal-time (universal-to-timestamp (get-universal-time)
-                                                    :nsec 123456789))
-            (unix-time (unix-to-timestamp 0 :nsec 123456789))
-            (now-time (now :nsec 123456789)))
-        (is (= (nsec-of universal-time) 123456789))
-        (is (= (nsec-of unix-time) 123456789))
-        (is (= (nsec-of now-time) 123456789))))
-
 (defun test-parse/format-consistency (&key (start-day -100000) (end-day 100000))
   (declare (optimize debug))
   (loop
