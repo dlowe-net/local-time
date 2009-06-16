@@ -501,9 +501,11 @@
            (type (or null timezone) timezone))
   (let* ((zone (%realize-timezone (or timezone *default-timezone*)))
          (unix-time (timestamp-to-unix timestamp))
-         (subzone-idx (elt (timezone-indexes zone)
-                           (transition-position unix-time
-                                                (timezone-transitions timezone))))
+         (subzone-idx (if (zerop (length (timezone-indexes zone)))
+                          0
+                          (elt (timezone-indexes zone)
+                               (transition-position unix-time
+                                                   (timezone-transitions timezone)))))
          (subzone (elt (timezone-subzones zone) subzone-idx)))
     (values
      (subzone-offset subzone)
