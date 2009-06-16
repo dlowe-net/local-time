@@ -8,6 +8,8 @@
 
 (in-suite* #:local-time.make :in :local-time)
 
+(reread-timezone-repository)
+
 (test make-timestamp
   (let ((timestamp (make-timestamp :nsec 1 :sec 2 :day 3)))
     (is-every =
@@ -221,7 +223,7 @@
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(test format-timestring
+(test format-timestring/simple
   (let ((local-time::*default-timezone* local-time:+utc-zone+)
         (test-timestamp (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0)))
     (is-every string=
@@ -251,6 +253,11 @@
       "04:03"
       (format-timestring nil test-timestamp
                          :format '((:hour 2) #\: (:min 2))))))
+
+(test format-timestring/errors
+  (with-output-to-string (*standard-output*)
+    (let ((*default-timezone* (find-timezone-by-location-name "UTC")))
+      (finishes (print (now))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   
