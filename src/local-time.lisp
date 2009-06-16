@@ -439,6 +439,8 @@
   "A hashtable of \"CEST\" -> list of timezones with \"CEST\" subzone")
 
 (defun find-timezone-by-location-name (name)
+  (when (zerop (hash-table-count *location-name->timezone*))
+    (error "Seems like the timezone repository has not yet been loaded. Hint: see REREAD-TIMEZONE-REPOSITORY."))
   (gethash name *location-name->timezone*))
 
 (defun timezone= (timezone-1 timezone-2)
