@@ -653,8 +653,8 @@
       (assert (or (%list-length= 3 change)
                   (and (%list-length= 4 change)
                        (symbolp (third change))
-                       (or (string= (third change) "TO")
-                           (string= (third change) "BY"))))
+                       (or (string= (third change) :to)
+                           (string= (third change) :by))))
               nil "Syntax error in expression ~S" change)
       (let ((operation (first change))
             (part (second change))
@@ -662,9 +662,9 @@
                        (third change)
                        (fourth change))))
         (cond
-          ((string= operation "SET")
+          ((string= operation :set)
            (funcall visitor `(%set-timestamp-part ,timestamp ,part ,value)))
-          ((string= operation "OFFSET")
+          ((string= operation :offset)
            (funcall visitor `(%offset-timestamp-part ,timestamp ,part ,value)))
           (t (error "Unexpected operation ~S" operation))))))
 
