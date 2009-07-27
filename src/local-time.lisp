@@ -853,33 +853,62 @@
        (<= 1 day (days-in-month month year))
        (/= year 0)))
 
-(defun encode-timestamp-into-values (nsec sec minute hour day month year &key (offset (%get-default-offset)))
-  "Returns (VALUES NSEC SEC DAY ZONE) ready to be used for instantiating a new timestamp object.  If the specified time is invalid, the condition INVALID-TIME-SPECIFICATION is raised."
-  (declare (type integer nsec sec minute hour day month year offset))
+(defun encode-timestamp-into-values (nsec sec minute hour day month year
+                                     &key (timezone *default-timezone*) offset)
+  "Returns (VALUES NSEC SEC DAY ZONE) ready to be used for
+instantiating a new timestamp object.  If the specified time is
+invalid, the condition INVALID-TIME-SPECIFICATION is raised."
+  ;; If the user provided an explicit offset, we use that.  Otherwise,
+  ;; we try converting the local time to a timestamp using each available
+  ;; subtimezone, until we find one where the offset matches the offset that
+  ;; applies at that time (according to the transition table).
+  ;;
+  ;; Consequence for ambiguous cases:
+  ;; Whichever subtimezone is listed first in the tzinfo database will be
+  ;; the one that we pick to resolve ambiguous local time representations.
+
+  (declare (type integer nsec sec minute hour day month year)
+           (type (or integer null) offset))
   (unless (valid-timestamp-p nsec sec minute hour day month year)
     (error 'invalid-time-specification))
-  (let* ((0-based-rotated-month (if (>= month 3)
-                                    (- month 3)
-                                    (+ month 9)))
-         (internal-year (if (< month 3)
-                            (- year 2001)
-                            (- year 2000)))
-         (years-as-days (years-to-days internal-year))
-         (sec (+ (* hour +seconds-per-hour+)
-                 (* minute +seconds-per-minute+)
-                 sec))
-         (days-from-zero-point (+ years-as-days
-                                  (aref +rotated-month-offsets-without-leap-day+ 0-based-rotated-month)
-                                  (1- day))))
-    (multiple-value-bind (utc-sec utc-day)
-        (%adjust-to-offset sec days-from-zero-point (- offset))
-      (values nsec utc-sec utc-day))))
+  (if offset
+      (let* ((0-based-rotated-month (if (>= month 3)
+                                        (- month 3)
+                                        (+ month 9)))
+             (internal-year (if (< month 3)
+                                (- year 2001)
+                                (- year 2000)))
+             (years-as-days (years-to-days internal-year))
+             (sec (+ (* hour +seconds-per-hour+)
+                     (* minute +seconds-per-minute+)
+                     sec))
+             (days-from-zero-point (+ years-as-days
+                                      (aref +rotated-month-offsets-without-leap-day+ 0-based-rotated-month)
+                                      (1- day))))
+        (multiple-value-bind (utc-sec utc-day)
+            (%adjust-to-offset sec days-from-zero-point (- offset))
+          (values nsec utc-sec utc-day)))
+      ;; find the first potential offset that is valid at the represented time
+      (loop
+         for subtimezone across (timezone-subzones timezone) do
+           (let ((timestamp (encode-timestamp nsec sec minute hour day month year
+                                          :offset (subzone-offset subtimezone))))
+             (if (= (timestamp-subtimezone timestamp timezone)
+                    (subzone-offset subtimezone))
+                 (return  (values (nsec-of timestamp)
+                                  (sec-of timestamp)
+                                  (day-of timestamp) ))))
+         finally
+           (error "The requested local time is not valid"))))
 
-(defun encode-timestamp (nsec sec minute hour day month year &key (offset (%get-default-offset)) into)
-  "Return a new TIMESTAMP instance corresponding to the specified time elements."
-  (declare (type integer nsec sec minute hour day month year offset))
+(defun encode-timestamp (nsec sec minute hour day month year
+                         &key (timezone *default-timezone*) offset into)
+  "Return a new TIMESTAMP instance corresponding to the specified time
+elements."
+  (declare (type integer nsec sec minute hour day month year))
   (multiple-value-bind (nsec sec day)
-      (encode-timestamp-into-values nsec sec minute hour day month year :offset offset)
+      (encode-timestamp-into-values nsec sec minute hour day month year
+                                    :timezone timezone :offset offset)
     (if into
         (progn
           (setf (nsec-of into) nsec)
