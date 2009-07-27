@@ -163,7 +163,7 @@
                              (integer -43199 43199)
                              boolean
                              string)) timestamp-subzone)
-         (ftype (function (timestamp &key (:timezone timezone))
+         (ftype (function (timestamp &key (:timezone timezone) (:offset (or null integer)))
                           (values (integer 0 999999999)
                                   (integer 0 59)
                                   (integer 0 59)
@@ -413,6 +413,8 @@
 
 (defparameter +gmt-zone+ (%make-simple-timezone "Greenwich Mean Time" "GMT" 0))
 
+(defparameter +none-zone+ (%make-simple-timezone "Explicit Offset Given" "NONE" 0))
+
 (defmacro define-timezone (zone-name zone-file &key (load nil))
   "Define zone-name (a symbol or a string) as a new timezone, lazy-loaded from zone-file (a pathname designator relative to the zoneinfo directory on this system.  If load is true, load immediately."
   (declare (type (or string symbol) zone-name))
@@ -530,10 +532,11 @@
              (decf new-sec +seconds-per-day+)))
       (values new-sec new-day))))
 
-(defun %adjust-to-timezone (source timezone)
+(defun %adjust-to-timezone (source timezone &optional offset)
   (%adjust-to-offset (sec-of source)
                      (day-of source)
-                     (timestamp-subtimezone source timezone)))
+                     (or offset
+                         (timestamp-subtimezone source timezone))))
 
 (defun timestamp-minimize-part (timestamp part &key
                                 (offset (%get-default-offset))
@@ -583,7 +586,7 @@
                           :offset offset
                           :into into)))))
 
-(defmacro with-decoded-timestamp ((&key nsec sec minute hour day month year day-of-week daylight-p timezone)
+(defmacro with-decoded-timestamp ((&key nsec sec minute hour day month year day-of-week daylight-p timezone offset)
                                    timestamp &body forms)
   "This macro binds variables to the decoded elements of TIMESTAMP. The TIMEZONE argument is used for decoding the timestamp, and is not bound by the macro. The value of DAY-OF-WEEK starts from 0 which means Sunday."
   (let ((ignores)
@@ -612,7 +615,7 @@
       (declare-fixnum-type sec minute hour day month year)
       (initialize nsec sec minute hour day month year day-of-week daylight-p))
     `(multiple-value-bind (,@variables)
-         (decode-timestamp ,timestamp :timezone ,(or timezone '*default-timezone*))
+         (decode-timestamp ,timestamp :timezone ,(or timezone '*default-timezone*) :offset ,offset)
        (declare (ignore ,@ignores) ,@types)
        ,@forms)))
 
@@ -835,8 +838,8 @@
                     :sec sec
                     :day day)))
 
-(defun timestamp-day-of-week (timestamp &key (timezone *default-timezone*))
-  (mod (+ 3 (nth-value 1 (%adjust-to-timezone timestamp timezone))) 7))
+(defun timestamp-day-of-week (timestamp &key (timezone *default-timezone*) offset)
+  (mod (+ 3 (nth-value 1 (%adjust-to-timezone timestamp timezone offset))) 7))
 
 ;; TODO read
 ;; http://java.sun.com/j2se/1.4.2/docs/api/java/util/GregorianCalendar.html
@@ -1132,13 +1135,15 @@ elements."
        minutes
        seconds))))
 
-(defun decode-timestamp (timestamp &key (timezone *default-timezone*))
+(defun decode-timestamp (timestamp &key (timezone *default-timezone*) offset)
   "Returns the decoded time as multiple values: nsec, ss, mm, hh, day, month, year, day-of-week"
   (declare (type timestamp timestamp))
-  (multiple-value-bind (offset daylight-p abbreviation)
+  (when offset
+    (setf timezone (the timezone +none-zone+)))
+  (multiple-value-bind (offset* daylight-p abbreviation)
       (timestamp-subtimezone timestamp timezone)
       (multiple-value-bind (adjusted-secs adjusted-days)
-          (%adjust-to-timezone timestamp timezone)
+          (%adjust-to-timezone timestamp timezone offset)
         (multiple-value-bind (hours minutes seconds)
             (%timestamp-decode-time adjusted-secs)
           (multiple-value-bind (year month day)
@@ -1147,9 +1152,9 @@ elements."
              (nsec-of timestamp)
              seconds minutes hours
              day month year
-             (timestamp-day-of-week timestamp :timezone timezone)
+             (timestamp-day-of-week timestamp :timezone timezone :offset offset)
              daylight-p
-             offset
+             (or offset offset*)
              abbreviation))))))
 
 (defun timestamp-year (timestamp &key (timezone *default-timezone*))
