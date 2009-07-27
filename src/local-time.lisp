@@ -539,7 +539,7 @@
                          (timestamp-subtimezone source timezone))))
 
 (defun timestamp-minimize-part (timestamp part &key
-                                (offset (%get-default-offset))
+                                offset
                                 (timezone *default-timezone*)
                                 into)
   (let* ((timestamp-parts '(:nsec :sec :min :hour :day :month))
@@ -559,11 +559,12 @@
                         (if (> part-count 4) 1 month)
                         year
                         :offset offset
+                        :timezone timezone
                         :into into))))
 
 
 (defun timestamp-maximize-part (timestamp part &key
-                                (offset (%get-default-offset))
+                                offset
                                 (timezone *default-timezone*)
                                 into)
   (let* ((timestamp-parts '(:nsec :sec :min :hour :day :month))
@@ -584,6 +585,7 @@
                           month
                           year
                           :offset offset
+                          :timezone timezone
                           :into into)))))
 
 (defmacro with-decoded-timestamp ((&key nsec sec minute hour day month year day-of-week daylight-p timezone offset)
@@ -652,24 +654,41 @@
       (and c (endp (cdr c)))))
 
   (defun %expand-adjust-timestamp-changes (timestamp changes visitor)
-    (dolist (change changes)
-      (assert (or (%list-length= 3 change)
-                  (and (%list-length= 4 change)
-                       (symbolp (third change))
-                       (or (string= (third change) :to)
-                           (string= (third change) :by))))
-              nil "Syntax error in expression ~S" change)
-      (let ((operation (first change))
-            (part (second change))
-            (value (if (%list-length= 3 change)
-                       (third change)
-                       (fourth change))))
-        (cond
-          ((string= operation :set)
-           (funcall visitor `(%set-timestamp-part ,timestamp ,part ,value)))
-          ((string= operation :offset)
-           (funcall visitor `(%offset-timestamp-part ,timestamp ,part ,value)))
-          (t (error "Unexpected operation ~S" operation))))))
+    (loop for change in changes
+       with params = ()
+       with functions = ()  
+       do
+         (progn
+           (assert (or
+                    (%list-length= 3 change)
+                    (and (%list-length= 2 change)
+                         (symbolp (first change))
+                         (or (string= (first change) :timezone)
+                             (string= (first change) :utc-offset)))
+                    (and (%list-length= 4 change)
+                         (symbolp (third change))
+                         (or (string= (third change) :to)
+                             (string= (third change) :by))))
+                   nil "Syntax error in expression ~S" change)
+           (let ((operation (first change))
+                 (part (second change))
+                 (value (if (%list-length= 3 change)
+                            (third change)
+                            (fourth change))))
+             (cond
+               ((string= operation :set)
+                (push `(%set-timestamp-part ,part ,value) functions))
+               ((string= operation :offset)
+                (push `(%offset-timestamp-part ,part ,value) functions))
+               ((or (string= operation :utc-offset)
+                    (string= operation :timezone))
+                (push (second change) params)
+                (push operation params))
+               (t (error "Unexpected operation ~S" operation)))))
+         finally
+         (loop for (function part value) in functions
+              do
+              (funcall visitor `(,function ,timestamp ,part ,value ,@params)))))
 
   (defun %expand-adjust-timestamp (timestamp changes &key functional)
     (let* ((old (gensym "OLD"))
@@ -703,7 +722,7 @@
 (defmacro adjust-timestamp! (timestamp &body changes)
   (%expand-adjust-timestamp timestamp changes :functional nil))
 
-(defun %set-timestamp-part (time part new-value)
+(defun %set-timestamp-part (time part new-value &key (timezone *default-timezone*) utc-offset)
   ;; TODO think about error signalling. when, how to disable if it makes sense, ...
   (case part
     ((:nsec :sec-of-day :day)
@@ -717,7 +736,7 @@
        (values nsec sec day)))
     (otherwise
      (with-decoded-timestamp (:nsec nsec :sec sec :minute minute :hour hour
-                              :day day :month month :year year :timezone +utc-zone+)
+                              :day day :month month :year year :timezone timezone :offset utc-offset)
          time
        (ecase part
          (:sec (setf sec new-value))
@@ -728,13 +747,20 @@
                  (setf day (%fix-overflow-in-days day month year)))
          (:year (setf year new-value)
                 (setf day (%fix-overflow-in-days day month year))))
-       (encode-timestamp-into-values nsec sec minute hour day month year :offset 0)))))
+       (encode-timestamp-into-values nsec sec minute hour day month year :timezone timezone :offset utc-offset)))))
 
-(defun %offset-timestamp-part (time part offset)
-  "Returns a time adjusted by the specified OFFSET. Takes care of different kinds of overflows. The setting :day-of-week is possible using a keyword symbol name of a week-day (see +DAY-NAMES-AS-KEYWORDS+) as value. In that case point the result to the previous day given by OFFSET."
+(defun %offset-timestamp-part (time part offset &key (timezone *default-timezone*) utc-offset)
+  "Returns a time adjusted by the specified OFFSET. Takes care of
+different kinds of overflows. The setting :day-of-week is possible
+using a keyword symbol name of a week-day (see
++DAY-NAMES-AS-KEYWORDS+) as value. In that case point the result to
+the previous day given by OFFSET."
   (labels ((direct-adjust (part offset nsec sec day)
              (cond ((eq part :day-of-week)
-                    (with-decoded-timestamp (:day-of-week day-of-week :timezone +utc-zone+)
+                    (with-decoded-timestamp (:day-of-week day-of-week
+                                             :nsec nsec :sec sec :minute minute :hour hour
+                                             :day day :month month :year year
+                                             :timezone timezone)
                         time
                       (let ((position (position offset +day-names-as-keywords+ :test #'eq)))
                         (assert position (position) "~S is not a valid day name" offset)
@@ -742,32 +768,66 @@
                                                 7
                                                 day-of-week))
                                          position)))
-                          (values nsec sec (+ day offset))))))
+                          (incf day offset)
+                          (when (< day 1)
+                            (let (days-in-month)
+                              (decf month)
+                              (when (< month 1)
+                                (setf month 12)
+                                (decf year))
+                              (setf days-in-month (days-in-month month year)
+                                    day (+ days-in-month day)))) ;; day here is always <= 0
+                          ;; FIXME don't use encode-timestamp because it's ambiguous  
+                          (encode-timestamp-into-values nsec sec minute hour day month year :timezone timezone)))))
                    ((zerop offset)
                     ;; The offset is zero, so just return the parts of the timestamp object
                     (values nsec sec day))
                    (t
-                    (case part
-                      (:nsec
-                       (multiple-value-bind (sec-offset new-nsec)
-                           (floor (+ offset nsec) 1000000000)
-                         ;; the time might need to be adjusted a bit more if q != 0
-                         (direct-adjust :sec sec-offset
-                                        new-nsec sec day)))
-                      (:day
-                       (values nsec sec (+ day offset)))
-                      (otherwise
-                       (multiple-value-bind (days-offset new-sec)
-                           (floor (+ sec (* offset (ecase part
-                                                     (:sec 1)
-                                                     (:minute +seconds-per-minute+)
-                                                     (:hour +seconds-per-hour+))))
-                                  +seconds-per-day+)
-                         (direct-adjust :day days-offset
-                                        nsec new-sec day)))))))
+                    (let ((old-utc-offset (or utc-offset
+                                          (timestamp-subtimezone time timezone)))
+                          new-utc-offset)
+                      (tagbody
+                         top
+                         (ecase part
+                           (:nsec
+                            (multiple-value-bind (sec-offset new-nsec)
+                                (floor (+ offset nsec) 1000000000)
+                              ;; the time might need to be adjusted a bit more if q != 0
+                              (setf part :sec
+                                    offset sec-offset 
+                                    nsec new-nsec)
+                              (go top)))
+                           ((:sec :minute :hour)
+                            (multiple-value-bind (days-offset new-sec)
+                                (floor (+ sec (* offset (ecase part
+                                                          (:sec 1)
+                                                          (:minute +seconds-per-minute+)
+                                                          (:hour +seconds-per-hour+))))
+                                       +seconds-per-day+)
+                              (setf part :day
+                                    offset days-offset 
+                                    sec new-sec)
+                              (go top)))
+                           (:day
+                            (incf day offset)
+                            (setf new-utc-offset (or utc-offset
+                                                     (timestamp-subtimezone (make-timestamp :nsec nsec :sec sec :day day)
+                                                                            timezone)))
+                            (when (not (= old-utc-offset
+                                          new-utc-offset))
+                              ;; We hit the DST boundary. We need to restart again
+                              ;; with :sec, but this time we know both old and new
+                              ;; UTC offset will be the same, so it's safe to do
+                              (setf part :sec
+                                    offset (- old-utc-offset
+                                              new-utc-offset)
+                                    old-utc-offset new-utc-offset)
+                              (go top))
+                            (return-from direct-adjust (values nsec sec day)))))))))
+
            (safe-adjust (part offset time)
              (with-decoded-timestamp (:nsec nsec :sec sec :minute minute :hour hour :day day
-                                      :month month :year year :timezone +utc-zone+)
+                                            :month month :year year :timezone timezone)
                  time
                (multiple-value-bind (month-new year-new)
                    (%normalize-month-year-pair
@@ -781,7 +841,7 @@
                  (encode-timestamp-into-values nsec sec minute hour
                                                (%fix-overflow-in-days day month-new year-new)
                                                month-new year-new
-                                               :offset 0)))))
+                                               :timezone timezone :offset utc-offset)))))
     (ecase part
       ((:nsec :sec :minute :hour :day :day-of-week)
        (direct-adjust part offset
@@ -824,19 +884,15 @@
         (incf result (/ nsec 1000000000d0)))
       result)))
 
-(defun timestamp+ (time amount unit)
+(defun timestamp+ (time amount unit &optional (timezone *default-timezone*) offset)
   (multiple-value-bind (nsec sec day)
-      (%offset-timestamp-part time unit amount)
+      (%offset-timestamp-part time unit amount :timezone timezone :offset offset)
     (make-timestamp :nsec nsec
                     :sec sec
                     :day day)))
 
-(defun timestamp- (time amount unit)
-  (multiple-value-bind (nsec sec day)
-      (%offset-timestamp-part time unit (- amount))
-    (make-timestamp :nsec nsec
-                    :sec sec
-                    :day day)))
+(defun timestamp- (time amount unit &optional (timezone *default-timezone*) offset)
+  (timestamp+ time (- amount) unit timezone offset))
 
 (defun timestamp-day-of-week (timestamp &key (timezone *default-timezone*) offset)
   (mod (+ 3 (nth-value 1 (%adjust-to-timezone timestamp timezone offset))) 7))
