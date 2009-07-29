@@ -1,5 +1,6 @@
 - PARSE-TIMESTRING works fine, but we need a more human-friendly parser that
-  can handle stuff like "08/03/2006 1:54pm CST"
+  can handle stuff like "08/03/2006 1:54pm CST". or maybe not? see
+  http://chaitanyagupta.com/lisp/chronicity/
 
 - Support for other notational systems than the Gregorian
 
