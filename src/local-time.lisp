@@ -889,7 +889,7 @@ the previous day given by OFFSET."
 
 (defun timestamp+ (time amount unit &optional (timezone *default-timezone*) offset)
   (multiple-value-bind (nsec sec day)
-      (%offset-timestamp-part time unit amount :timezone timezone :offset offset)
+      (%offset-timestamp-part time unit amount :timezone timezone :utc-offset offset)
     (make-timestamp :nsec nsec
                     :sec sec
                     :day day)))
