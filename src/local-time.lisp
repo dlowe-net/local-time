@@ -1026,7 +1026,7 @@ elements."
     (multiple-value-bind (success? sec nsec) (sb-unix:unix-gettimeofday)
       (assert success? () "sb-unix:unix-gettimeofday reported failure?!")
       (values sec (* 1000 nsec))))
-  #+ccl
+  #+(and ccl (not windows))
   (ccl::rlet ((tv :timeval))
     (#.(let ((ccl-external-func (get-dispatch-macro-character #\# #\_)))
          (when ccl-external-func
@@ -1034,7 +1034,7 @@ elements."
              (funcall ccl-external-func sym #\_ nil))))
        tv (ccl::%null-ptr))
     (values (ccl::pref tv :timeval.tv_sec) (* 1000 (ccl::pref tv :timeval.tv_usec))))
-  #-(or cmu sbcl ccl)
+  #-(or cmu sbcl (and ccl (not windows)))
   (values (- (get-universal-time)
              ;; CL's get-universal-time uses an epoch of 1/1/1900, so adjust the result to the Unix epoch
              #.(encode-universal-time 0 0 0 1 1 1970 0))
