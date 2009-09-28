@@ -73,9 +73,10 @@
            #:timestamp-year
            #:parse-timestring
            #:format-timestring
-           #:format-http-timestring
-           #:to-http-timestring
+           #:format-rfc1123-timestring
+           #:to-rfc1123-timestring
            #:format-rfc3339-timestring
+           #:to-rfc3339-timestring
            #:encode-timestamp
            #:parse-rfc3339-timestring
            #:universal-to-timestamp
@@ -155,7 +156,9 @@
 
 ;;; Declaims
 
-(declaim (inline now format-timestring format-rfc3339-timestring %get-current-time)
+(declaim (inline now format-timestring %get-current-time
+                 format-rfc3339-timestring to-rfc3339-timestring
+                 format-rfc1123-timestring to-rfc1123-timestring)
          (ftype (function * simple-base-string) format-rfc3339-timestring)
          (ftype (function * simple-base-string) format-timestring)
          (ftype (function * fixnum) local-timezone)
@@ -1605,13 +1608,13 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
       (write-string result destination))
     result))
 
-(defun format-http-timestring (destination timestamp)
+(defun format-rfc1123-timestring (destination timestamp)
   (format-timestring destination timestamp
                      :format +rfc-1123-format+
                      :timezone +gmt-zone+))
 
-(defun to-http-timestring (timestamp)
-  (format-http-timestring nil timestamp))
+(defun to-rfc1123-timestring (timestamp)
+  (format-rfc1123-timestring nil timestamp))
 
 (defun format-rfc3339-timestring (destination timestamp &key
                                   omit-date-part
@@ -1644,6 +1647,9 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
                     '(:gmt-offset-or-z)
                     '(:gmt-offset)))))))
     (format-timestring destination timestamp :format rfc3339-format :timezone timezone)))
+
+(defun to-rfc3339-timestring (timestamp)
+  (format-rfc3339-timestring nil timestamp))
 
 (defun %read-timestring (stream char)
   (declare (ignore char))
