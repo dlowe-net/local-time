@@ -1027,6 +1027,10 @@ elements."
       (assert success? () "sb-unix:unix-gettimeofday reported failure?!")
       (values sec (* 1000 nsec))))
   #+(and ccl (not windows))
+  ;; this whole voodoo here is because of a bug in LispWorks, namely its reader chokes on #_ inside a #+ccl
+  ;; see mail "darcs patch: Work with Lispworks" on local-time-devel at 2009.03.23.
+  ;; and mail "darcs patch: Less intrusive version of the Lispworks patch for #_." at 2009.03.24.
+  ;; TODO get rid of this eventually... this all should be a mere (#_gettimeofday tv (ccl::%null-ptr))
   (ccl::rlet ((tv :timeval))
     (#.(let ((ccl-external-func (get-dispatch-macro-character #\# #\_)))
          (when ccl-external-func
@@ -1048,6 +1052,7 @@ elements."
 
 (defun today ()
   "Returns a timestamp representing the present day."
+  ;; TODO should return a date value, anyhow we will decide to represent it eventually
   (timestamp-minimize-part (now) :hour))
 
 (defmacro %defcomparator (name &body body)
