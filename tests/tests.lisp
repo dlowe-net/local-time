@@ -8,7 +8,7 @@
 
 (in-suite* #:local-time.make :in :local-time)
 
-(reread-timezone-repository)
+(local-time::reread-timezone-repository)
 
 (test make-timestamp
   (let ((timestamp (make-timestamp :nsec 1 :sec 2 :day 3)))
