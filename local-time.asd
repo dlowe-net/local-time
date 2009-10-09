@@ -1,10 +1,5 @@
 (cl:in-package :cl-user)
 
-;;; try to load asdf-system-connections
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (when (asdf:find-system :asdf-system-connections nil)
-    (asdf:operate 'asdf:load-op :asdf-system-connections)))
-
 (defpackage #:local-time.system
   (:use :common-lisp :asdf))
 
@@ -33,10 +28,3 @@
 
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :local-time))))
   nil)
-
-#+:asdf-system-connections
-(defsystem-connection cl-postgres-and-local-time
-  :requires (:cl-postgres :local-time)
-  :components ((:module "src"
-                        :components ((:module "integration"
-                                      :components ((:file "cl-postgres")))))))
