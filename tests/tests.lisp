@@ -252,7 +252,21 @@
 
       "04:03"
       (format-timestring nil test-timestamp
-                         :format '((:hour 2) #\: (:min 2))))))
+                         :format '((:hour 2) #\: (:min 2)))
+
+      "5th"
+      (format-timestring nil test-timestamp
+                         :format '(:ordinal-day)))))
+
+(test format-timestring/ordinals
+  (flet ((format-ordinal (day)
+           (format-timestring nil (encode-timestamp 0 0 0 0 day 1 2008)
+                              :format '(:ordinal-day))))
+    (is-every string=
+      "31st" (format-ordinal 31)
+      "11th" (format-ordinal 11)
+      "22nd" (format-ordinal 22)
+      "3rd" (format-ordinal 3))))
 
 (test format-timestring/errors
   (with-output-to-string (*standard-output*)

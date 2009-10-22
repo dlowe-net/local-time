@@ -1512,6 +1512,21 @@ elements."
                         (* (or offset-minute 0) 60))
                      offset))))))
 
+(defun ordinalize (day)
+  "Return an ordinal string representing the position of DAY in a sequence (1st, 2nd, 3rd, 4th, etc)."
+  (declare (type (integer 1 31) day))
+  (flet ((suffix ()
+           (if (<= 11 day 13)
+               "th"
+               (multiple-value-bind (quotient remainder) (floor day 10)
+                 (declare (ignore quotient))
+                 (case remainder
+                   (1 "st")
+                   (2 "nd")
+                   (3 "rd")
+                   (t "th"))))))
+    (format nil "~d~a" day (suffix))))
+
 (defun %construct-timestring (timestamp format timezone)
   "Constructs a string representing TIMESTAMP given the FORMAT of the string and the TIMEZONE.  See the documentation of FORMAT-TIMESTRING for the structure of FORMAT."
   (declare (type timestamp timestamp)
@@ -1550,6 +1565,8 @@ elements."
              (princ (1+ (mod (1- hour) 12)) result))
             ((eql fmt :ampm)
              (princ (if (< hour 12) "am" "pm") result))
+            ((eql fmt :ordinal-day)
+             (princ (ordinalize day) result))
             ((or (stringp fmt) (characterp fmt))
              (princ fmt result))
             (t
