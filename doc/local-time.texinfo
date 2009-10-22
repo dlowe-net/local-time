@@ -584,6 +584,8 @@ FORMAT is a list containing one or more of strings, characters, and keywords.  S
 *microseconds
 @item :nsec
 *nanoseconds
+@item :ordinal-day
+day of month as an ordinal (e.g. 1st, 23rd)
 @item :long-weekday
 long form of weekday (e.g. Sunday, Monday)
 @item :short-weekday
