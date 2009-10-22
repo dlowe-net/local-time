@@ -1022,7 +1022,7 @@ elements."
     #+#.(local-time::package-with-symbol? "SB-EXT" "GET-TIME-OF-DAY") ; available from sbcl 1.0.28.66
     (multiple-value-bind (sec nsec) (sb-ext:get-time-of-day)
       (values sec (* 1000 nsec)))
-    #+#.(local-time::package-with-symbol? "SB-UNIX" "UNIX-GETTIMEOFDAY") ; obsolete, scheduled to be deleted at the end of 2009
+    #-#.(local-time::package-with-symbol? "SB-EXT" "GET-TIME-OF-DAY") ; obsolete, scheduled to be deleted at the end of 2009
     (multiple-value-bind (success? sec nsec) (sb-unix:unix-gettimeofday)
       (assert success? () "sb-unix:unix-gettimeofday reported failure?!")
       (values sec (* 1000 nsec))))
