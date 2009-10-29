@@ -271,10 +271,11 @@
 
 (defun %read-binary-integer (stream byte-count &optional (signed nil))
   "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
-  (loop for offset from (* (1- byte-count) 8) downto 0 by 8
-     with result = 0
-     do (setf (ldb (byte 8 offset) result) (read-byte stream))
-     finally (if signed
+  (loop
+    :with result = 0
+    :for offset :from (* (1- byte-count) 8) :downto 0 :by 8
+    :do (setf (ldb (byte 8 offset) result) (read-byte stream))
+    :finally (if signed
                  (let ((high-bit (* byte-count 8)))
                    (if (logbitp (1- high-bit) result)
                        (return (- result (ash 1 high-bit)))
@@ -438,7 +439,7 @@
   (let ((default-timezone-file #p"/etc/localtime"))
     (if (probe-file default-timezone-file)
         (define-timezone *default-timezone* default-timezone-file :load t)
-        (defparameter *default-timezone* +utc-zone+))))
+        (setf *default-timezone* +utc-zone+))))
 
 (defparameter *location-name->timezone* (make-hash-table :test 'equal)
   "A hashtable with entries like \"Europe/Budapest\" -> timezone-instance")
@@ -955,16 +956,16 @@ invalid, the condition INVALID-TIME-SPECIFICATION is raised."
           (values nsec utc-sec utc-day)))
       ;; find the first potential offset that is valid at the represented time
       (loop
-         for subtimezone across (timezone-subzones timezone) do
-           (let ((timestamp (encode-timestamp nsec sec minute hour day month year
-                                          :offset (subzone-offset subtimezone))))
-             (if (= (timestamp-subtimezone timestamp timezone)
-                    (subzone-offset subtimezone))
-                 (return  (values (nsec-of timestamp)
-                                  (sec-of timestamp)
-                                  (day-of timestamp) ))))
-         finally
-           (error "The requested local time is not valid"))))
+        :for subtimezone :across (timezone-subzones timezone)
+        :do (let ((timestamp (encode-timestamp nsec sec minute hour day month year
+                                               :offset (subzone-offset subtimezone))))
+              (if (= (timestamp-subtimezone timestamp timezone)
+                     (subzone-offset subtimezone))
+                  (return  (values (nsec-of timestamp)
+                                   (sec-of timestamp)
+                                   (day-of timestamp)))))
+        :finally
+          (error "The requested local time is not valid"))))
 
 (defun encode-timestamp (nsec sec minute hour day month year
                          &key (timezone *default-timezone*) offset into)
@@ -1070,16 +1071,18 @@ elements."
               while time-b
               always (,pair-comparator-name time-a time-b)))
       (define-compiler-macro ,name (&rest times)
-        (let ((vars (loop for time :in times
-                          for i :upfrom 0
-                          collect (gensym (concatenate 'string "TIME-" (princ-to-string i) "-")))))
-          `(let (,@(loop for var :in vars
-                         for time :in times
-                         collect (list var time)))
+        (let ((vars (loop
+                      :for i :upfrom 0 :below (length times)
+                      :collect (gensym (concatenate 'string "TIME-" (princ-to-string i) "-")))))
+          `(let (,@(loop
+                     :for var :in vars
+                     :for time :in times
+                     :collect (list var time)))
             ;; we could evaluate comparisons of timestamp literals here
-            (and ,@(loop for (time-a time-b) :on vars
-                         while time-b
-                         collect `(,',pair-comparator-name ,time-a ,time-b)))))))))
+            (and ,@(loop
+                     :for (time-a time-b) :on vars
+                     :while time-b
+                     :collect `(,',pair-comparator-name ,time-a ,time-b)))))))))
 
 (defun %timestamp-compare (time-a time-b)
   "Returns the symbols <, >, or =, describing the relationship between TIME-A and TIME-b."
