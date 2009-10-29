@@ -135,6 +135,9 @@
   (name "anonymous" :type string)
   (loaded nil :type boolean))
 
+(deftype timezone-offset ()
+  '(integer -43199 50400))
+
 (define-condition invalid-timezone-file (error)
   ((path :accessor path-of :initarg :path))
   (:report (lambda (condition stream)
@@ -163,7 +166,7 @@
          (ftype (function * simple-base-string) format-timestring)
          (ftype (function * fixnum) local-timezone)
          (ftype (function * (values
-                             (integer -43199 43199)
+                             timezone-offset
                              boolean
                              string)) timestamp-subzone)
          (ftype (function (timestamp &key (:timezone timezone) (:offset (or null integer)))
@@ -176,7 +179,7 @@
                                   (integer -1000000 1000000)
                                   (integer 0 6)
                                   t
-                                  (integer -43199 43199)
+                                  timezone-offset
                                   simple-string))
                 decode-timestamp))
 
