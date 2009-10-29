@@ -224,7 +224,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test format-timestring/simple
-  (let ((local-time::*default-timezone* local-time:+utc-zone+)
+  (let ((*default-timezone* local-time:+utc-zone+)
         (test-timestamp (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0)))
     (is-every string=
       "2008-06-05T04:03:02.000001Z"
@@ -267,6 +267,10 @@
       "11th" (format-ordinal 11)
       "22nd" (format-ordinal 22)
       "3rd" (format-ordinal 3))))
+
+(test format-timestring/bug/1
+  (let ((*default-timezone* (find-timezone-by-location-name "Pacific/Auckland")))
+    (finishes (format-timestring nil (now)))))
 
 (test format-timestring/errors
   (with-output-to-string (*standard-output*)
@@ -314,11 +318,25 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(test parse-timestring/bug/1
+  ;; This test depends on the clock of the machine, but as of writing,
+  ;; this test fails, 2009.  oct. 29. (non-summer time).
+  ;; FIXME attila: this test is probably wrong, because (local-time::%get-default-offset)
+  ;; returns the default offset based on the _current time_ of the computer, whereas
+  ;; ENCODE-TIMESTAMP scans the timezone definition.
+  ;; this test fails for me in october (no daylight saving) in CET (Europe/Budapest, +01:00)
+  (let* ((*default-timezone* (find-timezone-by-location-name "Europe/Budapest"))
+         (timestamp (encode-timestamp 0 0 0 0 1 1 1)))
+    (is (timestamp= timestamp
+                    (parse-timestring "0001-01-01T00:00:00,0"
+                                      :offset (local-time::%get-default-offset))))))
+
 (test parse-timestring
   (let ((timestamp (now)))
     (is (timestamp= timestamp
                      (parse-timestring
                       (format-timestring nil timestamp)))))
+  ;; FIXME see comment at parse-timestring/bug/1; it applies to most of the asserts below...
   (let ((timestamp (encode-timestamp 0 0 0 0 1 1 1)))
     (is (timestamp= timestamp
                      (parse-timestring "0001-01-01T00:00:00,0"
