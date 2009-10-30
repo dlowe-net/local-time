@@ -185,25 +185,23 @@
 
 ;;; Variables
 
-(defun %locate-project-home-directory ()
-  (flet ((try (path)
-           (when path
+(defparameter *default-timezone-repository-path*
+  (flet ((try (project-home-directory)
+           (when project-home-directory
              (ignore-errors
-               (truename (make-pathname :directory (pathname-directory path)))))))
+               (truename
+                (merge-pathnames "zoneinfo/"
+                                 (make-pathname :directory (pathname-directory project-home-directory))))))))
     (or (when (find-package "ASDF")
           (let ((path (eval (read-from-string
                              "(let ((system (asdf:find-system :local-time nil)))
                                 (when system
                                   (asdf:component-pathname system)))"))))
             (try path)))
-        (let ((path (or *compile-file-truename*
+        (let ((path (or #.*compile-file-truename*
                         *load-truename*)))
-          (try (merge-pathnames "../" path)))
-        (progn
-          (warn "Unable to locate the project home directory for local-time. Loading the timezone repository will fail.")
-          nil))))
-
-(defparameter *project-home-directory* (%locate-project-home-directory))
+          (when path
+            (try (merge-pathnames "../" path)))))))
 
 ;;; Month information
 (defparameter +month-names+
@@ -477,8 +475,16 @@ In other words:
       (values t t)
       (values nil nil)))
 
-(defun reread-timezone-repository ()
-  (let* ((root-directory (truename (merge-pathnames "zoneinfo/" *project-home-directory*)))
+(defun reread-timezone-repository (&key (timezone-repository *default-timezone-repository-path*))
+  (check-type timezone-repository (or pathname string))
+  (multiple-value-bind (valid? error)
+      (ignore-errors
+        (truename timezone-repository)
+        t)
+    (unless valid?
+      (error "REREAD-TIMEZONE-REPOSITORY was called with invalid PROJECT-DIRECTORY (~A). The error is ~A."
+             timezone-repository error)))
+  (let* ((root-directory timezone-repository)
          (cutoff-position (length (princ-to-string root-directory))))
     (flet ((visitor (file)
              (let* ((full-name (subseq (princ-to-string file) cutoff-position))
