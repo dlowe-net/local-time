@@ -398,7 +398,7 @@
       (setf (timezone-loaded zone) t)))
   zone)
 
-(eval-when (:load-toplevel :compile-toplevel)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (defun %make-simple-timezone (name abbrev offset)
     (let ((subzone (local-time::make-subzone :offset offset
                                            :daylight-p nil
@@ -1126,7 +1126,7 @@ elements."
   "Returns the latest timestamp"
   (contest #'timestamp> (cons time times)))
 
-(eval-when (:compile-toplevel :load-toplevel)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (defun years-to-days (years)
     "Given a number of years, returns the number of days in those years."
     (let* ((days (* years 365))
