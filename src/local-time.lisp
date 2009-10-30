@@ -455,10 +455,10 @@
 (defun timezone= (timezone-1 timezone-2)
   "Return two values indicating the relationship between timezone-1 and timezone-2. The first value is whether the two timezones are equal and the second value indicates whether it is sure or not.
 
-   In other words:
-   (values t t) means timezone-1 and timezone-2 are definitely equal.
-   (values nil t) means timezone-1 and timezone-2 are definitely different.
-   (values nil nil) means that it couldn't be determined."
+In other words:
+\(values t t) means timezone-1 and timezone-2 are definitely equal.
+\(values nil t) means timezone-1 and timezone-2 are definitely different.
+\(values nil nil) means that it couldn't be determined."
   (if (or (eq timezone-1 timezone-2)
           (equalp timezone-1 timezone-2))
       (values t t)
@@ -466,22 +466,22 @@
 
 (defun reread-timezone-repository ()
   (let* ((root-directory (truename (merge-pathnames "zoneinfo/" *project-home-directory*)))
-         (cutoff-position (length (princ-to-string root-directory)))
-         (visitor (lambda (file)
-                    (let* ((full-name (subseq (princ-to-string file) cutoff-position))
-                           (name (pathname-name file))
-                           (timezone (%realize-timezone (make-timezone :path file :name name))))
-                      (setf (gethash full-name *location-name->timezone*) timezone)
-                      (map nil (lambda (subzone)
-                                 (push timezone (gethash (subzone-abbrev subzone)
-                                                         *abbreviated-subzone-name->timezone-list*)))
-                           (timezone-subzones timezone))))))
-    (setf *location-name->timezone* (make-hash-table :test 'equal))
-    (setf *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal))
-    (cl-fad:walk-directory root-directory visitor :directories nil
-                           :test (lambda (file)
-                                   (not (find "Etc" (pathname-directory file) :test #'string=))))
-    (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) visitor :directories nil)))
+         (cutoff-position (length (princ-to-string root-directory))))
+    (flet ((visitor (file)
+             (let* ((full-name (subseq (princ-to-string file) cutoff-position))
+                    (name (pathname-name file))
+                    (timezone (%realize-timezone (make-timezone :path file :name name))))
+               (setf (gethash full-name *location-name->timezone*) timezone)
+               (map nil (lambda (subzone)
+                          (push timezone (gethash (subzone-abbrev subzone)
+                                                  *abbreviated-subzone-name->timezone-list*)))
+                    (timezone-subzones timezone)))))
+      (setf *location-name->timezone* (make-hash-table :test 'equal))
+      (setf *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal))
+      (cl-fad:walk-directory root-directory #'visitor :directories nil
+                             :test (lambda (file)
+                                     (not (find "Etc" (pathname-directory file) :test #'string=))))
+      (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) #'visitor :directories nil))))
 
 (defmacro make-timestamp (&rest args)
   `(make-instance 'timestamp ,@args))
@@ -1606,14 +1606,18 @@ elements."
                           (timezone *default-timezone*))
   "Constructs a string representation of TIMESTAMP according to FORMAT and returns it.  If destination is T, the string is written to *standard-output*.  If destination is a stream, the string is written to the stream.
 
-FORMAT is a list containing one or more of strings, characters, and keywords.  Strings and characters are output literally, while keywords are replaced by the values here:
+FORMAT is a list containing one or more of strings, characters, and keywords. Strings and characters are output literally, while keywords are replaced by the values here:
 
-  :YEAR  - *year                     :HOUR - *hour
-  :MONTH - *numeric month            :MIN  - *minutes
-  :DAY   - *day of month             :SEC  - *seconds
-  :WEEKDAY  - *numeric day of week   :MSEC - *milliseconds
-    starting from index 0, which     :USEC - *microseconds
-    means Sunday                     :NSEC - *nanoseconds
+  :YEAR              *year
+  :MONTH             *numeric month
+  :DAY               *day of month
+  :HOUR              *hour
+  :MIN               *minutes
+  :SEC               *seconds
+  :WEEKDAY           *numeric day of week starting from index 0, which means Sunday
+  :MSEC              *milliseconds
+  :USEC              *microseconds
+  :NSEC              *nanoseconds
   :LONG-WEEKDAY      long form of weekday (e.g. Sunday, Monday)
   :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
   :LONG-MONTH        long form of month (e.g. January, February)
@@ -1624,12 +1628,11 @@ FORMAT is a list containing one or more of strings, characters, and keywords.  S
   :GMT-OFFSET-OR-Z   like :GMT-OFFSET, but is Z when UTC
   :TIMEZONE          timezone abbrevation for the time
 
-Elements marked by * can be placed in a list in the form:
-   (:keyword padding &optional (padchar #\0))
+Elements marked by * can be placed in a list in the form: \(:keyword padding &optional \(padchar #\0))
+
 The string representation of the value will be padded with the padchar.
 
-You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMAT+.
-"
+You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMAT+."
   (declare (type (or boolean stream) destination))
   (let ((result (%construct-timestring timestamp format timezone)))
     (when destination
