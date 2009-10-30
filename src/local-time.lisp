@@ -185,13 +185,26 @@
 
 ;;; Variables
 
-(defparameter *project-home-directory*
-  (make-pathname :directory (pathname-directory
-                             (if (find-package "ASDF")
-                                 (truename
-                                  (eval (read-from-string "(asdf:component-pathname
-                                                            (asdf:find-system '#:local-time))")))
-                                 *load-pathname*))))
+(defun %locate-project-home-directory ()
+  (flet ((try (path)
+           (when path
+             (ignore-errors
+               (truename (make-pathname :directory (pathname-directory path)))))))
+    (or (when (find-package "ASDF")
+          (let ((path (eval (read-from-string
+                             "(let ((system (asdf:find-system :local-time nil)))
+                                (when system
+                                  (asdf:component-pathname system)))"))))
+            (try path)))
+        (let ((path (or *compile-file-truename*
+                        *load-truename*)))
+          (try (merge-pathnames "../" path)))
+        (progn
+          (warn "Unable to locate the project home directory for local-time. Loading the timezone repository will fail.")
+          nil))))
+
+(defparameter *project-home-directory* (%locate-project-home-directory))
+
 ;;; Month information
 (defparameter +month-names+
   #("" "January" "February" "March" "April" "May" "June" "July" "August"
