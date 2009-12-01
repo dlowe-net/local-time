@@ -35,6 +35,8 @@
 (defpackage :local-time
     (:use #:cl)
   (:export #:timestamp
+           #:date
+           #:time
            #:make-timestamp
            #:day-of
            #:sec-of
@@ -111,7 +113,8 @@
            #:+rfc-1123-format+
            #:astronomical-julian-date
            #:modified-julian-date
-           #:astronomical-modified-julian-date))
+           #:astronomical-modified-julian-date)
+  (:shadow #:time))
 
 (in-package :local-time)
 
@@ -138,6 +141,22 @@
 
 (deftype timezone-offset ()
   '(integer -43199 50400))
+
+(defun valid-time-p (timestamp)
+  (zerop (day-of timestamp)))
+
+(deftype time ()
+  '(and timestamp
+        (satisfies valid-time-p)))
+
+(defun valid-date-p (timestamp)
+  (and (not (zerop (day-of timestamp)))
+       (zerop (sec-of timestamp))
+       (zerop (nsec-of timestamp))))
+
+(deftype date ()
+  '(and timestamp
+        (satisfies valid-date-p)))
 
 (define-condition invalid-timezone-file (error)
   ((path :accessor path-of :initarg :path))
