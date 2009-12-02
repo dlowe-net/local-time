@@ -103,6 +103,7 @@
            #:+minutes-per-hour+
            #:+hours-per-day+
            #:+days-per-week+
+           #:+months-per-year+
            #:+iso-8601-format+
            #:+rfc3339-format+
            #:+rfc3339-format/date-only+
@@ -218,6 +219,7 @@
   #("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat"))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
+  (defconstant +months-per-year+ 12)
   (defconstant +days-per-week+ 7)
   (defconstant +hours-per-day+ 24)
   (defconstant +minutes-per-day+ 1440)
