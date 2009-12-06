@@ -150,8 +150,7 @@
         (satisfies valid-time-p)))
 
 (defun valid-date-p (timestamp)
-  (and (not (zerop (day-of timestamp)))
-       (zerop (sec-of timestamp))
+  (and (zerop (sec-of timestamp))
        (zerop (nsec-of timestamp))))
 
 (deftype date ()
