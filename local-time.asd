@@ -12,7 +12,7 @@
 
 (defsystem :local-time
   :name "local-time"
-  :version "1.0.0d"
+  :version "1.0.1"
   :author "Daniel Lowe <dlowe@bitmuse.com>"
   :description "A library for manipulating dates and times, based on a paper by Erik Naggum"
   :components ((:module "src"
