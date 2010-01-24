@@ -308,6 +308,11 @@
          (modified-timestamp (adjust-timestamp timestamp (offset :year 1))))
     (timestamp= (parse-timestring "2007-01-01T00:00:00Z") modified-timestamp)))
 
+(test adjust-timestamp/bug2
+  (let* ((timestamp (parse-timestring "2009-03-01T01:00:00.000000+00:00"))
+         (modified-timestamp (adjust-timestamp timestamp (offset :month 1))))
+    (timestamp= (parse-timestring "2009-04-01T01:00:00.000000+00:00") modified-timestamp)))
+
 #+nil
 (test adjust-days
   (let ((sunday (parse-timestring "2006-12-17T01:02:03Z")))
