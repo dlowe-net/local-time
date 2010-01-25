@@ -718,7 +718,7 @@ In other words:
          (loop
            :for (function part value) in functions
            :do
-           (funcall visitor `(,function ,timestamp ,part ,value ,@params)))))
+           (funcall visitor `(,function ,timestamp ,part ,value ,@(or params '(:utc-offset 0)))))))
 
   (defun %expand-adjust-timestamp (timestamp changes &key functional)
     (let* ((old (gensym "OLD"))
