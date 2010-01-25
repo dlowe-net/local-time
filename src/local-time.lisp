@@ -682,10 +682,11 @@ In other words:
       (and c (endp (cdr c)))))
 
   (defun %expand-adjust-timestamp-changes (timestamp changes visitor)
-    (loop for change in changes
-       with params = ()
-       with functions = ()  
-       do
+    (loop
+      :for change in changes
+      :with params = ()
+      :with functions = ()
+      :do
          (progn
            (assert (or
                     (%list-length= 3 change)
@@ -713,10 +714,11 @@ In other words:
                 (push (second change) params)
                 (push operation params))
                (t (error "Unexpected operation ~S" operation)))))
-         finally
-         (loop for (function part value) in functions
-              do
-              (funcall visitor `(,function ,timestamp ,part ,value ,@params)))))
+      :finally
+         (loop
+           :for (function part value) in functions
+           :do
+           (funcall visitor `(,function ,timestamp ,part ,value ,@params)))))
 
   (defun %expand-adjust-timestamp (timestamp changes &key functional)
     (let* ((old (gensym "OLD"))
@@ -812,7 +814,7 @@ the previous day given by OFFSET."
                     (values nsec sec day))
                    (t
                     (let ((old-utc-offset (or utc-offset
-                                          (timestamp-subtimezone time timezone)))
+                                              (timestamp-subtimezone time timezone)))
                           new-utc-offset)
                       (tagbody
                          top
