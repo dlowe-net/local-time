@@ -790,7 +790,7 @@ the previous day given by OFFSET."
                     (with-decoded-timestamp (:day-of-week day-of-week
                                              :nsec nsec :sec sec :minute minute :hour hour
                                              :day day :month month :year year
-                                             :timezone timezone)
+                                             :timezone timezone :offset utc-offset)
                         time
                       (let ((position (position offset +day-names-as-keywords+ :test #'eq)))
                         (assert position (position) "~S is not a valid day name" offset)
@@ -807,8 +807,8 @@ the previous day given by OFFSET."
                                 (decf year))
                               (setf days-in-month (days-in-month month year)
                                     day (+ days-in-month day)))) ;; day here is always <= 0
-                          ;; FIXME don't use encode-timestamp because it's ambiguous  
-                          (encode-timestamp-into-values nsec sec minute hour day month year :timezone timezone)))))
+                          (encode-timestamp-into-values nsec sec minute hour day month year
+                                                        :timezone timezone :offset utc-offset)))))
                    ((zerop offset)
                     ;; The offset is zero, so just return the parts of the timestamp object
                     (values nsec sec day))
