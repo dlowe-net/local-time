@@ -857,7 +857,7 @@ the previous day given by OFFSET."
 
            (safe-adjust (part offset time)
              (with-decoded-timestamp (:nsec nsec :sec sec :minute minute :hour hour :day day
-                                            :month month :year year :timezone timezone)
+                                      :month month :year year :timezone timezone :offset utc-offset)
                  time
                (multiple-value-bind (month-new year-new)
                    (%normalize-month-year-pair
