@@ -36,7 +36,7 @@
     (:use #:cl)
   (:export #:timestamp
            #:date
-           #:time
+           #:time-of-day
            #:make-timestamp
            #:day-of
            #:sec-of
@@ -142,20 +142,20 @@
 (deftype timezone-offset ()
   '(integer -43199 50400))
 
-(defun valid-time-p (timestamp)
+(defun %valid-time-of-day? (timestamp)
   (zerop (day-of timestamp)))
 
-(deftype time ()
+(deftype time-of-day ()
   '(and timestamp
-        (satisfies valid-time-p)))
+        (satisfies %valid-time-of-day?)))
 
-(defun valid-date-p (timestamp)
+(defun %valid-date? (timestamp)
   (and (zerop (sec-of timestamp))
        (zerop (nsec-of timestamp))))
 
 (deftype date ()
   '(and timestamp
-        (satisfies valid-date-p)))
+        (satisfies %valid-date?)))
 
 (define-condition invalid-timezone-file (error)
   ((path :accessor path-of :initarg :path))
