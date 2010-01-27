@@ -1,19 +1,8 @@
 # Boring file regexps:
 ~$
 ^_darcs
-^documentation/manual
-^documentation/.*\.aux$
-^documentation/.*\.cp$
-^documentation/.*\.cps$
-^documentation/.*\.fn.?$
-^documentation/.*\.info$
-^documentation/.*\.it$
-^documentation/.*\.ky$
-^documentation/.*\.log$
-^documentation/.*\.pg$
-^documentation/.*\.toc$
-^documentation/.*\.tp$
-^documentation/.*\.vr$
+^doc/manual
+^doc/.*\.(aux|cp.?|fn.?|info|it|ky|log|pg|toc|tp.?|vr)$
 ^\{arch\}
 ^.arch-ids
 \#
