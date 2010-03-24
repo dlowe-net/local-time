@@ -168,10 +168,12 @@
   (:report "The time specification is invalid"))
 
 (define-condition invalid-timestring (error)
-  ((timestring :accessor timestring-of :initarg :timestring))
+  ((timestring :accessor timestring-of :initarg :timestring)
+   (failure :accessor failure-of :initarg :failure))
   (:report (lambda (condition stream)
-             (format stream "Failed to parse ~S as an rfc3339 time"
-                     (timestring-of condition)))))
+             (format stream "Failed to parse ~S as an rfc3339 time: ~S"
+                     (timestring-of condition)
+                     (failure-of condition)))))
 
 (defmethod make-load-form ((self timestamp) &optional environment)
   (make-load-form-saving-slots self :environment environment))
@@ -292,13 +294,23 @@
 ;; time of day.
 (defparameter +modified-julian-date-offset+ -51604)
 
-(defun %get-default-offset ()
-  (multiple-value-bind (sec min hour day mon year dow daylight-p zone)
-      (get-decoded-time)
-    (declare (ignore sec min hour day mon year dow))
-    (if daylight-p
-        (* -3600 (1- zone))
-        (* -3600 zone))))
+(defun %guess-offset (seconds days &optional timezone)
+  ;; try converting the local time to a timestamp using each available
+  ;; subtimezone, until we find one where the offset matches the offset that
+  ;; applies at that time (according to the transition table).
+  ;;
+  ;; Consequence for ambiguous cases:
+  ;; Whichever subtimezone is listed first in the tzinfo database will be
+  ;; the one that we pick to resolve ambiguous local time representations.
+  (let* ((zone (%realize-timezone (or timezone *default-timezone*)))
+         (unix-time (timestamp-values-to-unix seconds days))
+         (subzone-idx (if (zerop (length (timezone-indexes zone)))
+                          0
+                          (elt (timezone-indexes zone)
+                               (transition-position unix-time
+                                                    (timezone-transitions zone)))))
+         (subzone (elt (timezone-subzones zone) subzone-idx)))
+    (subzone-offset subzone)))
 
 (defun %read-binary-integer (stream byte-count &optional (signed nil))
   "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
@@ -555,7 +567,7 @@ In other words:
                           0
                           (elt (timezone-indexes zone)
                                (transition-position unix-time
-                                                   (timezone-transitions timezone)))))
+                                                   (timezone-transitions zone)))))
          (subzone (elt (timezone-subzones zone) subzone-idx)))
     (values
      (subzone-offset subzone)
@@ -963,47 +975,30 @@ the previous day given by OFFSET."
 instantiating a new timestamp object.  If the specified time is
 invalid, the condition INVALID-TIME-SPECIFICATION is raised."
   ;; If the user provided an explicit offset, we use that.  Otherwise,
-  ;; we try converting the local time to a timestamp using each available
-  ;; subtimezone, until we find one where the offset matches the offset that
-  ;; applies at that time (according to the transition table).
-  ;;
-  ;; Consequence for ambiguous cases:
-  ;; Whichever subtimezone is listed first in the tzinfo database will be
-  ;; the one that we pick to resolve ambiguous local time representations.
-
   (declare (type integer nsec sec minute hour day month year)
            (type (or integer null) offset))
   (unless (valid-timestamp-p nsec sec minute hour day month year)
     (error 'invalid-time-specification))
-  (if offset
-      (let* ((0-based-rotated-month (if (>= month 3)
-                                        (- month 3)
-                                        (+ month 9)))
-             (internal-year (if (< month 3)
-                                (- year 2001)
-                                (- year 2000)))
-             (years-as-days (years-to-days internal-year))
-             (sec (+ (* hour +seconds-per-hour+)
-                     (* minute +seconds-per-minute+)
-                     sec))
-             (days-from-zero-point (+ years-as-days
-                                      (aref +rotated-month-offsets-without-leap-day+ 0-based-rotated-month)
-                                      (1- day))))
-        (multiple-value-bind (utc-sec utc-day)
-            (%adjust-to-offset sec days-from-zero-point (- offset))
-          (values nsec utc-sec utc-day)))
-      ;; find the first potential offset that is valid at the represented time
-      (loop
-        :for subtimezone :across (timezone-subzones timezone)
-        :do (let ((timestamp (encode-timestamp nsec sec minute hour day month year
-                                               :offset (subzone-offset subtimezone))))
-              (if (= (timestamp-subtimezone timestamp timezone)
-                     (subzone-offset subtimezone))
-                  (return  (values (nsec-of timestamp)
-                                   (sec-of timestamp)
-                                   (day-of timestamp)))))
-        :finally
-          (error "The requested local time is not valid"))))
+  (let* ((0-based-rotated-month (if (>= month 3)
+                                    (- month 3)
+                                    (+ month 9)))
+         (internal-year (if (< month 3)
+                            (- year 2001)
+                            (- year 2000)))
+         (years-as-days (years-to-days internal-year))
+         (sec (+ (* hour +seconds-per-hour+)
+                 (* minute +seconds-per-minute+)
+                 sec))
+         (days-from-zero-point (+ years-as-days
+                                  (aref +rotated-month-offsets-without-leap-day+ 0-based-rotated-month)
+                                  (1- day)))
+         (used-offset (or offset
+                          (%guess-offset sec
+                                         days-from-zero-point
+                                         timezone))))
+    (multiple-value-bind (utc-sec utc-day)
+        (%adjust-to-offset sec days-from-zero-point (- used-offset))
+      (values nsec utc-sec utc-day))))
 
 (defun encode-timestamp (nsec sec minute hour day month year
                          &key (timezone *default-timezone*) offset into)
@@ -1045,13 +1040,14 @@ elements."
       (floor unix +seconds-per-day+)
     (make-timestamp :day (- days 11017) :sec secs :nsec nsec)))
 
+(defun timestamp-values-to-unix (seconds day)
+  "Return the Unix time correspondint to the values used to encode a TIMESTAMP"
+  (+ (* (+ day 11017) +seconds-per-day+) seconds))
+
 (defun timestamp-to-unix (timestamp)
   "Return the Unix time corresponding to the TIMESTAMP"
   (declare (type timestamp timestamp))
-  (+ (* (+ (day-of timestamp)
-           11017)
-        +seconds-per-day+)
-     (sec-of timestamp)))
+  (timestamp-values-to-unix (sec-of timestamp) (day-of timestamp)))
 
 (defun %get-current-time ()
   "Cross-implementation abstraction to get the current time measured from the unix epoch (1/1/1970). Should return (values sec nano-sec)."
@@ -1348,7 +1344,7 @@ elements."
                (type (or null (signed-byte 32)) nsec))
       (macrolet ((passert (expression)
                    `(unless ,expression
-                     (parse-error)))
+                     (parse-error ',expression)))
                  (parse-integer-into (start-end place &optional low-limit high-limit)
                    (let ((entry (gensym "ENTRY"))
                          (value (gensym "VALUE"))
@@ -1420,7 +1416,7 @@ elements."
                                        :end (cdr (first parts))))
                             (full-date (first parts))
                             (done)))
-                     (parse-error)))
+                     (parse-error nil)))
                  (full-date (start-end)
                    (let ((parts (split (car start-end) (cdr start-end) date-separator)))
                      (passert (%list-length= 3 parts))
@@ -1501,9 +1497,9 @@ elements."
                          (setf offset-minute 0))
                      (setf offset-hour (* offset-hour sign)
                            offset-minute (* offset-minute sign))))
-                 (parse-error ()
+                 (parse-error (failure)
                    (if fail-on-error
-                       (error 'invalid-timestring :timestring time-string)
+                       (error 'invalid-timestring :timestring time-string :failure failure)
                        (return-from %split-timestring nil)))
                  (done ()
                    (return-from %split-timestring (list year month day hour minute second nsec offset-hour offset-minute))))
@@ -1517,8 +1513,8 @@ elements."
                     :allow-missing-date-part nil))
 
 (defun parse-timestring (timestring &key
-                         (start 0)
-                         (end (length timestring))
+                         start
+                         end
                          (fail-on-error t)
                          (time-separator #\:)
                          (date-separator #\-)
@@ -1530,8 +1526,8 @@ elements."
                          (offset 0))
   "Parse a timestring and return the corresponding TIMESTAMP. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value, and timezone offset is 0 (UTC) unless explicitly specified in the input string."
   (let ((parts (%split-timestring (coerce timestring 'simple-string)
-                                  :start start
-                                  :end end
+                                  :start (or start 0)
+                                  :end (or end (length timestring))
                                   :fail-on-error fail-on-error
                                   :time-separator time-separator
                                   :date-separator date-separator
