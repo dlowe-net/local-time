@@ -585,7 +585,6 @@ In other words:
                          (timestamp-subtimezone source timezone))))
 
 (defun timestamp-minimize-part (timestamp part &key
-                                offset
                                 (timezone *default-timezone*)
                                 into)
   (let* ((timestamp-parts '(:nsec :sec :min :hour :day :month))
@@ -594,7 +593,7 @@ In other words:
             "timestamp-minimize-part called with invalid part ~a (expected one of ~a)"
             part
             timestamp-parts)
-    (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p)
+    (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p offset)
         (decode-timestamp timestamp :timezone timezone)
       (declare (ignore nsec day-of-week daylight-saving-time-p))
       (encode-timestamp 0
@@ -608,9 +607,7 @@ In other words:
                         :timezone timezone
                         :into into))))
 
-
 (defun timestamp-maximize-part (timestamp part &key
-                                offset
                                 (timezone *default-timezone*)
                                 into)
   (let* ((timestamp-parts '(:nsec :sec :min :hour :day :month))
@@ -619,7 +616,7 @@ In other words:
             "timestamp-maximize-part called with invalid part ~a (expected one of ~a)"
             part
             timestamp-parts)
-    (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p)
+    (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p offset)
         (decode-timestamp timestamp :timezone timezone)
       (declare (ignore nsec day-of-week daylight-saving-time-p))
       (let ((month (if (> part-count 4) 12 month)))
@@ -842,7 +839,7 @@ the previous day given by OFFSET."
                                 (floor (+ offset nsec) 1000000000)
                               ;; the time might need to be adjusted a bit more if q != 0
                               (setf part :sec
-                                    offset sec-offset 
+                                    offset sec-offset
                                     nsec new-nsec)
                               (go top)))
                            ((:sec :minute :hour)
@@ -853,7 +850,7 @@ the previous day given by OFFSET."
                                                           (:hour +seconds-per-hour+))))
                                        +seconds-per-day+)
                               (setf part :day
-                                    offset days-offset 
+                                    offset days-offset
                                     sec new-sec)
                               (go top)))
                            (:day

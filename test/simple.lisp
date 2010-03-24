@@ -216,3 +216,15 @@
                           (is (= year year*))
                           (is (= month month*))
                           (is (= day day*)))))))))
+
+(deftest test/timestamp-maximize-part ()
+  (timestamp= (timestamp-maximize-part
+               (encode-timestamp 0 49 26 13 9 12 2010 :offset -18000)
+               :min)
+              (encode-timestamp 999999999 59 59 13 9 12 2010 :offset -18000)))
+
+(deftest test/timestamp-minimize-part ()
+  (timestamp= (timestamp-minimize-part
+               (encode-timestamp 0 49 26 13 9 12 2010 :offset -18000)
+               :min)
+              (encode-timestamp 0 0 0 13 9 12 2010 :offset -18000)))
