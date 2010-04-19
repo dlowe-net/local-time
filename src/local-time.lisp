@@ -113,8 +113,7 @@
            #:+rfc-1123-format+
            #:astronomical-julian-date
            #:modified-julian-date
-           #:astronomical-modified-julian-date)
-  (:shadow #:time))
+           #:astronomical-modified-julian-date))
 
 (in-package :local-time)
 
