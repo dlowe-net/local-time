@@ -1090,7 +1090,10 @@ elements."
 (defun today ()
   "Returns a timestamp representing the present day."
   ;; TODO should return a date value, anyhow we will decide to represent it eventually
-  (timestamp-minimize-part (now) :hour))
+  (let ((result (now)))
+    (setf (sec-of result) 0)
+    (setf (nsec-of result) 0)
+    result))
 
 (defmacro %defcomparator (name &body body)
   (let ((pair-comparator-name (intern (concatenate 'string "%" (string name)))))
