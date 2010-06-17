@@ -36,44 +36,52 @@ let's define the nomenclature first:
 ------------------------------------
 
  - timestamp: a value representing a sharp cut on the continuous t
-axis (as in physics) of time, and as that it is mostly unrelated
-to timezones and dates.
+axis (as in physics) of time, and as that it is mostly unrelated to
+timezones and different calendar systems (e.g. Julian, Gregorian),
+which are just ways to denote a timestamp in a way humans can easily
+deal with.
 
- - calendar: defines an encoding how to denote a timestamp using a
-set of numbers (called year, month, day, etc). there are various such
-encodings like the Gregorian calendar, or the Julian calendar (which
-was in effect in Russia until 1922!). wikipedia has loads of info
-about these.
+ - calendar system: a method defining how to denote a timestamp using
+a set of numbers (called year, month, day, etc). there are various
+such encodings like the Gregorian calendar, or the Julian calendar
+(which was in effect in Russia until 1922!). wikipedia has loads of
+info about these.
 
- - date: tightly coupled with a calendar, contains an optional
-timezone and a possibly partial set of the above mentioned
-numbers. note that this is a bit more flexible than what the everyday
-usage of the word 'date' suggests. but i'm open for alternative names!
-java calls it as 'calendar', which is not completely nuts as it's just
-a bunch of numbers without defining the encoding, namely the calendar
-rules.
+ - date: tightly coupled with a calendar system. it contains the
+fields defined by the calendar system, some of them may be
+undefined. note that this is a bit more flexible than what the
+everyday usage of the word 'date' suggests. so i'm open for
+alternative names! java calls them as 'calendar', which is not
+completely nuts if you think of it as a paper calendar with a movable
+current date marker hanging on the wall.
 
 operations defined on timestamps:
 ---------------------------------
 
- - set or offset the unit of the time axis, namely seconds.
+ - do basic arithmetic with them, essentially arithmetic on numbers
+denoting seconds. operations that would expose the epoch chosen by the
+implementation are not allowed (e.g. adding two timestamps), but
+things like adding/subbing literals and substracting two timestamps
+are valid.
 
- - convert to/from date (only in the context of a mandatory calendar
-and a mandatory timezone)
+ - convert to/from date (only in the mandatory context of a calendar
+system, which most of the time includes a timezone, too.)
 
 operations defined on dates:
 ----------------------------
 
  - parse from string representation, e.g. an rfc3339 string. note that
 such a timestring does not necessarily describe a timestamp
-completely. it only does so when it contains all the components down
-to seconds, contains a timezone offset and a calendar is also provided.
+completely. it only does so when it contains all the components needed
+by the calendar system to denote a sharp cut on the t axis.
 
  - set/offset any component of it, although what those operations mean
-potentially depend on the mandatory calendar and the optional timezone
- value in it. also note that some operations are potentially undefined
-and signal an error with certain date values (e.g. illegal combination
-of numbers describing a valid date)
+potentially depend on the calendar system and its parameters (e.g. the
+optional timezone value in it). also note that some operations are
+potentially undefined and signal an error with certain illegal values
+(e.g. instantiating a date using an illegal or contradictory
+combination of its parameters; setting a field to an illegal value
+like february 29 in leap years...)
 
  - convert to/from a timestamp (strictly in the context of a calendar
-and a timezone)
+system and a timezone)
