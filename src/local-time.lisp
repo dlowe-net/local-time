@@ -1064,17 +1064,9 @@ elements."
       (assert success? () "sb-unix:unix-gettimeofday reported failure?!")
       (values sec (* 1000 nsec))))
   #+(and ccl (not windows))
-  ;; this whole voodoo here is because of a bug in LispWorks, namely its reader chokes on #_ inside a #+ccl
-  ;; see mail "darcs patch: Work with Lispworks" on local-time-devel at 2009.03.23.
-  ;; and mail "darcs patch: Less intrusive version of the Lispworks patch for #_." at 2009.03.24.
-  ;; TODO get rid of this eventually... this all should be a mere (#_gettimeofday tv (ccl::%null-ptr))
-  (ccl::rlet ((tv :timeval))
-    (#.(let ((ccl-external-func (get-dispatch-macro-character #\# #\_)))
-         (when ccl-external-func
-           (with-input-from-string (sym "gettimeofday")
-             (funcall ccl-external-func sym #\_ nil))))
-       tv (ccl::%null-ptr))
-    (values (ccl::pref tv :timeval.tv_sec) (* 1000 (ccl::pref tv :timeval.tv_usec))))
+  (let ((r (ccl:make-record :timeval)))
+    (ccl::gettimeofday r)
+    (values  (ccl:pref r :timeval.tv_sec) (ccl:pref r :timeval.tv_usec)))
   #-(or cmu sbcl (and ccl (not windows)))
   (values (- (get-universal-time)
              ;; CL's get-universal-time uses an epoch of 1/1/1900, so adjust the result to the Unix epoch
