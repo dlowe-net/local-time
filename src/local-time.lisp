@@ -1679,7 +1679,7 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
 (defun format-rfc3339-timestring (destination timestamp &key
                                   omit-date-part
                                   omit-time-part
-                                  omit-timezone-part
+                                  (omit-timezone-part omit-time-part)
                                   (use-zulu t)
                                   (timezone *default-timezone*))
   "Formats a timestring in the RFC 3339 format, a restricted form of the ISO-8601 timestring specification for Internet timestamps."
