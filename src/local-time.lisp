@@ -1587,6 +1587,8 @@ elements."
                            (abs offset-hours)
                            (truncate (abs offset-secs)
                                      +seconds-per-minute+)))))
+            ((eql fmt :short-year)
+             (princ (mod year 100) result))
             ((eql fmt :long-month)
              (princ (aref +month-names+ month) result))
             ((eql fmt :short-month)
