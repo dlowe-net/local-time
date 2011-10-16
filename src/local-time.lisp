@@ -736,10 +736,12 @@ In other words:
                 (push `(%set-timestamp-part ,part ,value) functions))
                ((string= operation :offset)
                 (push `(%offset-timestamp-part ,part ,value) functions))
-               ((or (string= operation :utc-offset)
-                    (string= operation :timezone))
-                (push (second change) params)
-                (push operation params))
+               ((string= operation :utc-offset)
+                (push part params)
+                (push :utc-offset params))
+               ((string= operation :timezone)
+                (push part params)
+                (push :timezone params))
                (t (error "Unexpected operation ~S" operation)))))
       :finally
          (loop

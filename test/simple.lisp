@@ -98,20 +98,20 @@
 
 (deftest test/adjust-timestamp/bug1 ()
   (let* ((timestamp (parse-timestring "2006-01-01T00:00:00Z"))
-         (modified-timestamp (adjust-timestamp timestamp (offset :year 1))))
+         (modified-timestamp (adjust-timestamp timestamp (timezone +utc-zone+) (offset :year 1))))
     (is (timestamp= (parse-timestring "2007-01-01T00:00:00Z") modified-timestamp))))
 
 (deftest test/adjust-timestamp/bug2 ()
   (let* ((timestamp (parse-timestring "2009-03-01T01:00:00.000000+00:00"))
-         (modified-timestamp (adjust-timestamp timestamp (offset :month 1))))
+         (modified-timestamp (adjust-timestamp timestamp (timezone +utc-zone+) (offset :month 1))))
     (is (timestamp= (parse-timestring "2009-04-01T01:00:00.000000+00:00") modified-timestamp))))
 
 (deftest test/adjust-timestamp/bug3 ()
   (let* ((timestamp (parse-timestring "2009-03-01T01:00:00.000000+00:00"))
-         (modified-timestamp (adjust-timestamp timestamp (offset :day-of-week :monday))))
+         (modified-timestamp (adjust-timestamp timestamp (timezone +utc-zone+) (offset :day-of-week :monday))))
     (is (timestamp= (parse-timestring "2009-02-23T01:00:00.000000+00:00") modified-timestamp)))
   (let* ((timestamp (parse-timestring "2009-03-04T01:00:00.000000+00:00"))
-         (modified-timestamp (adjust-timestamp timestamp (offset :day-of-week :monday))))
+         (modified-timestamp (adjust-timestamp timestamp (timezone +utc-zone+) (offset :day-of-week :monday))))
     (is (timestamp= (parse-timestring "2009-03-02T01:00:00.000000+00:00") modified-timestamp))))
 
 #+nil
