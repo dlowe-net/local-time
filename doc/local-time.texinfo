@@ -248,12 +248,15 @@ date, which is the midnight of the current day in the UTC zone.
 
 
 @itindex encode-timestamp
-@defun encode-timestamp nsec sec minute hour day month year &optional offset
+@defun encode-timestamp nsec sec minute hour day month year &key timezone offset into
 
 Returns a new @code{timestamp} instance corresponding to the specified
 time elements.  The @var{offset} is the number of seconds offset from
-UTC of the locale.  The offset will be set by default to the lisp
-implementation's default offset at the @emph{current time}.
+UTC of the locale.  If @var{offset} is not specified, the offset will
+be guessed from the @var{timezone}.  If a @code{timestamp} is passed
+as the @var{into} argument, its value will be set and that
+@code{timestamp} will be returned.  Otherwise, a new @code{timestamp}
+is created.
 @end defun
 
 
@@ -315,7 +318,7 @@ corresponds with the time received from the POSIX call @code{time()}.
 @end defun
 
 @itindex timestamp-subtimezone
-@defun timestamp-subtimezone timestamp &optional timezone
+@defun timestamp-subtimezone timestamp timezone
 
 Returns as multiple values the time zone applicable at the given time
 as the number of seconds east of UTC, a boolean daylight-saving-p, and
