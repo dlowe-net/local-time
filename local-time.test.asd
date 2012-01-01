@@ -1,7 +1,7 @@
 (defsystem :local-time.test
   :name "local-time.test"
   :version "1.0.0d"
-  :author "Daniel Lowe <dlowe@bitmuse.com>"
+  :author "Daniel Lowe <dlowe@dlowe.net>"
   :description "Testing code for the local-time library"
   :depends-on (:hu.dwim.stefil+swank
                :local-time)

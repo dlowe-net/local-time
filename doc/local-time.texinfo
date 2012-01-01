@@ -60,8 +60,8 @@
 @syncodeindex vr cp
 
 @copying
-Copyright @copyright{} 2008 Daniel Lowe <dlowe bitmuse.com> @*
-Copyright @copyright{} 2008 Attila Lendvai <attila.lendvai gmail.com> @*
+Copyright @copyright{} 2012 Daniel Lowe <dlowe dlowe.net> @*
+Copyright @copyright{} 2012 Attila Lendvai <attila.lendvai gmail.com> @*
 
 @quotation
 This manual describes the @name{} Common Lisp library which is
