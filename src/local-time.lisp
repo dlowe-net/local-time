@@ -1550,7 +1550,7 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
   (declare (type (or boolean stream) destination))
   (let ((result (%construct-timestring timestamp format timezone)))
     (when destination
-      (write-string result destination))
+      (write-string result (if (eq t destination) *standard-output* destination)))
     result))
 
 (defun format-rfc1123-timestring (destination timestamp)
