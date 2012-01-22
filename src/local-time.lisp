@@ -429,7 +429,7 @@ In other words:
 (defun transition-position (needle haystack &optional (start 0) (end (1- (length haystack))))
   (let ((middle (floor (+ end start) 2)))
     (cond
-      ((> start end)
+      ((>= start end)
        (if (minusp end)
            0
            end))
