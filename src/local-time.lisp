@@ -138,6 +138,9 @@
   '((:year 4) #\- (:month 2) #\- (:day 2) #\T
     (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
     (:usec 6) :gmt-offset-or-z))
+(defparameter +iso-week-date-format+
+  ;; 2009-W53-5
+  '((:iso-week-year 4) #\- #\W (:iso-week-number 2) #\- (:iso-week-day 1)))
 (defparameter +rfc3339-format+
   ;; same as +ISO-8601-FORMAT+
   '((:year 4) #\- (:month 2) #\- (:day 2) #\T
@@ -1108,6 +1111,18 @@ elements."
        1-based-month
        1-based-day))))
 
+(defun %timestamp-decode-iso-week (timestamp)
+  "Returns the year, week number, and day of week components of an ISO week date."
+  ;; Algorithm from http://en.wikipedia.org/wiki/Talk:ISO_week_date#Algorithms
+  (let* ((dn (timestamp-day-of-week timestamp))
+         (day-of-week (if (zerop dn) 7 dn)) ; ISO weekdays are Monday=1 and Sunday=7
+         (nearest-thursday (timestamp+ timestamp (- 4 day-of-week) :day))
+         (base-year (encode-timestamp 0 0 0 0 1 1 (timestamp-year nearest-thursday)))
+         (ordinal-day (- (day-of nearest-thursday) (day-of base-year))))
+    (values (timestamp-year base-year)
+            (nth-value 0 (floor (1+ (/ ordinal-day 7))))
+            day-of-week)))
+
 (defun %timestamp-decode-time (seconds)
   "Returns the hours, minutes, and seconds, given the number of seconds since midnight."
   (declare (type integer seconds))
@@ -1133,14 +1148,17 @@ elements."
             (%timestamp-decode-time adjusted-secs)
           (multiple-value-bind (year month day)
               (%timestamp-decode-date adjusted-days)
-            (values
-             (nsec-of timestamp)
-             seconds minutes hours
-             day month year
-             (timestamp-day-of-week timestamp :timezone timezone :offset offset)
-             daylight-p
-             (or offset offset*)
-             abbreviation))))))
+            (multiple-value-bind (iso-year iso-week iso-weekday)
+                (%timestamp-decode-iso-week timestamp)
+              (values
+               (nsec-of timestamp)
+               seconds minutes hours
+               day month year
+               (timestamp-day-of-week timestamp :timezone timezone :offset offset)
+               iso-year iso-week iso-weekday
+               daylight-p
+               (or offset offset*)
+               abbreviation)))))))
 
 (defun timestamp-year (timestamp &key (timezone *default-timezone*))
   "Returns the cardinal year upon which the timestamp falls."
@@ -1449,7 +1467,8 @@ elements."
   "Constructs a string representing TIMESTAMP given the FORMAT of the string and the TIMEZONE.  See the documentation of FORMAT-TIMESTRING for the structure of FORMAT."
   (declare (type timestamp timestamp)
            (optimize (speed 3)))
-  (multiple-value-bind (nsec sec minute hour day month year weekday daylight-p offset abbrev)
+  (multiple-value-bind (nsec sec minute hour day month year weekday
+                        iso-year iso-week iso-weekday daylight-p offset abbrev)
       (decode-timestamp timestamp :timezone timezone)
     (declare (ignore daylight-p))
     (let ((*print-pretty* nil)
@@ -1500,7 +1519,10 @@ elements."
                           (:day day)
                           (:weekday weekday)
                           (:month month)
-                          (:year year))))
+                          (:year year)
+                          (:iso-week-year iso-year)
+                          (:iso-week-number iso-week)
+                          (:iso-week-day iso-weekday))))
                (cond
                  ((atom fmt)
                   (princ val result))
@@ -1529,6 +1551,9 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :MIN               *minutes
   :SEC               *seconds
   :WEEKDAY           *numeric day of week starting from index 0, which means Sunday
+  :ISO-WEEK-YEAR     *year for ISO week date (can be different from regular calendar year)
+  :ISO-WEEK-NUMBER   *ISO week number 01 through 53 in certain cases
+  :ISO-WEEK-DAY      *ISO-compatible weekday number (monday=1, sunday=7)
   :MSEC              *milliseconds
   :USEC              *microseconds
   :NSEC              *nanoseconds
