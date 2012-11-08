@@ -138,9 +138,6 @@
   '((:year 4) #\- (:month 2) #\- (:day 2) #\T
     (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
     (:usec 6) :gmt-offset-or-z))
-(defparameter +iso-week-date-format+
-  ;; 2009-W53-5
-  '((:iso-week-year 4) #\- #\W (:iso-week-number 2) #\- (:iso-week-day 1)))
 (defparameter +rfc3339-format+
   ;; same as +ISO-8601-FORMAT+
   '((:year 4) #\- (:month 2) #\- (:day 2) #\T
@@ -157,6 +154,9 @@
   '(:short-weekday ", " (:day 2) #\space :short-month #\space (:year 4) #\space
     (:hour 2) #\: (:min 2) #\: (:sec 2) #\space :timezone)
   "Please note that you should use the +GMT-ZONE+ timezone to format a proper RFC 1123 timestring. See the RFC for the details about the possible values of the timezone field.")
+(defparameter +iso-week-date-format+
+  ;; 2009-W53-5
+  '((:iso-week-year 4) #\- #\W (:iso-week-number 2) #\- (:iso-week-day 1)))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter +rotated-month-days-without-leap-day+
@@ -1549,12 +1549,12 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :MIN               *minutes
   :SEC               *seconds
   :WEEKDAY           *numeric day of week starting from index 0, which means Sunday
-  :ISO-WEEK-YEAR     *year for ISO week date (can be different from regular calendar year)
-  :ISO-WEEK-NUMBER   *ISO week number 01 through 53 in certain cases
-  :ISO-WEEK-DAY      *ISO-compatible weekday number (monday=1, sunday=7)
   :MSEC              *milliseconds
   :USEC              *microseconds
   :NSEC              *nanoseconds
+  :ISO-WEEK-YEAR     *year for ISO week date (can be different from regular calendar year)
+  :ISO-WEEK-NUMBER   *ISO week number (i.e. 1 through 53)
+  :ISO-WEEK-DAY      *ISO compatible weekday number (monday=1, sunday=7)
   :LONG-WEEKDAY      long form of weekday (e.g. Sunday, Monday)
   :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
   :LONG-MONTH        long form of month (e.g. January, February)
