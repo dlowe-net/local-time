@@ -40,7 +40,39 @@
 
        "5th"
        (format-timestring nil test-timestamp
-                          :format '(:ordinal-day))))))
+                          :format '(:ordinal-day))
+
+       "2004-W53-6"
+       (format-timestring nil (encode-timestamp 0 0 0 0 1 1 2005)
+                          :format +iso-week-date-format+)
+
+       "2004-W53-7"
+       (format-timestring nil (encode-timestamp 0 0 0 0 2 1 2005)
+                          :format +iso-week-date-format+)
+
+       "2005-W52-6"
+       (format-timestring nil (encode-timestamp 0 0 0 0 31 12 2005)
+                          :format +iso-week-date-format+)
+
+       "2007-W01-1"
+       (format-timestring nil (encode-timestamp 0 0 0 0 1 1 2007)
+                          :format +iso-week-date-format+)
+
+       "2007-W52-7"
+       (format-timestring nil (encode-timestamp 0 0 0 0 30 12 2007)
+                          :format +iso-week-date-format+)
+
+       "2008-W01-1"
+       (format-timestring nil (encode-timestamp 0 0 0 0 31 12 2007)
+                          :format +iso-week-date-format+)
+
+       "2009-W53-5"
+       (format-timestring nil (encode-timestamp 0 0 0 0 1 1 2010)
+                          :format +iso-week-date-format+)
+
+       "2009-W01-3"
+       (format-timestring nil (encode-timestamp 0 0 0 0 31 12 2008)
+                          :format +iso-week-date-format+)))))
 
 (deftest test/formatting/format-timestring/2 ()
   (with-output-to-string (*standard-output*)

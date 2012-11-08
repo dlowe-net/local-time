@@ -77,6 +77,7 @@
            #:+rfc3339-format/date-only+
            #:+asctime-format+
            #:+rfc-1123-format+
+           #:+iso-week-date-format+
            #:astronomical-julian-date
            #:modified-julian-date
            #:astronomical-modified-julian-date))
