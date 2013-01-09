@@ -805,7 +805,11 @@ the previous day given by OFFSET."
         (decode-timestamp time-a)
       (declare (ignore nsec-b sec-b minute-b hour-b day-b month-b day-of-week-b daylight-p-b zone-b))
       (let ((year-difference (- year-b year-a)))
-        (if (timestamp<= (encode-timestamp nsec-a sec-a minute-a hour-a day-a month-a
+        (if (timestamp<= (encode-timestamp nsec-a sec-a minute-a hour-a
+                                           (if (= month-a 2)
+                                               (min 28 day-a)
+                                               day-a)
+                                           month-a
                                            (+ year-difference year-a))
                          time-a)
             year-difference
