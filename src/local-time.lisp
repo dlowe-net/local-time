@@ -154,6 +154,9 @@
   '(:short-weekday ", " (:day 2) #\space :short-month #\space (:year 4) #\space
     (:hour 2) #\: (:min 2) #\: (:sec 2) #\space :timezone)
   "Please note that you should use the +GMT-ZONE+ timezone to format a proper RFC 1123 timestring. See the RFC for the details about the possible values of the timezone field.")
+(defparameter +iso-week-date-format+
+  ;; 2009-W53-5
+  '((:iso-week-year 4) #\- #\W (:iso-week-number 2) #\- (:iso-week-day 1)))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter +rotated-month-days-without-leap-day+
@@ -429,7 +432,7 @@ In other words:
 (defun transition-position (needle haystack &optional (start 0) (end (1- (length haystack))))
   (let ((middle (floor (+ end start) 2)))
     (cond
-      ((> start end)
+      ((>= start end)
        (if (minusp end)
            0
            end))
@@ -1112,6 +1115,18 @@ elements."
        1-based-month
        1-based-day))))
 
+(defun %timestamp-decode-iso-week (timestamp)
+  "Returns the year, week number, and day of week components of an ISO week date."
+  ;; Algorithm from http://en.wikipedia.org/wiki/Talk:ISO_week_date#Algorithms
+  (let* ((dn (timestamp-day-of-week timestamp))
+         (day-of-week (if (zerop dn) 7 dn)) ; ISO weekdays are Monday=1 and Sunday=7
+         (nearest-thursday (timestamp+ timestamp (- 4 day-of-week) :day))
+         (base-year (encode-timestamp 0 0 0 0 1 1 (timestamp-year nearest-thursday)))
+         (ordinal-day (- (day-of nearest-thursday) (day-of base-year))))
+    (values (timestamp-year base-year)
+            (nth-value 0 (floor (1+ (/ ordinal-day 7))))
+            day-of-week)))
+
 (defun %timestamp-decode-time (seconds)
   "Returns the hours, minutes, and seconds, given the number of seconds since midnight."
   (declare (type integer seconds))
@@ -1456,68 +1471,73 @@ elements."
   (multiple-value-bind (nsec sec minute hour day month year weekday daylight-p offset abbrev)
       (decode-timestamp timestamp :timezone timezone)
     (declare (ignore daylight-p))
-    (let ((*print-pretty* nil)
-          (*print-circle* nil))
-      (with-output-to-string (result nil :element-type 'base-char)
-        (dolist (fmt format)
-          (cond
-            ((or (eql fmt :gmt-offset)
-                 (eql fmt :gmt-offset-or-z))
-             (multiple-value-bind (offset-hours offset-secs)
-                 (floor offset +seconds-per-hour+)
-               (declare (fixnum offset-hours offset-secs))
-               (if (and (eql fmt :gmt-offset-or-z) (zerop offset))
-                   (princ #\Z result)
-                   (format result "~c~2,'0d:~2,'0d"
-                           (if (minusp offset-hours) #\- #\+)
-                           (abs offset-hours)
-                           (truncate (abs offset-secs)
-                                     +seconds-per-minute+)))))
-            ((eql fmt :short-year)
-             (princ (mod year 100) result))
-            ((eql fmt :long-month)
-             (princ (aref +month-names+ month) result))
-            ((eql fmt :short-month)
-             (princ (aref +short-month-names+ month) result))
-            ((eql fmt :long-weekday)
-             (princ (aref +day-names+ weekday) result))
-            ((eql fmt :short-weekday)
-             (princ (aref +short-day-names+ weekday) result))
-            ((eql fmt :timezone)
-             (princ abbrev result))
-            ((eql fmt :hour12)
-             (princ (1+ (mod (1- hour) 12)) result))
-            ((eql fmt :ampm)
-             (princ (if (< hour 12) "am" "pm") result))
-            ((eql fmt :ordinal-day)
-             (princ (ordinalize day) result))
-            ((or (stringp fmt) (characterp fmt))
-             (princ fmt result))
-            (t
-             (let ((val (ecase (if (consp fmt) (car fmt) fmt)
-                          (:nsec nsec)
-                          (:usec (floor nsec 1000))
-                          (:msec (floor nsec 1000000))
-                          (:sec sec)
-                          (:min minute)
-                          (:hour hour)
-                          (:day day)
-                          (:weekday weekday)
-                          (:month month)
-                          (:year year))))
-               (cond
-                 ((atom fmt)
-                  (princ val result))
-                 ((minusp val)
-                  (format result "-~v,vd"
-                          (second fmt)
-                          (or (third fmt) #\0)
-                          (abs val)))
-                 (t
-                  (format result "~v,vd"
-                          (second fmt)
-                          (or (third fmt) #\0)
-                          val)))))))))))
+    (multiple-value-bind (iso-year iso-week iso-weekday)
+        (%timestamp-decode-iso-week timestamp)
+      (let ((*print-pretty* nil)
+            (*print-circle* nil))
+        (with-output-to-string (result nil :element-type 'base-char)
+          (dolist (fmt format)
+            (cond
+              ((or (eql fmt :gmt-offset)
+                   (eql fmt :gmt-offset-or-z))
+               (multiple-value-bind (offset-hours offset-secs)
+                   (floor offset +seconds-per-hour+)
+                 (declare (fixnum offset-hours offset-secs))
+                 (if (and (eql fmt :gmt-offset-or-z) (zerop offset))
+                     (princ #\Z result)
+                     (format result "~c~2,'0d:~2,'0d"
+                             (if (minusp offset-hours) #\- #\+)
+                             (abs offset-hours)
+                             (truncate (abs offset-secs)
+                                       +seconds-per-minute+)))))
+              ((eql fmt :short-year)
+               (princ (mod year 100) result))
+              ((eql fmt :long-month)
+               (princ (aref +month-names+ month) result))
+              ((eql fmt :short-month)
+               (princ (aref +short-month-names+ month) result))
+              ((eql fmt :long-weekday)
+               (princ (aref +day-names+ weekday) result))
+              ((eql fmt :short-weekday)
+               (princ (aref +short-day-names+ weekday) result))
+              ((eql fmt :timezone)
+               (princ abbrev result))
+              ((eql fmt :hour12)
+               (princ (1+ (mod (1- hour) 12)) result))
+              ((eql fmt :ampm)
+               (princ (if (< hour 12) "am" "pm") result))
+              ((eql fmt :ordinal-day)
+               (princ (ordinalize day) result))
+              ((or (stringp fmt) (characterp fmt))
+               (princ fmt result))
+              (t
+               (let ((val (ecase (if (consp fmt) (car fmt) fmt)
+                            (:nsec nsec)
+                            (:usec (floor nsec 1000))
+                            (:msec (floor nsec 1000000))
+                            (:sec sec)
+                            (:min minute)
+                            (:hour hour)
+                            (:day day)
+                            (:weekday weekday)
+                            (:month month)
+                            (:year year)
+                            (:iso-week-year iso-year)
+                            (:iso-week-number iso-week)
+                            (:iso-week-day iso-weekday))))
+                 (cond
+                   ((atom fmt)
+                    (princ val result))
+                   ((minusp val)
+                    (format result "-~v,vd"
+                            (second fmt)
+                            (or (third fmt) #\0)
+                            (abs val)))
+                   (t
+                    (format result "~v,vd"
+                            (second fmt)
+                            (or (third fmt) #\0)
+                            val))))))))))))
 
 (defun format-timestring (destination timestamp &key
                           (format +iso-8601-format+)
@@ -1536,6 +1556,9 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :MSEC              *milliseconds
   :USEC              *microseconds
   :NSEC              *nanoseconds
+  :ISO-WEEK-YEAR     *year for ISO week date (can be different from regular calendar year)
+  :ISO-WEEK-NUMBER   *ISO week number (i.e. 1 through 53)
+  :ISO-WEEK-DAY      *ISO compatible weekday number (monday=1, sunday=7)
   :LONG-WEEKDAY      long form of weekday (e.g. Sunday, Monday)
   :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
   :LONG-MONTH        long form of month (e.g. January, February)

@@ -545,6 +545,13 @@ The constant @var{+rfc-1123-format+} is bound to a description of the format def
 
 @end defvr
 
+@itindex +iso-week-date-format+
+@defvr Constant +iso-week-date-format+
+
+The constant @var{+iso-week-date-format+} is bound to a description of the ISO 8601 Week Date format.  An output with this format will look like this: @samp{2009-W53-5}.
+
+@end defvr
+
 @itindex parse-timestring
 @defun parse-timestring timestring &key (start 0) end (fail-on-error t) (offset 0)
 
@@ -587,6 +594,12 @@ FORMAT is a list containing one or more of strings, characters, and keywords.  S
 *microseconds
 @item :nsec
 *nanoseconds
+@item :iso-week-year
+*year for ISO week date (can be different from regular calendar year)
+@item :iso-week-number
+*ISO week number (i.e. 1 through 53)
+@item :iso-week-day
+*ISO compatible weekday number (i.e. monday=1, sunday=7)
 @item :ordinal-day
 day of month as an ordinal (e.g. 1st, 23rd)
 @item :long-weekday
