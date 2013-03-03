@@ -970,7 +970,6 @@ elements."
 (defun now ()
   "Returns a timestamp representing the present moment."
   (multiple-value-bind (sec nsec) (%get-current-time)
-    (assert (and sec nsec) () "Failed to get the current time from the operating system. How did this happen?")
     (unix-to-timestamp sec :nsec nsec)))
 
 (defun today ()
@@ -1142,10 +1141,9 @@ elements."
 (defun decode-timestamp (timestamp &key (timezone *default-timezone*) offset)
   "Returns the decoded time as multiple values: nsec, ss, mm, hh, day, month, year, day-of-week"
   (declare (type timestamp timestamp))
-  (when offset
-    (setf timezone (the timezone +none-zone+)))
-  (multiple-value-bind (offset* daylight-p abbreviation)
-      (timestamp-subtimezone timestamp timezone)
+  (let ((timezone (if offset (the timezone +none-zone+) timezone)))
+    (multiple-value-bind (offset* daylight-p abbreviation)
+        (timestamp-subtimezone timestamp timezone)
       (multiple-value-bind (adjusted-secs adjusted-days)
           (%adjust-to-timezone timestamp timezone offset)
         (multiple-value-bind (hours minutes seconds)
@@ -1159,7 +1157,7 @@ elements."
              (timestamp-day-of-week timestamp :timezone timezone :offset offset)
              daylight-p
              (or offset offset*)
-             abbreviation))))))
+             abbreviation)))))))
 
 (defun timestamp-year (timestamp &key (timezone *default-timezone*))
   "Returns the cardinal year upon which the timestamp falls."
@@ -1377,11 +1375,14 @@ elements."
                              (declare (type (integer 0 #.array-dimension-limit) start end))
                              (passert (<= (- end start) 9))
                              (let ((new-end (position-if (lambda (el)
+                                                           (declare (type character el))
                                                            (not (char= #\0 el)))
-                                                         time-string :start start :end end :from-end t)))
+                                                         (the (simple-array character (*)) time-string)
+                                                         :start start
+                                                         :end end
+                                                         :from-end t)))
                                (when new-end
                                  (setf end (min (1+ new-end)))))
-                             ;;(break "~S: ~S" (subseq time-string start end) (- end start))
                              (setf nsec (* (the (integer 0 999999999) (parse-integer time-string :start start :end end))
                                            (aref #.(coerce #(1000000000 100000000 10000000
                                                              1000000 100000 10000 1000 100 10 1)
