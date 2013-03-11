@@ -967,18 +967,29 @@ elements."
              #.(encode-universal-time 0 0 0 1 1 1970 0))
           0))
 
-(defun now ()
-  "Returns a timestamp representing the present moment."
+(defclass system-clock ()
+  ())
+
+(defmethod clock-now ((self system-clock))
   (multiple-value-bind (sec nsec) (%get-current-time)
     (unix-to-timestamp sec :nsec nsec)))
 
-(defun today ()
-  "Returns a timestamp representing the present day."
+(defmethod clock-today ((self system-clock))
   ;; TODO should return a date value, anyhow we will decide to represent it eventually
   (let ((result (now)))
     (setf (sec-of result) 0)
     (setf (nsec-of result) 0)
     result))
+
+(defvar *clock* (make-instance 'system-clock))
+
+(defun now ()
+  "Returns a timestamp representing the present moment."
+  (clock-now *clock*))
+
+(defun today ()
+  "Returns a timestamp representing the present day."
+  (clock-today *clock*))
 
 (defmacro %defcomparator (name &body body)
   (let ((pair-comparator-name (intern (concatenate 'string "%" (string name)))))
