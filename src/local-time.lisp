@@ -967,21 +967,23 @@ elements."
              #.(encode-universal-time 0 0 0 1 1 1970 0))
           0))
 
-(defclass system-clock ()
-  ())
-
-(defmethod clock-now ((self system-clock))
+(defmethod clock-now (clock)
+  (declare (ignore clock))
   (multiple-value-bind (sec nsec) (%get-current-time)
     (unix-to-timestamp sec :nsec nsec)))
 
-(defmethod clock-today ((self system-clock))
+(defmethod clock-today (clock)
+  (declare (ignore clock))
   ;; TODO should return a date value, anyhow we will decide to represent it eventually
   (let ((result (now)))
     (setf (sec-of result) 0)
     (setf (nsec-of result) 0)
     result))
 
-(defvar *clock* (make-instance 'system-clock))
+(defvar *clock* t
+  "Use the `*clock*' special variable if you need to define your own idea of the current time
+
+It should be an instance of a class that responds to one or more of the methods `clock-now', and `clock-today'")
 
 (defun now ()
   "Returns a timestamp representing the present moment."
