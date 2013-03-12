@@ -54,9 +54,9 @@
            #:timestamp-subtimezone
            #:define-timezone
            #:*default-timezone*
-	   #:*clock*
-	   #:clock-now
-	   #:clock-today
+           #:*clock*
+           #:clock-now
+           #:clock-today
            #:find-timezone-by-location-name
            #:now
            #:today
