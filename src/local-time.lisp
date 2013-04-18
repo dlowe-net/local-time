@@ -1374,13 +1374,11 @@ elements."
                                   (end (cdr (second parts))))
                              (declare (type (integer 0 #.array-dimension-limit) start end))
                              (passert (<= (- end start) 9))
-                             (let ((new-end (position-if (lambda (el)
-                                                           (declare (type character el))
-                                                           (not (char= #\0 el)))
-                                                         (the (simple-array character (*)) time-string)
-                                                         :start start
-                                                         :end end
-                                                         :from-end t)))
+                             (let ((new-end (position #\0 time-string
+                                                      :test-not #'eql
+                                                      :start start
+                                                      :end end
+                                                      :from-end t)))
                                (when new-end
                                  (setf end (min (1+ new-end)))))
                              (setf nsec (* (the (integer 0 999999999) (parse-integer time-string :start start :end end))
