@@ -45,9 +45,6 @@
     (compare 0 0 0 0 1 1 2006 "xxxx 2006-01-01T00:00:00,0 xxxx"
              :start 5
              :end 15)
-    (compare 0 0 0 5 1 1 2006 "2006-01-01T00:00:00,0-05")
-    (compare 0 0 15 5 1 1 2006 "2006-01-01T00:00:00,0-0515")
-    (compare 0 0 15 5 1 1 2006 "2006-01-01T00:00:00,0-0515")
 
     (is (eql (day-of (parse-timestring "2006-06-06TZ")) 2288))
 
@@ -56,6 +53,15 @@
     (compare 80000000 7 6 5 1 3 2000 "T05:06:07,08" :allow-missing-elements t)
     (compare 940703000 28 56 16 20 2 2008 "2008-02-20T16:56:28.940703Z"
              :offset 0)))
+
+(deftest test/parsing/split ()
+  (is (equal (multiple-value-list (local-time::%split-timestring "2006-01-01T00:00:00,0-05"))
+             '(2006 1 1 0 0 0 5 0)))
+  (is (equal (multiple-value-list (local-time::%split-timestring "2006-01-01T00:00:00,0-0515"))
+             '(2006 1 1 0 0 0 5 15)))
+  (is (equal (multiple-value-list (local-time::%split-timestring "2006-01-01T00:00:00,0-05:15"))
+             '(2006 1 1 0 0 0 5 15))))
+
 
 (deftest test/parsing/reader ()
   (let ((now (now)))
