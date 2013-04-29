@@ -114,6 +114,13 @@
   (is (timestamp= (make-timestamp) (make-timestamp)))
   (is (not (timestamp= (make-timestamp) (make-timestamp :nsec 1)))))
 
+(deftest test/simple/comparison/timestamp=/3 ()
+  (is (eql (handler-case
+               (timestamp= (make-timestamp) nil)
+             (type-error ()
+               :correct-error))
+           :correct-error)))
+
 (deftest test/simple/comparison/timestamp/= ()
   (is (timestamp/= (make-timestamp) (make-timestamp :nsec 1)))
   (is (not (timestamp/= (make-timestamp) (make-timestamp)))))

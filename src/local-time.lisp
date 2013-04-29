@@ -985,12 +985,22 @@ elements."
     `(progn
       (declaim (inline ,pair-comparator-name))
       (defun ,pair-comparator-name (time-a time-b)
+        (assert (typep time-a 'timestamp)
+                nil
+                'type-error
+                :datum time-a
+                :expected-type 'timestamp)
+        (assert (typep time-b 'timestamp)
+                nil
+                'type-error
+                :datum time-b
+                :expected-type 'timestamp)
         ,@body)
       (defun ,name (&rest times)
         (declare (dynamic-extent times))
-        (loop for (time-a time-b) :on times
-              while time-b
-              always (,pair-comparator-name time-a time-b)))
+        (loop for head on times
+              while (cdr head)
+              always (,pair-comparator-name (first head) (second head))))
       (define-compiler-macro ,name (&rest times)
         (let ((vars (loop
                       :for i :upfrom 0 :below (length times)
