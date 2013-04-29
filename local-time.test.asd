@@ -3,7 +3,7 @@
   :version "1.0.4"
   :author "Daniel Lowe <dlowe@dlowe.net>"
   :description "Testing code for the local-time library"
-  :depends-on (:hu.dwim.stefil+swank
+  :depends-on (:stefil
                :local-time)
   :components ((:module "test"
                 :serial t

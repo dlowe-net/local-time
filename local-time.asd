@@ -11,4 +11,4 @@
 
 (defmethod perform ((op test-op) (system (eql (find-system :local-time))))
   (asdf:load-system :local-time.test)
-  (eval (read-from-string "(hu.dwim.stefil:funcall-test-with-feedback-message 'local-time.test::test)")))
+  (eval (read-from-string "(stefil:funcall-test-with-feedback-message 'local-time.test::test)")))
