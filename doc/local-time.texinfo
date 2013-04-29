@@ -128,6 +128,7 @@ different results than the system time handling.
 * Querying timestamp Objects::
 * Manipulating Date and Time Values::
 * Parsing and Formatting::
+* Clocks::
 @end menu
 
 @c ===================================================================
@@ -649,7 +650,26 @@ LOCAL-TIME> (format-timestring nil (now))
 Formats the time like format-timestring, but in RFC 3339 format. The options control valid options in the RFC.
 @end defun
 
+@c ===================================================================
+@node Clocks
+@section Clocks
 
+@defvr *clock*
+
+We expose the *clock* special variable and the following generic
+functions so that applications may re-define the current time or
+date as required.
+@end defvr
+
+@defun clock-now (clock)
+
+Specialize this generic function to re-define the present moment
+@end defun
+
+@defun clock-today (clock)
+
+Specialize this generic function to re-define the present day
+@end defun
 
 @c ===================================================================
 @node Other Features
