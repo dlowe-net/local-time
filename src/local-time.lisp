@@ -1389,11 +1389,30 @@ elements."
                            (setf nsec 0)))))
                  (time-offset (start-end sign)
                    (with-parts-and-count ((car start-end) (cdr start-end) time-separator)
-                     (passert (or allow-missing-timezone-part (= count 2)))
-                     (parse-integer-into (first parts) offset-hour 0 23)
-                     (if (second parts)
-                         (parse-integer-into (second parts) offset-minute 0 59)
-                         (setf offset-minute 0))
+                     (passert (or (and allow-missing-timezone-part (zerop count))
+                                  (= count 1)
+                                  (= count 2)))
+                        
+                     (cond
+                       ((= count 2)
+                        ;; hh:mm offset
+                        (parse-integer-into (first parts) offset-hour 0 23)
+                        (parse-integer-into (second parts) offset-minute 0 59))
+                       ((= (- (cdar parts) (caar parts)) 4)
+                        ;; hhmm offset
+                        (parse-integer-into (cons (caar parts)
+                                                  (+ (caar parts) 2))
+                                            offset-hour 0 23)
+                        (parse-integer-into (cons (+ (caar parts) 2)
+                                                  (+ (caar parts) 4))
+                                            offset-minute 0 59))
+                       ((= (- (cdar parts) (caar parts)) 2)
+                        ;; hh offset
+                        (parse-integer-into (cons (caar parts)
+                                                  (+ (caar parts) 2))
+                                            offset-hour 0 23)
+                        (setf offset-minute 0)))
+                     
                      (setf offset-hour (* offset-hour sign)
                            offset-minute (* offset-minute sign))))
                  (parse-error (failure)
