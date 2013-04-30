@@ -114,6 +114,14 @@
          (modified-timestamp (adjust-timestamp timestamp (timezone +utc-zone+) (offset :day-of-week :monday))))
     (is (timestamp= (parse-timestring "2009-03-02T01:00:00.000000+00:00") modified-timestamp))))
 
+(deftest test/adjust-timestamp/bug4 ()
+  (let* ((timestamp (parse-timestring "2013-04-30T00:00:00.000000+00:00"))
+         (modified-timestamp (adjust-timestamp timestamp (timezone +utc-zone+) (offset :day-of-week :wednesday))))
+    (is (timestamp= (parse-timestring "2013-05-01T00:00:00.000000+00:00") modified-timestamp)))
+  (let* ((timestamp (parse-timestring "2013-12-31T00:00:00.000000+00:00"))
+         (modified-timestamp (adjust-timestamp timestamp (timezone +utc-zone+) (offset :day-of-week :wednesday))))
+    (is (timestamp= (parse-timestring "2014-01-01T00:00:00.000000+00:00") modified-timestamp))))
+
 #+nil
 (deftest test/adjust-days ()
   (let ((sunday (parse-timestring "2006-12-17T01:02:03Z")))
