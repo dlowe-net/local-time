@@ -5,6 +5,9 @@
   (local-time::define-timezone eastern-tz
       (merge-pathnames #p"EST5EDT" local-time::*default-timezone-repository-path*)))
 
+(deftest transition-position/correct-position ()
+  (is (= 5 (local-time::transition-position 13 #(-15 -10 -5 0 5 10 15 20 25 30 35 40 45 50 55 60)))))
+
 (deftest test/timezone/decode-timestamp-dst ()
   ;; Testing DST calculation with a known timezone
   (let ((test-cases '(

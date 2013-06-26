@@ -435,7 +435,7 @@ In other words:
       ((>= start end)
        (if (minusp end)
            0
-           end))
+           (max 0 (if (>= needle (elt haystack end)) end (1- end)))))
       ((= needle (elt haystack middle))
        middle)
       ((> needle (elt haystack middle))
