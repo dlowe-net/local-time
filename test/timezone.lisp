@@ -1,7 +1,7 @@
 (in-package #:local-time.test)
 
 (defsuite* (timezone :in test))
-(eval-when (:load-toplevel :execute)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (local-time::define-timezone eastern-tz
       (merge-pathnames #p"EST5EDT" local-time::*default-timezone-repository-path*)))
 
