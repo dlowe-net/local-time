@@ -190,8 +190,8 @@ be used by default if none is specified.  It is loaded from
 
 @end defvr
 
-@itindex +utc-time+
-@defvr Constant +utc-time+
+@itindex +utc-zone+
+@defvr Constant +utc-zone+
 
 The variable @var{+utc-zone+} contains a timezone corresponding to
 UTC.
