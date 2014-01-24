@@ -67,6 +67,9 @@ value, etc.
 ** comparison predicates
 
 * Interval Operations
+  There's a project implementing intervals at:
+  https://github.com/enaeher/local-time-duration
+
 ** Arithmetic with timestamps
 ** Arithmetic with intervals
 ** convert to a duration with a calendar
