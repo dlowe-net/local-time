@@ -65,13 +65,13 @@
 (declaim (inline now format-timestring %get-current-time
                  format-rfc3339-timestring to-rfc3339-timestring
                  format-rfc1123-timestring to-rfc1123-timestring)
-         (ftype (function * simple-base-string) format-rfc3339-timestring)
-         (ftype (function * simple-base-string) format-timestring)
-         (ftype (function * fixnum) local-timezone)
-         (ftype (function * (values
-                             timezone-offset
-                             boolean
-                             string)) timestamp-subzone)
+         (ftype (function (&rest t) simple-base-string) format-rfc3339-timestring)
+         (ftype (function (&rest t) simple-base-string) format-timestring)
+         (ftype (function (&rest t) fixnum) local-timezone)
+         (ftype (function (&rest t) (values
+                                     timezone-offset
+                                     boolean
+                                     string)) timestamp-subzone)
          (ftype (function (timestamp &key (:timezone timezone) (:offset (or null integer)))
                           (values (integer 0 999999999)
                                   (integer 0 59)
