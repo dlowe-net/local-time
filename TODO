@@ -1,3 +1,5 @@
+-*- mode: org; coding: utf-8-unix -*-
+
 * Basic Outline
 ** A more human friendly parser
 
@@ -67,6 +69,9 @@ value, etc.
 ** comparison predicates
 
 * Interval Operations
+  There's a project implementing intervals at:
+  https://github.com/enaeher/local-time-duration
+
 ** Arithmetic with timestamps
 ** Arithmetic with intervals
 ** convert to a duration with a calendar
