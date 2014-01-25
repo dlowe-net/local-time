@@ -429,19 +429,30 @@ In other words:
                  :sec (sec-of timestamp)
                  :day (day-of timestamp)))
 
-(defun transition-position (needle haystack &optional (start 0) (end (1- (length haystack))))
-  (let ((middle (floor (+ end start) 2)))
-    (cond
-      ((>= start end)
-       (if (minusp end)
-           0
-           (max 0 (if (>= needle (elt haystack end)) end (1- end)))))
-      ((= needle (elt haystack middle))
-       middle)
-      ((> needle (elt haystack middle))
-       (transition-position needle haystack (1+ middle) end))
-      (t
-       (transition-position needle haystack start (1- middle))))))
+(defun transition-position (needle haystack)
+  (declare (type integer needle)
+           (type (simple-array integer (*)) haystack))
+  (loop
+     with start = 0
+     with end = (1- (length haystack))
+     for middle = (floor (+ end start) 2)
+     while (and (< start end)
+                (/= needle (elt haystack middle)))
+     do (cond
+          ((> needle (elt haystack middle))
+           (setf start (1+ middle)))
+          (t
+           (setf end (1- middle))))
+     finally
+       (return (max 0 (cond
+                        ((minusp end)
+                         0)
+                        ((= needle (elt haystack middle))
+                         middle)
+                        ((>= needle (elt haystack end))
+                         end)
+                        (t
+                         (1- end)))))))
 
 (defun timestamp-subtimezone (timestamp timezone)
   "Return as multiple values the time zone as the number of seconds east of UTC, a boolean daylight-saving-p, and the customary abbreviation of the timezone."
