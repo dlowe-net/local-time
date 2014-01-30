@@ -76,6 +76,8 @@
            #:+days-per-week+
            #:+months-per-year+
            #:+iso-8601-format+
+           #:+iso-8601-date-format+
+           #:+iso-8601-time-format+
            #:+rfc3339-format+
            #:+rfc3339-format/date-only+
            #:+asctime-format+

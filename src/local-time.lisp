@@ -133,27 +133,32 @@
   (defconstant +seconds-per-minute+ 60)
   (defconstant +usecs-per-day+ 86400000000))
 
+(defparameter +iso-8601-date-format+
+  '((:year 4) #\- (:month 2) #\- (:day 2)))
+
+(defparameter +iso-8601-time-format+
+  '((:hour 2) #\: (:min 2) #\: (:sec 2) #\. (:usec 6)))
+
 (defparameter +iso-8601-format+
   ;; 2008-11-18T02:32:00.586931+01:00
-  '((:year 4) #\- (:month 2) #\- (:day 2) #\T
-    (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
-    (:usec 6) :gmt-offset-or-z))
-(defparameter +rfc3339-format+
-  ;; same as +ISO-8601-FORMAT+
-  '((:year 4) #\- (:month 2) #\- (:day 2) #\T
-    (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
-    (:usec 6) :gmt-offset-or-z))
+  (append +iso-8601-date-format+ (list #\T) +iso-8601-time-format+ (list :gmt-offset-or-z)))
+
+(defparameter +rfc3339-format+ +iso-8601-format+)
+
 (defparameter +rfc3339-format/date-only+
   '((:year 4) #\- (:month 2) #\- (:day 2)))
+
 (defparameter +asctime-format+
   '(:short-weekday #\space :short-month #\space (:day 2 #\space) #\space
     (:hour 2) #\: (:min 2) #\: (:sec 2) #\space
     (:year 4)))
+
 (defparameter +rfc-1123-format+
   ;; Sun, 06 Nov 1994 08:49:37 GMT
   '(:short-weekday ", " (:day 2) #\space :short-month #\space (:year 4) #\space
     (:hour 2) #\: (:min 2) #\: (:sec 2) #\space :timezone)
   "Please note that you should use the +GMT-ZONE+ timezone to format a proper RFC 1123 timestring. See the RFC for the details about the possible values of the timezone field.")
+
 (defparameter +iso-week-date-format+
   ;; 2009-W53-5
   '((:iso-week-year 4) #\- #\W (:iso-week-number 2) #\- (:iso-week-day 1)))
@@ -1421,7 +1426,7 @@ It should be an instance of a class that responds to one or more of the methods 
                      (passert (or (and allow-missing-timezone-part (zerop count))
                                   (= count 1)
                                   (= count 2)))
-                        
+
                      (cond
                        ((= count 2)
                         ;; hh:mm offset
@@ -1441,7 +1446,7 @@ It should be an instance of a class that responds to one or more of the methods 
                                                   (+ (caar parts) 2))
                                             offset-hour 0 23)
                         (setf offset-minute 0)))
-                     
+
                      (setf offset-hour (* offset-hour sign)
                            offset-minute (* offset-minute sign))))
                  (parse-error (failure)
