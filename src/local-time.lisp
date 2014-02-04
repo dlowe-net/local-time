@@ -1565,8 +1565,6 @@ It should be an instance of a class that responds to one or more of the methods 
                (princ (aref +short-day-names+ weekday) result))
               ((eql fmt :timezone)
                (princ abbrev result))
-              ((eql fmt :hour12)
-               (princ (1+ (mod (1- hour) 12)) result))
               ((eql fmt :ampm)
                (princ (if (< hour 12) "am" "pm") result))
               ((eql fmt :ordinal-day)
@@ -1581,6 +1579,7 @@ It should be an instance of a class that responds to one or more of the methods 
                             (:sec sec)
                             (:min minute)
                             (:hour hour)
+                            (:hour12 (1+ (mod (1- hour) 12)))
                             (:day day)
                             (:weekday weekday)
                             (:month month)
@@ -1626,7 +1625,7 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
   :LONG-MONTH        long form of month (e.g. January, February)
   :SHORT-MONTH       short form of month (e.g. Jan, Feb)
-  :HOUR12            hour on a 12-hour clock
+  :HOUR12            *hour on a 12-hour clock
   :AMPM              am/pm marker in lowercase
   :GMT-OFFSET        the gmt-offset of the time, in +00:00 form
   :GMT-OFFSET-OR-Z   like :GMT-OFFSET, but is Z when UTC
