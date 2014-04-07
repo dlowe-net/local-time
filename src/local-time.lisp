@@ -963,8 +963,33 @@ elements."
   (declare (type timestamp timestamp))
   (timestamp-values-to-unix (sec-of timestamp) (day-of timestamp)))
 
+#+allegro
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  ;; Allegro common lisp requires some toplevel hoops through which to
+  ;; jump in order to call unix's gettimeofday properly.
+  (ff:def-foreign-type timeval
+      (:struct (tv_sec :long)
+               (tv_usec :long)))
+
+  (ff:def-foreign-call
+      (allegro-ffi-gettimeofday "gettimeofday")
+      ((timeval (* timeval))
+       ;; and do this to allow a 0 for NULL
+       (timezone :foreign-address))
+    :returning (:int fixnum)))
+
 (defun %get-current-time ()
   "Cross-implementation abstraction to get the current time measured from the unix epoch (1/1/1970). Should return (values sec nano-sec)."
+  #+allegro
+  (flet ((allegro-gettimeofday ()
+           (let ((tv (ff:allocate-fobject 'timeval :c)))
+             (allegro-ffi-gettimeofday tv 0)
+             (let ((sec (ff:fslot-value-typed 'timeval :c tv 'tv_sec))
+                   (usec (ff:fslot-value-typed 'timeval :c tv 'tv_usec)))
+               (ff:free-fobject tv)
+               (values sec usec)))))
+    (multiple-value-bind (sec usec) (allegro-gettimeofday)
+      (values sec (* 1000 usec))))
   #+cmu
   (multiple-value-bind (success? sec usec) (unix:unix-gettimeofday)
     (assert success? () "unix:unix-gettimeofday reported failure?!")
@@ -983,7 +1008,7 @@ elements."
     (let ((err (ccl:external-call "gettimeofday" :address tv :address (ccl:%null-ptr) :int)))
       (assert (zerop err) nil "gettimeofday failed")
       (values (ccl:pref tv :timeval.tv_sec) (* 1000 (ccl:pref tv :timeval.tv_usec)))))
-  #-(or cmu sbcl (and ccl (not windows)))
+  #-(or allegro cmu sbcl (and ccl (not windows)))
   (values (- (get-universal-time)
              ;; CL's get-universal-time uses an epoch of 1/1/1900, so adjust the result to the Unix epoch
              #.(encode-universal-time 0 0 0 1 1 1970 0))
