@@ -156,8 +156,8 @@
 (defparameter +rfc-1123-format+
   ;; Sun, 06 Nov 1994 08:49:37 GMT
   '(:short-weekday ", " (:day 2) #\space :short-month #\space (:year 4) #\space
-    (:hour 2) #\: (:min 2) #\: (:sec 2) #\space :timezone)
-  "Please note that you should use the +GMT-ZONE+ timezone to format a proper RFC 1123 timestring. See the RFC for the details about the possible values of the timezone field.")
+    (:hour 2) #\: (:min 2) #\: (:sec 2) #\space :gmt-offset-hhmm)
+  "See the RFC 1123 for the details about the possible values of the timezone field.")
 
 (defparameter +iso-week-date-format+
   ;; 2009-W53-5
@@ -1566,16 +1566,16 @@ It should be an instance of a class that responds to one or more of the methods 
         (with-output-to-string (result nil :element-type 'base-char)
           (dolist (fmt format)
             (cond
-              ((or (eql fmt :gmt-offset)
-                   (eql fmt :gmt-offset-or-z))
+              ((member fmt '(:gmt-offset :gmt-offset-or-z :gmt-offset-hhmm))
                (multiple-value-bind (offset-hours offset-secs)
                    (floor offset +seconds-per-hour+)
                  (declare (fixnum offset-hours offset-secs))
                  (if (and (eql fmt :gmt-offset-or-z) (zerop offset))
                      (princ #\Z result)
-                     (format result "~c~2,'0d:~2,'0d"
+                     (format result "~c~2,'0d~:[:~;~]~2,'0d"
                              (if (minusp offset-hours) #\- #\+)
                              (abs offset-hours)
+                             (eql fmt :gmt-offset-hhmm)
                              (truncate (abs offset-secs)
                                        +seconds-per-minute+)))))
               ((eql fmt :short-year)
@@ -1654,6 +1654,7 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :AMPM              am/pm marker in lowercase
   :GMT-OFFSET        the gmt-offset of the time, in +00:00 form
   :GMT-OFFSET-OR-Z   like :GMT-OFFSET, but is Z when UTC
+  :GMT-OFFSET-HHMM   like :GMT-OFFSET, but in +0000 form
   :TIMEZONE          timezone abbrevation for the time
 
 Elements marked by * can be placed in a list in the form: \(:keyword padding &optional \(padchar #\0))
@@ -1667,10 +1668,11 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
       (write-string result (if (eq t destination) *standard-output* destination)))
     result))
 
-(defun format-rfc1123-timestring (destination timestamp)
+(defun format-rfc1123-timestring (destination timestamp &key
+                                  (timezone *default-timezone*))
   (format-timestring destination timestamp
                      :format +rfc-1123-format+
-                     :timezone +gmt-zone+))
+                     :timezone timezone))
 
 (defun to-rfc1123-timestring (timestamp)
   (format-rfc1123-timestring nil timestamp))
