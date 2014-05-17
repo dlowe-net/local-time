@@ -542,7 +542,7 @@ The constant @var{+asctime-format+} is bound to a format mirroring the output of
 @itindex +rfc-1123-format+
 @defvr Constant +rfc-1123-format+
 
-The constant @var{+rfc-1123-format+} is bound to a description of the format defined in RFC 1123 for Internet timestamps.  An output with this format will look like this: @samp{Sat, 01 Mar 2008 19:42:34 EDT}.
+The constant @var{+rfc-1123-format+} is bound to a description of the format defined in RFC 1123 for Internet timestamps.  An output with this format will look like this: @samp{Sat, 01 Mar 2008 19:42:34 -0500}.
 
 @end defvr
 
@@ -619,6 +619,8 @@ am/pm marker in lowercase
 the gmt-offset of the time, in +00:00 form
 @item :gmt-offset-or-z
 like :gmt-offset, but is Z when UTC
+@item :gmt-offset-hhmm
+like :gmt-offset, but in +0000 form
 @item :timezone
 timezone abbrevation for the time
 @end table
@@ -654,7 +656,7 @@ Formats the time like format-timestring, but in RFC 3339 format. The options con
 @node Clocks
 @section Clocks
 
-@defvr *clock*
+@defvr Default *clock*
 
 We expose the *clock* special variable and the following generic
 functions so that applications may re-define the current time or
