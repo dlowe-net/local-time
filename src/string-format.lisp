@@ -280,6 +280,39 @@ Escape character is \\"
                     (+yyyy+
                      (add-format-part '(:year 4))
                      (go-state +literal-start+))
+                    (+l+
+                     (add-format-part '(:msec 3))
+                     (go-state +literal-start+))
+                    (+cL+
+                     (add-format-part '(:msec 2))
+                     (go-state +literal-start+))
+                    (+t+
+                     (if (eql (next-char) #\t)
+                         (go-state +tt+)
+                         (progn
+                           (add-format-part :ap)
+                           (go-state +literal-start+))))
+                    (+cT+
+                     (if (eql (next-char) #\T)
+                         (go-state +cTct+)
+                         (progn
+                           (add-format-part :cap)
+                           (go-state +literal-start+))))
+                    (+tt+
+                     (add-format-part :ampm)
+                     (go-state +literal-start+))
+                    (+cTcT+
+                     (add-format-part :campm)
+                     (go-state +literal-start+))
+                    (+cZ+
+                     (add-format-part :timezone)
+                     (go-state +literal-start+))
+                    (+o+
+                     (add-format-part :gmt-offset-or-z)
+                     (go-state +literal-start+))
+                    (+cS+
+                     (add-format-part :ordinal-day)
+                     (go-state +literal-start+))
                     (+literal-start+
                      (if (literal-character-p cchar)
                          (go-state +literal+ :advance nil)
@@ -295,6 +328,8 @@ Escape character is \\"
                          (add-format-part (coerce char-list 'string)))
                        (setf current-literal-buffer nil))
                      (dispatch-cchar :advance nil))
+                    (+escape+
+                     (go-state +literal+))
                     (:eof 
                           (when current-literal-buffer
                             (let ((char-list (funcall current-literal-buffer)))
