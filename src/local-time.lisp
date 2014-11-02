@@ -1650,6 +1650,7 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
   :LONG-MONTH        long form of month (e.g. January, February)
   :SHORT-MONTH       short form of month (e.g. Jan, Feb)
+  :SHORT-YEAR        short form of year (e.g. 39, 45)
   :HOUR12            *hour on a 12-hour clock
   :AMPM              am/pm marker in lowercase
   :GMT-OFFSET        the gmt-offset of the time, in +00:00 form
