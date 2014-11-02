@@ -4,6 +4,7 @@
 *.x86f
 *.fas
 *.lib
+*.*~
 doc/manual/
 doc/*.vr
 doc/*.tp
