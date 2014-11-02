@@ -5,6 +5,7 @@
 *.fas
 *.lib
 *.*~
+*#*
 doc/manual/
 doc/*.vr
 doc/*.tp
