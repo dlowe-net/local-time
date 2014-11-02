@@ -1592,6 +1592,12 @@ It should be an instance of a class that responds to one or more of the methods 
                (princ abbrev result))
               ((eql fmt :ampm)
                (princ (if (< hour 12) "am" "pm") result))
+              ((eql fmt :ap)
+               (princ (if (< hour 12) "a" "p") result))
+              ((eql fmt :campm)
+               (princ (if (< hour 12) "AM" "PM") result))
+              ((eql fmt :cap)
+               (princ (if (< hour 12) "A" "P") result))
               ((eql fmt :ordinal-day)
                (princ (ordinalize day) result))
               ((or (stringp fmt) (characterp fmt))
@@ -1653,6 +1659,9 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :SHORT-YEAR        short form of year (e.g. 39, 45)
   :HOUR12            *hour on a 12-hour clock
   :AMPM              am/pm marker in lowercase
+  :AP                am/pm marker in lowercase printed as a/p
+  :CAMPM             am/pm marker in upcase
+  :CAP               am/pm marker in upcase printed as a/p
   :GMT-OFFSET        the gmt-offset of the time, in +00:00 form
   :GMT-OFFSET-OR-Z   like :GMT-OFFSET, but is Z when UTC
   :GMT-OFFSET-HHMM   like :GMT-OFFSET, but in +0000 form
