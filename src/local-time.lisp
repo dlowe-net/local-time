@@ -774,6 +774,8 @@ the previous day given by OFFSET."
                               (setf part :day
                                     offset days-offset
                                     sec new-sec)
+			      (when (= offset 0)
+				(return-from direct-adjust (values nsec sec day)))
                               (go top)))
                            (:day
                             (incf day offset)
