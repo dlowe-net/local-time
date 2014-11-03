@@ -108,6 +108,22 @@
           (when path
             (try (merge-pathnames "../" path)))))))
 
+;;; Per Naggum we use the terms Political Time and Scientific Time to
+;;; distinguish between two ways to think about adjusting times around
+;;; DST boundaries.  If *use-political-time* is nil, we do not
+;;; concider changes in timezone offset when adjusting local-time
+;;; values.
+
+(defparameter *use-political-time* t)
+
+(defmacro with-scientific-time (&rest body)
+  `(let ((*use-political-time* nil))
+     ,@body))
+
+(defmacro with-political-time (&rest body)
+  `(let ((*use-political-time* t))
+     ,@body))
+
 ;;; Month information
 (defparameter +month-names+
   #("" "January" "February" "March" "April" "May" "June" "July" "August"
@@ -771,19 +787,26 @@ the previous day given by OFFSET."
                                                           (:minute +seconds-per-minute+)
                                                           (:hour +seconds-per-hour+))))
                                        +seconds-per-day+)
-                              (setf part :day
-                                    offset days-offset
-                                    sec new-sec)
-			      (when (= offset 0)
-				(return-from direct-adjust (values nsec sec day)))
-                              (go top)))
+			      (if *use-political-time*
+				  (progn
+				    (setf part :day
+					  offset days-offset
+					  sec new-sec)
+				    (when (= offset 0)
+				      (return-from direct-adjust (values nsec sec day)))
+				    (go top))
+				  (progn
+				    (setf sec new-sec)
+ 				    (incf day days-offset)
+				    (return-from direct-adjust (values nsec sec day))))))
                            (:day
                             (incf day offset)
                             (setf new-utc-offset (or utc-offset
                                                      (timestamp-subtimezone (make-timestamp :nsec nsec :sec sec :day day)
                                                                             timezone)))
-                            (when (not (= old-utc-offset
-                                          new-utc-offset))
+                            (when (and *use-political-time*
+				       (not (= old-utc-offset
+					       new-utc-offset)))
                               ;; We hit the DST boundary. We need to restart again
                               ;; with :sec, but this time we know both old and new
                               ;; UTC offset will be the same, so it's safe to do
