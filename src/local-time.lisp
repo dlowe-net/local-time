@@ -65,8 +65,8 @@
 (declaim (inline now format-timestring %get-current-time
                  format-rfc3339-timestring to-rfc3339-timestring
                  format-rfc1123-timestring to-rfc1123-timestring)
-         (ftype (function (&rest t) simple-base-string) format-rfc3339-timestring)
-         (ftype (function (&rest t) simple-base-string) format-timestring)
+         (ftype (function (&rest t) string) format-rfc3339-timestring)
+         (ftype (function (&rest t) string) format-timestring)
          (ftype (function (&rest t) fixnum) local-timezone)
          (ftype (function (&rest t) (values
                                      timezone-offset
@@ -237,7 +237,7 @@
   "Returns a string created from the vector of unsigned bytes VECTOR starting at OFFSET which is terminated by a 0."
   (declare (type (vector (unsigned-byte 8)) vector))
   (let* ((null-pos (or (position 0 vector :start offset) (length vector)))
-         (result (make-string (- null-pos offset) :element-type 'base-char)))
+         (result (make-string (- null-pos offset) :element-type 'character)))
     (loop for input-index :from offset :upto (1- null-pos)
           for output-index :upfrom 0
           do (setf (aref result output-index) (code-char (aref vector input-index))))
@@ -1588,7 +1588,7 @@ It should be an instance of a class that responds to one or more of the methods 
         (%timestamp-decode-iso-week timestamp)
       (let ((*print-pretty* nil)
             (*print-circle* nil))
-        (with-output-to-string (result nil :element-type 'base-char)
+        (with-output-to-string (result nil :element-type 'character)
           (dolist (fmt format)
             (cond
               ((member fmt '(:gmt-offset :gmt-offset-or-z :gmt-offset-hhmm))
