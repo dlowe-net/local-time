@@ -62,7 +62,7 @@
 
 ;;; Declaims
 
-(declaim (inline now format-timestring %get-current-time
+(declaim (inline now %get-current-time
                  format-rfc3339-timestring to-rfc3339-timestring
                  format-rfc1123-timestring to-rfc1123-timestring)
          (ftype (function (&rest t) simple-base-string) format-rfc3339-timestring)
@@ -1649,6 +1649,7 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :MSEC              *milliseconds
   :USEC              *microseconds
   :NSEC              *nanoseconds
+  :ORDINAL-DAY       day ordinal suffix
   :ISO-WEEK-YEAR     *year for ISO week date (can be different from regular calendar year)
   :ISO-WEEK-NUMBER   *ISO week number (i.e. 1 through 53)
   :ISO-WEEK-DAY      *ISO compatible weekday number (monday=1, sunday=7)
@@ -1673,10 +1674,23 @@ The string representation of the value will be padded with the padchar.
 
 You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMAT+."
   (declare (type (or boolean stream) destination))
-  (let ((result (%construct-timestring timestamp format timezone)))
+  (let ((result (%construct-timestring timestamp (if (stringp format) (parse-string-format format) format) timezone)))
     (when destination
       (write-string result (if (eq t destination) *standard-output* destination)))
     result))
+
+(define-compiler-macro format-timestring (destination timestamp &key
+                                                 (format +iso-8601-format+ format-supplied-p)
+                                                 (timezone '*default-timezone*))
+  (let ((destination (if (eq t destination) '*standard-output* destination))
+        (format (if (stringp format)
+                    `(quote ,(parse-string-format format))
+                    (if format-supplied-p
+                        format
+                        `(quote ,format)))))
+    (if destination
+        `(write-string (%construct-timestring ,timestamp ,format ,timezone) ,destination)
+        `(%construct-timestring ,timestamp ,format ,timezone))))
 
 (defun format-rfc1123-timestring (destination timestamp &key
                                   (timezone *default-timezone*))
