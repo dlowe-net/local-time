@@ -1701,7 +1701,7 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
         `(%construct-timestring ,timestamp ,format ,timezone))))
 
 (defun format-rfc1123-timestring (destination timestamp &key
-                                                    (timezone *default-timezone*))
+                                  (timezone *default-timezone*))
   (format-timestring destination timestamp
                      :format +rfc-1123-format+
                      :timezone timezone))
@@ -1710,35 +1710,35 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
   (format-rfc1123-timestring nil timestamp))
 
 (defun format-rfc3339-timestring (destination timestamp &key
-                                                    omit-date-part
-                                                    omit-time-part
-                                                    (omit-timezone-part omit-time-part)
-                                                    (use-zulu t)
-                                                    (timezone *default-timezone*))
+                                  omit-date-part
+                                  omit-time-part
+                                  (omit-timezone-part omit-time-part)
+                                  (use-zulu t)
+                                  (timezone *default-timezone*))
   "Formats a timestring in the RFC 3339 format, a restricted form of the ISO-8601 timestring specification for Internet timestamps."
   (let ((rfc3339-format
-          (if (and use-zulu
-                   (not omit-date-part)
-                   (not omit-time-part)
-                   (not omit-timezone-part))
-              +rfc3339-format+ ; micro optimization
-              (append
-               (unless omit-date-part
-                 '((:year 4) #\-
-                   (:month 2) #\-
-                   (:day 2)))
-               (unless (or omit-date-part
-                           omit-time-part)
-                 '(#\T))
-               (unless omit-time-part
-                 '((:hour 2) #\:
-                   (:min 2) #\:
-                   (:sec 2) #\.
-                   (:usec 6)))
-               (unless omit-timezone-part
-                 (if use-zulu
-                     '(:gmt-offset-or-z)
-                     '(:gmt-offset)))))))
+         (if (and use-zulu
+                  (not omit-date-part)
+                  (not omit-time-part)
+                  (not omit-timezone-part))
+             +rfc3339-format+ ; micro optimization
+             (append
+              (unless omit-date-part
+                '((:year 4) #\-
+                  (:month 2) #\-
+                  (:day 2)))
+              (unless (or omit-date-part
+                          omit-time-part)
+                '(#\T))
+              (unless omit-time-part
+                '((:hour 2) #\:
+                  (:min 2) #\:
+                  (:sec 2) #\.
+                  (:usec 6)))
+              (unless omit-timezone-part
+                (if use-zulu
+                    '(:gmt-offset-or-z)
+                    '(:gmt-offset)))))))
     (format-timestring destination timestamp :format rfc3339-format :timezone timezone)))
 
 (defun to-rfc3339-timestring (timestamp)
@@ -1749,20 +1749,20 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
   (parse-timestring
    (with-output-to-string (str)
      (loop for c = (read-char stream nil)
-           while (and c (or (digit-char-p c) (member c '(#\: #\T #\t #\: #\- #\+ #\Z #\.))))
-           do (princ c str)
-           finally (when c (unread-char c stream))))
+        while (and c (or (digit-char-p c) (member c '(#\: #\T #\t #\: #\- #\+ #\Z #\.))))
+        do (princ c str)
+        finally (when c (unread-char c stream))))
    :allow-missing-elements t))
 
 (defun %read-universal-time (stream char arg)
   (declare (ignore char arg))
   (universal-to-timestamp
-   (parse-integer
-    (with-output-to-string (str)
-      (loop for c = (read-char stream nil)
-            while (and c (digit-char-p c))
-            do (princ c str)
-            finally (when c (unread-char c stream)))))))
+              (parse-integer
+               (with-output-to-string (str)
+                 (loop for c = (read-char stream nil)
+                       while (and c (digit-char-p c))
+                       do (princ c str)
+                       finally (when c (unread-char c stream)))))))
 
 (defun enable-read-macros ()
   "Enables the local-time reader macros for literal timestamps and universal time."
@@ -1776,11 +1776,11 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
   "Print the TIMESTAMP object using the standard reader notation"
   (cond
     (*debug-timestamp*
-     (print-unreadable-object (object stream :type t)
-       (format stream "~d/~d/~d"
-               (day-of object)
-               (sec-of object)
-               (nsec-of object))))
+       (print-unreadable-object (object stream :type t)
+         (format stream "~d/~d/~d"
+                 (day-of object)
+                 (sec-of object)
+                 (nsec-of object))))
     (t
      (when *print-escape*
        (princ "@" stream))
@@ -1800,5 +1800,3 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
 (defun modified-julian-date (timestamp)
   "Returns the modified julian date referred to by the timestamp."
   (- (day-of timestamp) +modified-julian-date-offset+))
-
-(declaim (notinline format-timestring))
