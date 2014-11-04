@@ -29,7 +29,7 @@
 
 (deftype time-of-day ()
   '(and timestamp
-        (satisfies %valid-time-of-day?)))
+    (satisfies %valid-time-of-day?)))
 
 (defun %valid-date? (timestamp)
   (and (zerop (sec-of timestamp))
@@ -37,7 +37,7 @@
 
 (deftype date ()
   '(and timestamp
-        (satisfies %valid-date?)))
+    (satisfies %valid-date?)))
 
 (define-condition invalid-timezone-file (error)
   ((path :accessor path-of :initarg :path))
@@ -94,9 +94,9 @@
   (flet ((try (project-home-directory)
            (when project-home-directory
              (ignore-errors
-               (truename
-                (merge-pathnames "zoneinfo/"
-                                 (make-pathname :directory (pathname-directory project-home-directory))))))))
+              (truename
+               (merge-pathnames "zoneinfo/"
+                                (make-pathname :directory (pathname-directory project-home-directory))))))))
     (or (when (find-package "ASDF")
           (let ((path (eval (read-from-string
                              "(let ((system (asdf:find-system :local-time nil)))
@@ -245,34 +245,34 @@
 
 (defun %tz-read-header (inf)
   `(:utc-count ,(%read-binary-integer inf 4)
-         :wall-count ,(%read-binary-integer inf 4)
-         :leap-count ,(%read-binary-integer inf 4)
-         :transition-count ,(%read-binary-integer inf 4)
-         :type-count ,(%read-binary-integer inf 4)
-         :abbrev-length ,(%read-binary-integer inf 4)))
+    :wall-count ,(%read-binary-integer inf 4)
+    :leap-count ,(%read-binary-integer inf 4)
+    :transition-count ,(%read-binary-integer inf 4)
+    :type-count ,(%read-binary-integer inf 4)
+    :abbrev-length ,(%read-binary-integer inf 4)))
 
 (defun %tz-read-transitions (inf count)
   (make-array count
               :initial-contents
               (loop for idx from 1 upto count
-                 collect (%read-binary-integer inf 4 t))))
+                    collect (%read-binary-integer inf 4 t))))
 
 (defun %tz-read-indexes (inf count)
   (make-array count
               :initial-contents
               (loop for idx from 1 upto count
-                 collect (%read-binary-integer inf 1))))
+                    collect (%read-binary-integer inf 1))))
 
 (defun %tz-read-subzone (inf count)
   (loop for idx from 1 upto count
-     collect (list (%read-binary-integer inf 4 t)
-                   (%read-binary-integer inf 1)
-                   (%read-binary-integer inf 1))))
+        collect (list (%read-binary-integer inf 4 t)
+                      (%read-binary-integer inf 1)
+                      (%read-binary-integer inf 1))))
 
 (defun %tz-read-leap-seconds (inf count)
   (loop for idx from 1 upto count
-     collect (list (%read-binary-integer inf 4)
-                   (%read-binary-integer inf 4))))
+        collect (list (%read-binary-integer inf 4)
+                      (%read-binary-integer inf 4))))
 
 (defun %tz-read-abbrevs (inf length)
   (let ((a (make-array length :element-type '(unsigned-byte 8))))
@@ -299,10 +299,10 @@
               :element-type 'subzone
               :initial-contents
               (loop for info in raw-info collect
-                   (make-subzone
-                    :offset (first info)
-                    :daylight-p (/= (second info) 0)
-                    :abbrev (%string-from-unsigned-byte-vector abbrevs (third info))))))
+                       (make-subzone
+                        :offset (first info)
+                        :daylight-p (/= (second info) 0)
+                        :abbrev (%string-from-unsigned-byte-vector abbrevs (third info))))))
 
 (defun %realize-timezone (zone &optional reload)
   "If timezone has not already been loaded or RELOAD is non-NIL, loads the timezone information from its associated unix file.  If the file is not a valid timezone file, the condition INVALID-TIMEZONE-FILE will be signaled."
@@ -336,13 +336,13 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun %make-simple-timezone (name abbrev offset)
     (let ((subzone (local-time::make-subzone :offset offset
-                                           :daylight-p nil
-                                           :abbrev abbrev)))
-    (local-time::make-timezone
-     :subzones (make-array 1 :initial-contents (list subzone))
-     :path nil
-     :name name
-     :loaded t)))
+                                             :daylight-p nil
+                                             :abbrev abbrev)))
+      (local-time::make-timezone
+       :subzones (make-array 1 :initial-contents (list subzone))
+       :path nil
+       :name name
+       :loaded t)))
 
   ;; to be used as #+#.(local-time::package-with-symbol? "SB-EXT" "GET-TIME-OF-DAY")
   (defun package-with-symbol? (package name)
@@ -362,12 +362,12 @@
   (declare (type (or string symbol) zone-name))
   (let ((zone-sym (if (symbolp zone-name) zone-name (intern zone-name))))
     `(prog1
-      (defparameter ,zone-sym (make-timezone :path ,zone-file
-                                             :name ,(if (symbolp zone-name)
-                                                        (string-downcase (symbol-name zone-name))
-                                                        zone-name)))
-      ,@(when load
-              `((%realize-timezone ,zone-sym))))))
+         (defparameter ,zone-sym (make-timezone :path ,zone-file
+                                                :name ,(if (symbolp zone-name)
+                                                           (string-downcase (symbol-name zone-name))
+                                                           zone-name)))
+       ,@(when load
+           `((%realize-timezone ,zone-sym))))))
 
 (eval-when (:load-toplevel :execute)
   (let ((default-timezone-file #p"/etc/localtime"))
@@ -402,8 +402,8 @@ In other words:
   (check-type timezone-repository (or pathname string))
   (multiple-value-bind (valid? error)
       (ignore-errors
-        (truename timezone-repository)
-        t)
+       (truename timezone-repository)
+       t)
     (unless valid?
       (error "REREAD-TIMEZONE-REPOSITORY was called with invalid PROJECT-DIRECTORY (~A). The error is ~A."
              timezone-repository error)))
@@ -421,8 +421,8 @@ In other words:
       (setf *location-name->timezone* (make-hash-table :test 'equal))
       (setf *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal))
       (cl-fad:walk-directory root-directory #'visitor :directories nil
-                             :test (lambda (file)
-                                     (not (find "Etc" (pathname-directory file) :test #'string=))))
+                                                      :test (lambda (file)
+                                                              (not (find "Etc" (pathname-directory file) :test #'string=))))
       (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) #'visitor :directories nil))))
 
 (defmacro make-timestamp (&rest args)
@@ -438,17 +438,17 @@ In other words:
   (declare (type integer needle)
            (type (simple-array integer (*)) haystack))
   (loop
-     with start = 0
-     with end = (1- (length haystack))
-     for middle = (floor (+ end start) 2)
-     while (and (< start end)
-                (/= needle (elt haystack middle)))
-     do (cond
-          ((> needle (elt haystack middle))
-           (setf start (1+ middle)))
-          (t
-           (setf end (1- middle))))
-     finally
+    with start = 0
+    with end = (1- (length haystack))
+    for middle = (floor (+ end start) 2)
+    while (and (< start end)
+               (/= needle (elt haystack middle)))
+    do (cond
+         ((> needle (elt haystack middle))
+          (setf start (1+ middle)))
+         (t
+          (setf end (1- middle))))
+    finally
        (return (max 0 (cond
                         ((minusp end)
                          0)
@@ -469,7 +469,7 @@ In other words:
                           0
                           (elt (timezone-indexes zone)
                                (transition-position unix-time
-                                                   (timezone-transitions zone)))))
+                                                    (timezone-transitions zone)))))
          (subzone (elt (timezone-subzones zone) subzone-idx)))
     (values
      (subzone-offset subzone)
@@ -499,8 +499,8 @@ In other words:
                          (timestamp-subtimezone source timezone))))
 
 (defun timestamp-minimize-part (timestamp part &key
-                                (timezone *default-timezone*)
-                                into)
+                                           (timezone *default-timezone*)
+                                           into)
   (let* ((timestamp-parts '(:nsec :sec :min :hour :day :month))
          (part-count (position part timestamp-parts)))
     (assert part-count nil
@@ -522,8 +522,8 @@ In other words:
                         :into into))))
 
 (defun timestamp-maximize-part (timestamp part &key
-                                (timezone *default-timezone*)
-                                into)
+                                           (timezone *default-timezone*)
+                                           into)
   (let* ((timestamp-parts '(:nsec :sec :min :hour :day :month))
          (part-count (position part timestamp-parts)))
     (assert part-count nil
@@ -546,7 +546,7 @@ In other words:
                           :into into)))))
 
 (defmacro with-decoded-timestamp ((&key nsec sec minute hour day month year day-of-week daylight-p timezone offset)
-                                   timestamp &body forms)
+                                  timestamp &body forms)
   "This macro binds variables to the decoded elements of TIMESTAMP. The TIMEZONE argument is used for decoding the timestamp, and is not bound by the macro. The value of DAY-OF-WEEK starts from 0 which means Sunday."
   (let ((ignores)
         (types)
@@ -554,20 +554,20 @@ In other words:
     (macrolet ((initialize (&rest vars)
                  `(progn
                     ,@(loop
-                         :for var :in vars
-                         :collect `(progn
-                                     (unless ,var
-                                       (setf ,var (gensym))
-                                       (push ,var ignores))
-                                     (push ,var variables)))
+                        :for var :in vars
+                        :collect `(progn
+                                    (unless ,var
+                                      (setf ,var (gensym))
+                                      (push ,var ignores))
+                                    (push ,var variables)))
                     (setf ignores (nreverse ignores))
                     (setf variables (nreverse variables))))
                (declare-fixnum-type (&rest vars)
                  `(progn
                     ,@(loop
-                         :for var :in vars
-                         :collect `(when ,var
-                                     (push `(type fixnum ,,var) types)))
+                        :for var :in vars
+                        :collect `(when ,var
+                                    (push `(type fixnum ,,var) types)))
                     (setf types (nreverse types)))))
       (when nsec
         (push `(type (integer 0 999999999) ,nsec) types))
@@ -649,7 +649,7 @@ In other words:
          (loop
            :for (function part value) in functions
            :do
-           (funcall visitor `(,function ,timestamp ,part ,value ,@params)))))
+              (funcall visitor `(,function ,timestamp ,part ,value ,@params)))))
 
   (defun %expand-adjust-timestamp (timestamp changes &key functional)
     (let* ((old (gensym "OLD"))
@@ -667,12 +667,12 @@ In other words:
                                                 (setf (sec-of ,new) sec)
                                                 (setf (day-of ,new) day))
                                               ,@(when functional
-                                                      `((setf ,old ,new))))
+                                                  `((setf ,old ,new))))
                                            forms)))
       (setf forms (nreverse forms))
       `(let* ((,old ,timestamp)
               ,@(when functional
-                      `((,new (clone-timestamp ,old)))))
+                  `((,new (clone-timestamp ,old)))))
          ,@forms
          ,old)))
   )                                     ; eval-when
@@ -698,16 +698,16 @@ In other words:
     (otherwise
      (with-decoded-timestamp (:nsec nsec :sec sec :minute minute :hour hour
                               :day day :month month :year year :timezone timezone :offset utc-offset)
-         time
+                             time
        (ecase part
          (:sec (setf sec new-value))
          (:minute (setf minute new-value))
          (:hour (setf hour new-value))
          (:day-of-month (setf day new-value))
          (:month (setf month new-value)
-                 (setf day (%fix-overflow-in-days day month year)))
+          (setf day (%fix-overflow-in-days day month year)))
          (:year (setf year new-value)
-                (setf day (%fix-overflow-in-days day month year))))
+          (setf day (%fix-overflow-in-days day month year))))
        (encode-timestamp-into-values nsec sec minute hour day month year :timezone timezone :offset utc-offset)))))
 
 (defun %offset-timestamp-part (time part offset &key (timezone *default-timezone*) utc-offset)
@@ -722,7 +722,7 @@ the previous day given by OFFSET."
                                              :nsec nsec :sec sec :minute minute :hour hour
                                              :day day :month month :year year
                                              :timezone timezone :offset utc-offset)
-                        time
+                                            time
                       (let ((position (position offset +day-names-as-keywords+ :test #'eq)))
                         (assert position (position) "~S is not a valid day name" offset)
                         (let ((offset (+ (- (if (zerop day-of-week)
@@ -754,7 +754,7 @@ the previous day given by OFFSET."
                                               (timestamp-subtimezone time timezone)))
                           new-utc-offset)
                       (tagbody
-                         top
+                       top
                          (ecase part
                            (:nsec
                             (multiple-value-bind (sec-offset new-nsec)
@@ -795,7 +795,7 @@ the previous day given by OFFSET."
            (safe-adjust (part offset time)
              (with-decoded-timestamp (:nsec nsec :sec sec :minute minute :hour hour :day day
                                       :month month :year year :timezone timezone :offset utc-offset)
-                 time
+                                     time
                (multiple-value-bind (month-new year-new)
                    (%normalize-month-year-pair
                     (+ (ecase part
@@ -884,7 +884,7 @@ the previous day given by OFFSET."
        (/= year 0)))
 
 (defun encode-timestamp-into-values (nsec sec minute hour day month year
-                                     &key (timezone *default-timezone*) offset)
+                                 &key (timezone *default-timezone*) offset)
   "Returns (VALUES NSEC SEC DAY ZONE) ready to be used for
 instantiating a new timestamp object.  If the specified time is
 invalid, the condition INVALID-TIME-SPECIFICATION is raised."
@@ -915,7 +915,7 @@ invalid, the condition INVALID-TIME-SPECIFICATION is raised."
       (values nsec utc-sec utc-day))))
 
 (defun encode-timestamp (nsec sec minute hour day month year
-                         &key (timezone *default-timezone*) offset into)
+                     &key (timezone *default-timezone*) offset into)
   "Return a new TIMESTAMP instance corresponding to the specified time
 elements."
   (declare (type integer nsec sec minute hour day month year))
@@ -1005,9 +1005,9 @@ elements."
       (values sec (* 1000 nsec))))
   #+(and ccl (not windows))
   (ccl:rlet ((tv :timeval))
-    (let ((err (ccl:external-call "gettimeofday" :address tv :address (ccl:%null-ptr) :int)))
-      (assert (zerop err) nil "gettimeofday failed")
-      (values (ccl:pref tv :timeval.tv_sec) (* 1000 (ccl:pref tv :timeval.tv_usec)))))
+            (let ((err (ccl:external-call "gettimeofday" :address tv :address (ccl:%null-ptr) :int)))
+              (assert (zerop err) nil "gettimeofday failed")
+              (values (ccl:pref tv :timeval.tv_sec) (* 1000 (ccl:pref tv :timeval.tv_usec)))))
   #-(or allegro cmu sbcl (and ccl (not windows)))
   (values (- (get-universal-time)
              ;; CL's get-universal-time uses an epoch of 1/1/1900, so adjust the result to the Unix epoch
@@ -1043,37 +1043,37 @@ It should be an instance of a class that responds to one or more of the methods 
 (defmacro %defcomparator (name &body body)
   (let ((pair-comparator-name (intern (concatenate 'string "%" (string name)))))
     `(progn
-      (declaim (inline ,pair-comparator-name))
-      (defun ,pair-comparator-name (time-a time-b)
-        (assert (typep time-a 'timestamp)
-                nil
-                'type-error
-                :datum time-a
-                :expected-type 'timestamp)
-        (assert (typep time-b 'timestamp)
-                nil
-                'type-error
-                :datum time-b
-                :expected-type 'timestamp)
-        ,@body)
-      (defun ,name (&rest times)
-        (declare (dynamic-extent times))
-        (loop for head on times
-              while (cdr head)
-              always (,pair-comparator-name (first head) (second head))))
-      (define-compiler-macro ,name (&rest times)
-        (let ((vars (loop
-                      :for i :upfrom 0 :below (length times)
-                      :collect (gensym (concatenate 'string "TIME-" (princ-to-string i) "-")))))
-          `(let (,@(loop
-                     :for var :in vars
-                     :for time :in times
-                     :collect (list var time)))
-            ;; we could evaluate comparisons of timestamp literals here
-            (and ,@(loop
-                     :for (time-a time-b) :on vars
-                     :while time-b
-                     :collect `(,',pair-comparator-name ,time-a ,time-b)))))))))
+       (declaim (inline ,pair-comparator-name))
+       (defun ,pair-comparator-name (time-a time-b)
+         (assert (typep time-a 'timestamp)
+                 nil
+                 'type-error
+                 :datum time-a
+                 :expected-type 'timestamp)
+         (assert (typep time-b 'timestamp)
+                 nil
+                 'type-error
+                 :datum time-b
+                 :expected-type 'timestamp)
+         ,@body)
+       (defun ,name (&rest times)
+         (declare (dynamic-extent times))
+         (loop for head on times
+               while (cdr head)
+               always (,pair-comparator-name (first head) (second head))))
+       (define-compiler-macro ,name (&rest times)
+         (let ((vars (loop
+                       :for i :upfrom 0 :below (length times)
+                       :collect (gensym (concatenate 'string "TIME-" (princ-to-string i) "-")))))
+           `(let (,@(loop
+                      :for var :in vars
+                      :for time :in times
+                      :collect (list var time)))
+              ;; we could evaluate comparisons of timestamp literals here
+              (and ,@(loop
+                       :for (time-a time-b) :on vars
+                       :while time-b
+                       :collect `(,',pair-comparator-name ,time-a ,time-b)))))))))
 
 (defun %timestamp-compare (time-a time-b)
   "Returns the symbols <, >, or =, describing the relationship between TIME-A and TIME-b."
@@ -1154,11 +1154,11 @@ It should be an instance of a class that responds to one or more of the methods 
          ((values 4-years remaining-days) (floor remaining-days #.(years-to-days 4)))
          (years (min (floor remaining-days 365)
                      3)))
-        (values (+ (* 400-years 400)
-                   (* 100-years 100)
-                   (* 4-years 4)
-                   years)
-                (- remaining-days (* years 365)))))
+    (values (+ (* 400-years 400)
+               (* 100-years 100)
+               (* 4-years 4)
+               years)
+            (- remaining-days (* years 365)))))
 
 (defun %timestamp-decode-date (days)
   "Returns the year, month, and day, given the number of days from the epoch."
@@ -1293,225 +1293,225 @@ It should be an instance of a class that responds to one or more of the methods 
   (apply #'%split-timestring (coerce str 'simple-string) args))
 
 (defun %split-timestring (time-string &key
-                          (start 0)
-                          (end (length time-string))
-                          (fail-on-error t) (time-separator #\:)
-                          (date-separator #\-)
-                          (date-time-separator #\T)
-                          (allow-missing-elements t)
-                          (allow-missing-date-part allow-missing-elements)
-                          (allow-missing-time-part allow-missing-elements)
-                          (allow-missing-timezone-part allow-missing-time-part))
+                                  (start 0)
+                                  (end (length time-string))
+                                  (fail-on-error t) (time-separator #\:)
+                                  (date-separator #\-)
+                                  (date-time-separator #\T)
+                                  (allow-missing-elements t)
+                                  (allow-missing-date-part allow-missing-elements)
+                                  (allow-missing-time-part allow-missing-elements)
+                                  (allow-missing-timezone-part allow-missing-time-part))
   "Based on http://www.ietf.org/rfc/rfc3339.txt including the function names used. Returns (values year month day hour minute second nsec offset-hour offset-minute). On parsing failure, signals INVALID-TIMESTRING if FAIL-ON-ERROR is NIL, otherwise returns NIL."
   (declare (type character date-time-separator time-separator date-separator)
            (type simple-string time-string)
            (optimize (speed 3)))
   (the list
-    (let (year month day hour minute second nsec offset-hour offset-minute)
-      (declare (type (or null fixnum) start end year month day hour minute second offset-hour offset-minute)
-               (type (or null (signed-byte 32)) nsec))
-      (macrolet ((passert (expression)
-                   `(unless ,expression
-                     (parse-error ',expression)))
-                 (parse-integer-into (start-end place &optional low-limit high-limit)
-                   (let ((entry (gensym "ENTRY"))
-                         (value (gensym "VALUE"))
-                         (pos (gensym "POS"))
-                         (start (gensym "START"))
-                         (end (gensym "END")))
-                     `(let ((,entry ,start-end))
-                       (if ,entry
-                           (let ((,start (car ,entry))
-                                 (,end (cdr ,entry)))
-                             (multiple-value-bind (,value ,pos) (parse-integer time-string :start ,start :end ,end :junk-allowed t)
-                               (passert (= ,pos ,end))
-                               (setf ,place ,value)
-                               ,(if (and low-limit high-limit)
-                                    `(passert (<= ,low-limit ,place ,high-limit))
-                                    (values))
-                               (values)))
-                           (progn
-                             (passert allow-missing-elements)
-                             (values))))))
-                 (with-parts-and-count ((start end split-chars) &body body)
-                   `(multiple-value-bind (parts count) (split ,start ,end ,split-chars)
-                     (declare (ignorable count) (type fixnum count)
-                      ;;(type #1=(cons (cons fixnum fixnum) (or null #1#)) parts)
-                      (type list parts))
-                     ,@body)))
-        (labels ((split (start end chars)
-                   (declare (type fixnum start end))
-                   (unless (consp chars)
-                     (setf chars (list chars)))
-                   (loop with last-match = start
-                         with match-count of-type (integer 0 #.most-positive-fixnum) = 0
-                         for index of-type fixnum upfrom start
-                         while (< index end)
-                         when (member (aref time-string index) chars :test #'char-equal)
-                         collect (prog1 (if (< last-match index)
-                                            (cons last-match index)
-                                            nil)
-                                   (incf match-count)
-                                   (setf last-match (1+ index)))
-                                 into result
-                         finally (return (values (if (zerop (- index last-match))
-                                                     result
-                                                     (prog1
-                                                         (nconc result (list (cons last-match index)))
-                                                       (incf match-count)))
-                                                 match-count))))
-                 (parse ()
-                   (with-parts-and-count (start end date-time-separator)
-                     (cond ((= count 2)
-                            (if (first parts)
-                                (full-date (first parts))
-                                (passert allow-missing-date-part))
-                            (if (second parts)
-                                (full-time (second parts))
-                                (passert allow-missing-time-part))
-                            (done))
-                           ((and (= count 1)
-                                 allow-missing-date-part
-                                 (find time-separator time-string
-                                       :start (car (first parts))
-                                       :end (cdr (first parts))))
-                            (full-time (first parts))
-                            (done))
-                           ((and (= count 1)
-                                 allow-missing-time-part
-                                 (find date-separator time-string
-                                       :start (car (first parts))
-                                       :end (cdr (first parts))))
-                            (full-date (first parts))
-                            (done)))
-                     (parse-error nil)))
-                 (full-date (start-end)
-                   (let ((parts (split (car start-end) (cdr start-end) date-separator)))
-                     (passert (%list-length= 3 parts))
-                     (date-fullyear (first parts))
-                     (date-month (second parts))
-                     (date-mday (third parts))))
-                 (date-fullyear (start-end)
-                   (parse-integer-into start-end year))
-                 (date-month (start-end)
-                   (parse-integer-into start-end month 1 12))
-                 (date-mday (start-end)
-                   (parse-integer-into start-end day 1 31))
-                 (full-time (start-end)
-                   (let ((start (car start-end))
-                         (end (cdr start-end)))
-                     (with-parts-and-count (start end (list #\Z #\- #\+))
-                       (let* ((zulup (find #\Z time-string :test #'char-equal :start start :end end))
-                              (sign (unless zulup
-                                      (if (find #\+ time-string :test #'char-equal :start start :end end)
-                                          1
-                                          -1))))
-                         (passert (<= 1 count 2))
-                         (unless (and (eq (first parts) nil)
-                                      (not (rest parts)))
-                           ;; not a single #\Z
-                           (partial-time (first parts)))
-                         (when zulup
-                           (setf offset-hour 0
-                                 offset-minute 0))
-                         (if (= count 1)
-                             (passert (or zulup allow-missing-timezone-part))
-                             (let* ((entry (second parts))
-                                    (start (car entry))
-                                    (end (cdr entry)))
-                               (declare (type fixnum start end))
-                               (passert (or zulup
-                                            (not (zerop (- end start)))))
-                               (unless zulup
-                                 (time-offset (second parts) sign))))))))
-                 (partial-time (start-end)
-                   (with-parts-and-count ((car start-end) (cdr start-end) time-separator)
-                     (passert (eql count 3))
-                     (time-hour (first parts))
-                     (time-minute (second parts))
-                     (time-second (third parts))))
-                 (time-hour (start-end)
-                   (parse-integer-into start-end hour 0 23))
-                 (time-minute (start-end)
-                   (parse-integer-into start-end minute 0 59))
-                 (time-second (start-end)
-                   (with-parts-and-count ((car start-end) (cdr start-end) '(#\. #\,))
-                     (passert (<= 1 count 2))
-                     (let ((*read-eval* nil))
-                       (parse-integer-into (first parts) second 0 59)
-                       (if (> count 1)
-                           (let* ((start (car (second parts)))
-                                  (end (cdr (second parts))))
-                             (declare (type (integer 0 #.array-dimension-limit) start end))
-                             (passert (<= (- end start) 9))
-                             (let ((new-end (position #\0 time-string
-                                                      :test-not #'eql
-                                                      :start start
-                                                      :end end
-                                                      :from-end t)))
-                               (when new-end
-                                 (setf end (min (1+ new-end)))))
-                             (setf nsec (* (the (integer 0 999999999) (parse-integer time-string :start start :end end))
-                                           (aref #.(coerce #(1000000000 100000000 10000000
-                                                             1000000 100000 10000 1000 100 10 1)
-                                                           '(simple-array (signed-byte 32) (10)))
-                                                 (- end start)))))
-                           (setf nsec 0)))))
-                 (time-offset (start-end sign)
-                   (with-parts-and-count ((car start-end) (cdr start-end) time-separator)
-                     (passert (or (and allow-missing-timezone-part (zerop count))
-                                  (= count 1)
-                                  (= count 2)))
+       (let (year month day hour minute second nsec offset-hour offset-minute)
+         (declare (type (or null fixnum) start end year month day hour minute second offset-hour offset-minute)
+                  (type (or null (signed-byte 32)) nsec))
+         (macrolet ((passert (expression)
+                      `(unless ,expression
+                         (parse-error ',expression)))
+                    (parse-integer-into (start-end place &optional low-limit high-limit)
+                      (let ((entry (gensym "ENTRY"))
+                            (value (gensym "VALUE"))
+                            (pos (gensym "POS"))
+                            (start (gensym "START"))
+                            (end (gensym "END")))
+                        `(let ((,entry ,start-end))
+                           (if ,entry
+                               (let ((,start (car ,entry))
+                                     (,end (cdr ,entry)))
+                                 (multiple-value-bind (,value ,pos) (parse-integer time-string :start ,start :end ,end :junk-allowed t)
+                                   (passert (= ,pos ,end))
+                                   (setf ,place ,value)
+                                   ,(if (and low-limit high-limit)
+                                        `(passert (<= ,low-limit ,place ,high-limit))
+                                        (values))
+                                   (values)))
+                               (progn
+                                 (passert allow-missing-elements)
+                                 (values))))))
+                    (with-parts-and-count ((start end split-chars) &body body)
+                      `(multiple-value-bind (parts count) (split ,start ,end ,split-chars)
+                         (declare (ignorable count) (type fixnum count)
+                                  ;;(type #1=(cons (cons fixnum fixnum) (or null #1#)) parts)
+                                  (type list parts))
+                         ,@body)))
+           (labels ((split (start end chars)
+                      (declare (type fixnum start end))
+                      (unless (consp chars)
+                        (setf chars (list chars)))
+                      (loop with last-match = start
+                            with match-count of-type (integer 0 #.most-positive-fixnum) = 0
+                            for index of-type fixnum upfrom start
+                            while (< index end)
+                            when (member (aref time-string index) chars :test #'char-equal)
+                            collect (prog1 (if (< last-match index)
+                                               (cons last-match index)
+                                               nil)
+                                      (incf match-count)
+                                      (setf last-match (1+ index)))
+                            into result
+                            finally (return (values (if (zerop (- index last-match))
+                                                        result
+                                                        (prog1
+                                                            (nconc result (list (cons last-match index)))
+                                                          (incf match-count)))
+                                                    match-count))))
+                    (parse ()
+                      (with-parts-and-count (start end date-time-separator)
+                        (cond ((= count 2)
+                               (if (first parts)
+                                   (full-date (first parts))
+                                   (passert allow-missing-date-part))
+                               (if (second parts)
+                                   (full-time (second parts))
+                                   (passert allow-missing-time-part))
+                               (done))
+                              ((and (= count 1)
+                                    allow-missing-date-part
+                                    (find time-separator time-string
+                                          :start (car (first parts))
+                                          :end (cdr (first parts))))
+                               (full-time (first parts))
+                               (done))
+                              ((and (= count 1)
+                                    allow-missing-time-part
+                                    (find date-separator time-string
+                                          :start (car (first parts))
+                                          :end (cdr (first parts))))
+                               (full-date (first parts))
+                               (done)))
+                        (parse-error nil)))
+                    (full-date (start-end)
+                      (let ((parts (split (car start-end) (cdr start-end) date-separator)))
+                        (passert (%list-length= 3 parts))
+                        (date-fullyear (first parts))
+                        (date-month (second parts))
+                        (date-mday (third parts))))
+                    (date-fullyear (start-end)
+                      (parse-integer-into start-end year))
+                    (date-month (start-end)
+                      (parse-integer-into start-end month 1 12))
+                    (date-mday (start-end)
+                      (parse-integer-into start-end day 1 31))
+                    (full-time (start-end)
+                      (let ((start (car start-end))
+                            (end (cdr start-end)))
+                        (with-parts-and-count (start end (list #\Z #\- #\+))
+                          (let* ((zulup (find #\Z time-string :test #'char-equal :start start :end end))
+                                 (sign (unless zulup
+                                         (if (find #\+ time-string :test #'char-equal :start start :end end)
+                                             1
+                                             -1))))
+                            (passert (<= 1 count 2))
+                            (unless (and (eq (first parts) nil)
+                                         (not (rest parts)))
+                              ;; not a single #\Z
+                              (partial-time (first parts)))
+                            (when zulup
+                              (setf offset-hour 0
+                                    offset-minute 0))
+                            (if (= count 1)
+                                (passert (or zulup allow-missing-timezone-part))
+                                (let* ((entry (second parts))
+                                       (start (car entry))
+                                       (end (cdr entry)))
+                                  (declare (type fixnum start end))
+                                  (passert (or zulup
+                                               (not (zerop (- end start)))))
+                                  (unless zulup
+                                    (time-offset (second parts) sign))))))))
+                    (partial-time (start-end)
+                      (with-parts-and-count ((car start-end) (cdr start-end) time-separator)
+                        (passert (eql count 3))
+                        (time-hour (first parts))
+                        (time-minute (second parts))
+                        (time-second (third parts))))
+                    (time-hour (start-end)
+                      (parse-integer-into start-end hour 0 23))
+                    (time-minute (start-end)
+                      (parse-integer-into start-end minute 0 59))
+                    (time-second (start-end)
+                      (with-parts-and-count ((car start-end) (cdr start-end) '(#\. #\,))
+                        (passert (<= 1 count 2))
+                        (let ((*read-eval* nil))
+                          (parse-integer-into (first parts) second 0 59)
+                          (if (> count 1)
+                              (let* ((start (car (second parts)))
+                                     (end (cdr (second parts))))
+                                (declare (type (integer 0 #.array-dimension-limit) start end))
+                                (passert (<= (- end start) 9))
+                                (let ((new-end (position #\0 time-string
+                                                         :test-not #'eql
+                                                         :start start
+                                                         :end end
+                                                         :from-end t)))
+                                  (when new-end
+                                    (setf end (min (1+ new-end)))))
+                                (setf nsec (* (the (integer 0 999999999) (parse-integer time-string :start start :end end))
+                                              (aref #.(coerce #(1000000000 100000000 10000000
+                                                                1000000 100000 10000 1000 100 10 1)
+                                                              '(simple-array (signed-byte 32) (10)))
+                                                    (- end start)))))
+                              (setf nsec 0)))))
+                    (time-offset (start-end sign)
+                      (with-parts-and-count ((car start-end) (cdr start-end) time-separator)
+                        (passert (or (and allow-missing-timezone-part (zerop count))
+                                     (= count 1)
+                                     (= count 2)))
 
-                     (cond
-                       ((= count 2)
-                        ;; hh:mm offset
-                        (parse-integer-into (first parts) offset-hour 0 23)
-                        (parse-integer-into (second parts) offset-minute 0 59))
-                       ((= (- (cdar parts) (caar parts)) 4)
-                        ;; hhmm offset
-                        (parse-integer-into (cons (caar parts)
-                                                  (+ (caar parts) 2))
-                                            offset-hour 0 23)
-                        (parse-integer-into (cons (+ (caar parts) 2)
-                                                  (+ (caar parts) 4))
-                                            offset-minute 0 59))
-                       ((= (- (cdar parts) (caar parts)) 2)
-                        ;; hh offset
-                        (parse-integer-into (cons (caar parts)
-                                                  (+ (caar parts) 2))
-                                            offset-hour 0 23)
-                        (setf offset-minute 0)))
+                        (cond
+                          ((= count 2)
+                           ;; hh:mm offset
+                           (parse-integer-into (first parts) offset-hour 0 23)
+                           (parse-integer-into (second parts) offset-minute 0 59))
+                          ((= (- (cdar parts) (caar parts)) 4)
+                           ;; hhmm offset
+                           (parse-integer-into (cons (caar parts)
+                                                     (+ (caar parts) 2))
+                                               offset-hour 0 23)
+                           (parse-integer-into (cons (+ (caar parts) 2)
+                                                     (+ (caar parts) 4))
+                                               offset-minute 0 59))
+                          ((= (- (cdar parts) (caar parts)) 2)
+                           ;; hh offset
+                           (parse-integer-into (cons (caar parts)
+                                                     (+ (caar parts) 2))
+                                               offset-hour 0 23)
+                           (setf offset-minute 0)))
 
-                     (setf offset-hour (* offset-hour sign)
-                           offset-minute (* offset-minute sign))))
-                 (parse-error (failure)
-                   (if fail-on-error
-                       (error 'invalid-timestring :timestring time-string :failure failure)
-                       (return-from %split-timestring nil)))
-                 (done ()
-                   (return-from %split-timestring (list year month day hour minute second nsec offset-hour offset-minute))))
-          (parse))))))
+                        (setf offset-hour (* offset-hour sign)
+                              offset-minute (* offset-minute sign))))
+                    (parse-error (failure)
+                      (if fail-on-error
+                          (error 'invalid-timestring :timestring time-string :failure failure)
+                          (return-from %split-timestring nil)))
+                    (done ()
+                      (return-from %split-timestring (list year month day hour minute second nsec offset-hour offset-minute))))
+             (parse))))))
 
 (defun parse-rfc3339-timestring (timestring &key (fail-on-error t)
-                                            (allow-missing-time-part nil))
+                                             (allow-missing-time-part nil))
   (parse-timestring timestring :fail-on-error fail-on-error
-                    :allow-missing-timezone-part nil
-                    :allow-missing-time-part allow-missing-time-part
-                    :allow-missing-date-part nil))
+                               :allow-missing-timezone-part nil
+                               :allow-missing-time-part allow-missing-time-part
+                               :allow-missing-date-part nil))
 
 (defun parse-timestring (timestring &key
-                         start
-                         end
-                         (fail-on-error t)
-                         (time-separator #\:)
-                         (date-separator #\-)
-                         (date-time-separator #\T)
-                         (allow-missing-elements t)
-                         (allow-missing-date-part allow-missing-elements)
-                         (allow-missing-time-part allow-missing-elements)
-                         (allow-missing-timezone-part allow-missing-elements)
-                         (offset 0))
+                                start
+                                end
+                                (fail-on-error t)
+                                (time-separator #\:)
+                                (date-separator #\-)
+                                (date-time-separator #\T)
+                                (allow-missing-elements t)
+                                (allow-missing-date-part allow-missing-elements)
+                                (allow-missing-time-part allow-missing-elements)
+                                (allow-missing-timezone-part allow-missing-elements)
+                                (offset 0))
   "Parse a timestring and return the corresponding TIMESTAMP. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value, and timezone offset is 0 (UTC) unless explicitly specified in the input string."
   (let ((parts (%split-timestring (coerce timestring 'simple-string)
                                   :start (or start 0)
@@ -1607,6 +1607,14 @@ It should be an instance of a class that responds to one or more of the methods 
                             (:nsec nsec)
                             (:usec (floor nsec 1000))
                             (:msec (floor nsec 1000000))
+                            (:p (floor nsec (case (second fmt)
+                                                    (1 100000000)
+                                                    (2 10000000)
+                                                    (3 1000000)
+                                                    (4 100000)
+                                                    (5 10000)
+                                                    (6 1000)
+                                                    (t 1000))))
                             (:sec sec)
                             (:min minute)
                             (:hour hour)
@@ -1633,8 +1641,8 @@ It should be an instance of a class that responds to one or more of the methods 
                             val))))))))))))
 
 (defun format-timestring (destination timestamp &key
-                          (format +iso-8601-format+)
-                          (timezone *default-timezone*))
+                                            (format +iso-8601-format+)
+                                            (timezone *default-timezone*))
   "Constructs a string representation of TIMESTAMP according to FORMAT and returns it.  If destination is T, the string is written to *standard-output*.  If destination is a stream, the string is written to the stream.
 
 FORMAT is a list containing one or more of strings, characters, and keywords. Strings and characters are output literally, while keywords are replaced by the values here:
@@ -1680,8 +1688,8 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
     result))
 
 (define-compiler-macro format-timestring (destination timestamp &key
-                                                 (format +iso-8601-format+ format-supplied-p)
-                                                 (timezone '*default-timezone*))
+                                                      (format +iso-8601-format+ format-supplied-p)
+                                                      (timezone '*default-timezone*))
   (let ((destination (if (eq t destination) '*standard-output* destination))
         (format (if (stringp format)
                     `(quote ,(parse-string-format format))
@@ -1693,7 +1701,7 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
         `(%construct-timestring ,timestamp ,format ,timezone))))
 
 (defun format-rfc1123-timestring (destination timestamp &key
-                                  (timezone *default-timezone*))
+                                                    (timezone *default-timezone*))
   (format-timestring destination timestamp
                      :format +rfc-1123-format+
                      :timezone timezone))
@@ -1702,35 +1710,35 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
   (format-rfc1123-timestring nil timestamp))
 
 (defun format-rfc3339-timestring (destination timestamp &key
-                                  omit-date-part
-                                  omit-time-part
-                                  (omit-timezone-part omit-time-part)
-                                  (use-zulu t)
-                                  (timezone *default-timezone*))
+                                                    omit-date-part
+                                                    omit-time-part
+                                                    (omit-timezone-part omit-time-part)
+                                                    (use-zulu t)
+                                                    (timezone *default-timezone*))
   "Formats a timestring in the RFC 3339 format, a restricted form of the ISO-8601 timestring specification for Internet timestamps."
   (let ((rfc3339-format
-         (if (and use-zulu
-                  (not omit-date-part)
-                  (not omit-time-part)
-                  (not omit-timezone-part))
-             +rfc3339-format+ ; micro optimization
-             (append
-              (unless omit-date-part
-                '((:year 4) #\-
-                  (:month 2) #\-
-                  (:day 2)))
-              (unless (or omit-date-part
-                          omit-time-part)
-                '(#\T))
-              (unless omit-time-part
-                '((:hour 2) #\:
-                  (:min 2) #\:
-                  (:sec 2) #\.
-                  (:usec 6)))
-              (unless omit-timezone-part
-                (if use-zulu
-                    '(:gmt-offset-or-z)
-                    '(:gmt-offset)))))))
+          (if (and use-zulu
+                   (not omit-date-part)
+                   (not omit-time-part)
+                   (not omit-timezone-part))
+              +rfc3339-format+ ; micro optimization
+              (append
+               (unless omit-date-part
+                 '((:year 4) #\-
+                   (:month 2) #\-
+                   (:day 2)))
+               (unless (or omit-date-part
+                           omit-time-part)
+                 '(#\T))
+               (unless omit-time-part
+                 '((:hour 2) #\:
+                   (:min 2) #\:
+                   (:sec 2) #\.
+                   (:usec 6)))
+               (unless omit-timezone-part
+                 (if use-zulu
+                     '(:gmt-offset-or-z)
+                     '(:gmt-offset)))))))
     (format-timestring destination timestamp :format rfc3339-format :timezone timezone)))
 
 (defun to-rfc3339-timestring (timestamp)
@@ -1741,20 +1749,20 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
   (parse-timestring
    (with-output-to-string (str)
      (loop for c = (read-char stream nil)
-        while (and c (or (digit-char-p c) (member c '(#\: #\T #\t #\: #\- #\+ #\Z #\.))))
-        do (princ c str)
-        finally (when c (unread-char c stream))))
+           while (and c (or (digit-char-p c) (member c '(#\: #\T #\t #\: #\- #\+ #\Z #\.))))
+           do (princ c str)
+           finally (when c (unread-char c stream))))
    :allow-missing-elements t))
 
 (defun %read-universal-time (stream char arg)
   (declare (ignore char arg))
   (universal-to-timestamp
-              (parse-integer
-               (with-output-to-string (str)
-                 (loop for c = (read-char stream nil)
-                       while (and c (digit-char-p c))
-                       do (princ c str)
-                       finally (when c (unread-char c stream)))))))
+   (parse-integer
+    (with-output-to-string (str)
+      (loop for c = (read-char stream nil)
+            while (and c (digit-char-p c))
+            do (princ c str)
+            finally (when c (unread-char c stream)))))))
 
 (defun enable-read-macros ()
   "Enables the local-time reader macros for literal timestamps and universal time."
@@ -1768,11 +1776,11 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
   "Print the TIMESTAMP object using the standard reader notation"
   (cond
     (*debug-timestamp*
-       (print-unreadable-object (object stream :type t)
-         (format stream "~d/~d/~d"
-                 (day-of object)
-                 (sec-of object)
-                 (nsec-of object))))
+     (print-unreadable-object (object stream :type t)
+       (format stream "~d/~d/~d"
+               (day-of object)
+               (sec-of object)
+               (nsec-of object))))
     (t
      (when *print-escape*
        (princ "@" stream))

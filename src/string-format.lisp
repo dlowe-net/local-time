@@ -30,19 +30,23 @@
   +ss+
   +l+
   +cL+
+  +u+
   +t+
   +tt+
   +cT+
   +cTcT+
+  +z+
   +cZ+
   +o+
+  +cO+
   +cS+
   +ESCAPE+
   +LITERAL-START+
   +LITERAL+
   +LITERAL-END+)
 
-;; from fast-http
+;;adopted from fast-http
+;;#####
 (defmacro casev (keyform &body clauses)
   (alexandria:once-only (keyform)
     (flet ((get-val (val)
@@ -86,6 +90,13 @@
      ,(if advance
           '(go :iteration-exit)
           `(go ,state))))
+;;#####
+
+(defmacro while (condition &body body)
+  `(loop (if (not ,condition)
+             (return)
+             (progn
+               ,@body))))
 
 (defmacro dispatch-cchar (&key (advance t))
   `(case cchar
@@ -107,14 +118,20 @@
       (go-state  +l+ :advance ,advance))
      (#\L
       (go-state  +cL+ :advance ,advance))
+     (#\u
+      (go-state  +u+ :advance ,advance))
      (#\t
       (go-state  +t+ :advance ,advance))
      (#\T
       (go-state  +cT+ :advance ,advance))
      (#\Z
       (go-state  +cZ+ :advance ,advance))
+     (#\z
+      (go-state  +cZ+ :advance ,advance))
      (#\o
       (go-state  +o+ :advance ,advance))
+     (#\O
+      (go-state  +cO+ :advance ,advance))
      (#\S
       (go-state  +cS+ :advance ,advance))
      (#\\
@@ -128,6 +145,14 @@
   `(if (>= (1+ i) (length string))
        :eof
        (aref string (1+  i))))
+
+(defmacro adv-char ()
+  `(if (>= (1+ i) (length string))
+       :eof
+       (incf i)))
+
+(defmacro current-char ()
+  `(if (= i (length string)) :eof (aref string i)))
 
 (defun literal-character-p (char)
   (case char
@@ -149,13 +174,19 @@
      nil)
     (#\L
      nil)
+    (#\u
+     nil)
     (#\t
      nil)
     (#\T
      nil)
     (#\Z
      nil)
+    (#\z
+     nil)
     (#\o
+     nil)
+    (#\O
      nil)
     (#\S
      nil)
@@ -174,7 +205,7 @@ Escape character is \\"
     (let ((current-literal-buffer)
           (state +LITERAL-start+))
       (loop for i from 0 to (length string)
-            as cchar = (if (= i (length string)) :eof (aref string i)) do
+            as cchar = (current-char) do
                (if (eq cchar :eof)
                    (setf state :eof))
                (tagbody
@@ -273,10 +304,10 @@ Escape character is \\"
                     (+yyy+
                      (if (eql (next-char) #\y)
                          (go-state +yyyy+)
-                         (progn                           
+                         (progn
                            (add-format-part :short-year)
                            (go-state +literal+ :advance nil)
-                           (go-state +literal-start+))))                    
+                           (go-state +literal-start+))))
                     (+yyyy+
                      (add-format-part '(:year 4))
                      (go-state +literal-start+))
@@ -285,6 +316,13 @@ Escape character is \\"
                      (go-state +literal-start+))
                     (+cL+
                      (add-format-part '(:msec 2))
+                     (go-state +literal-start+))
+                    (+u+
+                     (let ((count 1))
+                       (while (eql (next-char) #\u)
+                         (incf count)
+                         (adv-char))
+                       (add-format-part `(:p ,count)))
                      (go-state +literal-start+))
                     (+t+
                      (if (eql (next-char) #\t)
@@ -304,11 +342,17 @@ Escape character is \\"
                     (+cTcT+
                      (add-format-part :campm)
                      (go-state +literal-start+))
+                    (+z+
+                     (add-format-part :gmt-offset-or-z)
+                     (go-state +literal-start+))
                     (+cZ+
                      (add-format-part :timezone)
                      (go-state +literal-start+))
                     (+o+
-                     (add-format-part :gmt-offset-or-z)
+                     (add-format-part :gmt-offset)
+                     (go-state +literal-start+))
+                    (+cO+
+                     (add-format-part :gmt-offset-hhmm)
                      (go-state +literal-start+))
                     (+cS+
                      (add-format-part :ordinal-day)
@@ -330,10 +374,10 @@ Escape character is \\"
                      (dispatch-cchar :advance nil))
                     (+escape+
                      (go-state +literal+))
-                    (:eof 
-                          (when current-literal-buffer
-                            (let ((char-list (funcall current-literal-buffer)))
-                              (add-format-part (coerce char-list 'string)))
-                            (setf current-literal-buffer nil))
-                          (return)))
+                    (:eof
+                     (when current-literal-buffer
+                       (let ((char-list (funcall current-literal-buffer)))
+                         (add-format-part (coerce char-list 'string)))
+                       (setf current-literal-buffer nil))
+                     (return)))
                 :iteration-exit)))))
