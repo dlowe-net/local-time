@@ -137,6 +137,8 @@
   #(:sunday :monday :tuesday :wednesday :thursday :friday :saturday))
 (defparameter +short-day-names+
   #("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat"))
+(defparameter +minimal-day-names+
+  #("Su" "Mo" "Tu" "We" "Th" "Fr" "Sa"))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defconstant +months-per-year+ 12)
@@ -1615,6 +1617,8 @@ It should be an instance of a class that responds to one or more of the methods 
                (princ (aref +day-names+ weekday) result))
               ((eql fmt :short-weekday)
                (princ (aref +short-day-names+ weekday) result))
+	      ((eql fmt :minimal-weekday)
+               (princ (aref +minimal-day-names+ weekday) result))
               ((eql fmt :timezone)
                (princ abbrev result))
               ((eql fmt :ampm)
@@ -1675,6 +1679,7 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :ISO-WEEK-DAY      *ISO compatible weekday number (monday=1, sunday=7)
   :LONG-WEEKDAY      long form of weekday (e.g. Sunday, Monday)
   :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
+  :MINIMAL-WEEKDAY   minimal form of weekday (e.g. Su, Mo)
   :LONG-MONTH        long form of month (e.g. January, February)
   :SHORT-MONTH       short form of month (e.g. Jan, Feb)
   :HOUR12            *hour on a 12-hour clock
