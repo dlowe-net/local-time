@@ -65,8 +65,8 @@
 (declaim (inline now format-timestring %get-current-time
                  format-rfc3339-timestring to-rfc3339-timestring
                  format-rfc1123-timestring to-rfc1123-timestring)
-         (ftype (function (&rest t) simple-base-string) format-rfc3339-timestring)
-         (ftype (function (&rest t) simple-base-string) format-timestring)
+         (ftype (function (&rest t) string) format-rfc3339-timestring)
+         (ftype (function (&rest t) string) format-timestring)
          (ftype (function (&rest t) fixnum) local-timezone)
          (ftype (function (&rest t) (values
                                      timezone-offset
@@ -108,6 +108,22 @@
           (when path
             (try (merge-pathnames "../" path)))))))
 
+;;; Per Naggum we use the terms Political Time and Scientific Time to
+;;; distinguish between two ways to think about adjusting times around
+;;; DST boundaries.  If *use-political-time* is nil, we do not
+;;; concider changes in timezone offset when adjusting local-time
+;;; values.
+
+(defparameter *use-political-time* t)
+
+(defmacro with-scientific-time (&rest body)
+  `(let ((*use-political-time* nil))
+     ,@body))
+
+(defmacro with-political-time (&rest body)
+  `(let ((*use-political-time* t))
+     ,@body))
+
 ;;; Month information
 (defparameter +month-names+
   #("" "January" "February" "March" "April" "May" "June" "July" "August"
@@ -121,6 +137,8 @@
   #(:sunday :monday :tuesday :wednesday :thursday :friday :saturday))
 (defparameter +short-day-names+
   #("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat"))
+(defparameter +minimal-day-names+
+  #("Su" "Mo" "Tu" "We" "Th" "Fr" "Sa"))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defconstant +months-per-year+ 12)
@@ -221,7 +239,7 @@
   "Returns a string created from the vector of unsigned bytes VECTOR starting at OFFSET which is terminated by a 0."
   (declare (type (vector (unsigned-byte 8)) vector))
   (let* ((null-pos (or (position 0 vector :start offset) (length vector)))
-         (result (make-string (- null-pos offset) :element-type 'base-char)))
+         (result (make-string (- null-pos offset) :element-type 'character)))
     (loop for input-index :from offset :upto (1- null-pos)
           for output-index :upfrom 0
           do (setf (aref result output-index) (code-char (aref vector input-index))))
@@ -412,18 +430,22 @@ In other words:
     (flet ((visitor (file)
              (let* ((full-name (subseq (princ-to-string file) cutoff-position))
                     (name (pathname-name file))
-                    (timezone (%realize-timezone (make-timezone :path file :name name))))
-               (setf (gethash full-name *location-name->timezone*) timezone)
-               (map nil (lambda (subzone)
-                          (push timezone (gethash (subzone-abbrev subzone)
-                                                  *abbreviated-subzone-name->timezone-list*)))
-                    (timezone-subzones timezone)))))
+		    timezone)
+	       (handler-case
+		   (progn
+		     (setf timezone (%realize-timezone (make-timezone :path file :name name)))
+		     (setf (gethash full-name *location-name->timezone*) timezone)
+ 		     (map nil (lambda (subzone)
+				(push timezone (gethash (subzone-abbrev subzone)
+							*abbreviated-subzone-name->timezone-list*)))
+ 			  (timezone-subzones timezone)))
+		 (invalid-timezone-file () nil)))))
       (setf *location-name->timezone* (make-hash-table :test 'equal))
       (setf *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal))
       (cl-fad:walk-directory root-directory #'visitor :directories nil
                              :test (lambda (file)
-                                     (not (find "Etc" (pathname-directory file) :test #'string=))))
-      (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) #'visitor :directories nil))))
+                                     (not (find "etc" (pathname-directory file) :test #'string=))))
+      (cl-fad:walk-directory (merge-pathnames "/etc/" root-directory) #'visitor :directories nil))))
 
 (defmacro make-timestamp (&rest args)
   `(make-instance 'timestamp ,@args))
@@ -509,7 +531,7 @@ In other words:
             timestamp-parts)
     (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p offset)
         (decode-timestamp timestamp :timezone timezone)
-      (declare (ignore nsec day-of-week daylight-saving-time-p))
+      (declare (ignore nsec day-of-week daylight-saving-time-p offset))
       (encode-timestamp 0
                         (if (> part-count 0) 0 sec)
                         (if (> part-count 1) 0 min)
@@ -517,7 +539,6 @@ In other words:
                         (if (> part-count 3) 1 day)
                         (if (> part-count 4) 1 month)
                         year
-                        :offset offset
                         :timezone timezone
                         :into into))))
 
@@ -532,7 +553,7 @@ In other words:
             timestamp-parts)
     (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p offset)
         (decode-timestamp timestamp :timezone timezone)
-      (declare (ignore nsec day-of-week daylight-saving-time-p))
+      (declare (ignore nsec day-of-week daylight-saving-time-p offset))
       (let ((month (if (> part-count 4) 12 month)))
         (encode-timestamp 999999999
                           (if (> part-count 0) 59 sec)
@@ -541,7 +562,6 @@ In other words:
                           (if (> part-count 3) (days-in-month month year) day)
                           month
                           year
-                          :offset offset
                           :timezone timezone
                           :into into)))))
 
@@ -771,17 +791,26 @@ the previous day given by OFFSET."
                                                           (:minute +seconds-per-minute+)
                                                           (:hour +seconds-per-hour+))))
                                        +seconds-per-day+)
-                              (setf part :day
-                                    offset days-offset
-                                    sec new-sec)
-                              (go top)))
+			      (if *use-political-time*
+				  (progn
+				    (setf part :day
+					  offset days-offset
+					  sec new-sec)
+				    (when (= offset 0)
+				      (return-from direct-adjust (values nsec sec day)))
+				    (go top))
+				  (progn
+				    (setf sec new-sec)
+ 				    (incf day days-offset)
+				    (return-from direct-adjust (values nsec sec day))))))
                            (:day
                             (incf day offset)
                             (setf new-utc-offset (or utc-offset
                                                      (timestamp-subtimezone (make-timestamp :nsec nsec :sec sec :day day)
                                                                             timezone)))
-                            (when (not (= old-utc-offset
-                                          new-utc-offset))
+                            (when (and *use-political-time*
+				       (not (= old-utc-offset
+					       new-utc-offset)))
                               ;; We hit the DST boundary. We need to restart again
                               ;; with :sec, but this time we know both old and new
                               ;; UTC offset will be the same, so it's safe to do
@@ -1563,7 +1592,7 @@ It should be an instance of a class that responds to one or more of the methods 
         (%timestamp-decode-iso-week timestamp)
       (let ((*print-pretty* nil)
             (*print-circle* nil))
-        (with-output-to-string (result nil :element-type 'base-char)
+        (with-output-to-string (result nil :element-type 'character)
           (dolist (fmt format)
             (cond
               ((member fmt '(:gmt-offset :gmt-offset-or-z :gmt-offset-hhmm))
@@ -1588,6 +1617,8 @@ It should be an instance of a class that responds to one or more of the methods 
                (princ (aref +day-names+ weekday) result))
               ((eql fmt :short-weekday)
                (princ (aref +short-day-names+ weekday) result))
+	      ((eql fmt :minimal-weekday)
+               (princ (aref +minimal-day-names+ weekday) result))
               ((eql fmt :timezone)
                (princ abbrev result))
               ((eql fmt :ampm)
@@ -1648,6 +1679,7 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :ISO-WEEK-DAY      *ISO compatible weekday number (monday=1, sunday=7)
   :LONG-WEEKDAY      long form of weekday (e.g. Sunday, Monday)
   :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
+  :MINIMAL-WEEKDAY   minimal form of weekday (e.g. Su, Mo)
   :LONG-MONTH        long form of month (e.g. January, February)
   :SHORT-MONTH       short form of month (e.g. Jan, Feb)
   :HOUR12            *hour on a 12-hour clock
