@@ -793,18 +793,18 @@ the previous day given by OFFSET."
                                                           (:minute +seconds-per-minute+)
                                                           (:hour +seconds-per-hour+))))
                                        +seconds-per-day+)
-                              (if *use-political-time*
-                                  (progn
-                                    (setf part :day
-                                          offset days-offset
-                                          sec new-sec)
-                                    (when (= offset 0)
-                                      (return-from direct-adjust (values nsec sec day)))
-                                    (go top))
-                                  (progn
-                                    (setf sec new-sec)
-                                    (incf day days-offset)
-                                    (return-from direct-adjust (values nsec sec day))))))
+                              (cond
+                                (*use-political-time*
+                                 (setf part :day
+                                       offset days-offset
+                                       sec new-sec)
+                                 (when (= offset 0)
+                                   (return-from direct-adjust (values nsec sec day)))
+                                 (go top))
+                                (t
+                                 (setf sec new-sec)
+                                 (incf day days-offset)
+                                 (return-from direct-adjust (values nsec sec day))))))
                            (:day
                             (incf day offset)
                             (setf new-utc-offset (or utc-offset
