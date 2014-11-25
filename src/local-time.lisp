@@ -430,16 +430,16 @@ In other words:
     (flet ((visitor (file)
              (let* ((full-name (subseq (princ-to-string file) cutoff-position))
                     (name (pathname-name file))
-		    timezone)
-	       (handler-case
-		   (progn
-		     (setf timezone (%realize-timezone (make-timezone :path file :name name)))
-		     (setf (gethash full-name *location-name->timezone*) timezone)
- 		     (map nil (lambda (subzone)
-				(push timezone (gethash (subzone-abbrev subzone)
-							*abbreviated-subzone-name->timezone-list*)))
- 			  (timezone-subzones timezone)))
-		 (invalid-timezone-file () nil)))))
+                    timezone)
+               (handler-case
+                   (progn
+                     (setf timezone (%realize-timezone (make-timezone :path file :name name)))
+                     (setf (gethash full-name *location-name->timezone*) timezone)
+                     (map nil (lambda (subzone)
+                                (push timezone (gethash (subzone-abbrev subzone)
+                                                        *abbreviated-subzone-name->timezone-list*)))
+                          (timezone-subzones timezone)))
+                 (invalid-timezone-file () nil)))))
       (setf *location-name->timezone* (make-hash-table :test 'equal))
       (setf *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal))
       (cl-fad:walk-directory root-directory #'visitor :directories nil
@@ -741,10 +741,10 @@ the previous day given by OFFSET."
   (labels ((direct-adjust (part offset nsec sec day)
              (cond ((eq part :day-of-week)
                     (with-decoded-timestamp (:day-of-week day-of-week
-                                             :nsec nsec :sec sec :minute minute :hour hour
-                                             :day day :month month :year year
-                                             :timezone timezone :offset utc-offset)
-                        time
+                                                          :nsec nsec :sec sec :minute minute :hour hour
+                                                          :day day :month month :year year
+                                                          :timezone timezone :offset utc-offset)
+                      time
                       (let ((position (position offset +day-names-as-keywords+ :test #'eq)))
                         (assert position (position) "~S is not a valid day name" offset)
                         (let ((offset (+ (- (if (zerop day-of-week)
@@ -776,7 +776,7 @@ the previous day given by OFFSET."
                                               (timestamp-subtimezone time timezone)))
                           new-utc-offset)
                       (tagbody
-                         top
+                       top
                          (ecase part
                            (:nsec
                             (multiple-value-bind (sec-offset new-nsec)
@@ -793,26 +793,26 @@ the previous day given by OFFSET."
                                                           (:minute +seconds-per-minute+)
                                                           (:hour +seconds-per-hour+))))
                                        +seconds-per-day+)
-			      (if *use-political-time*
-				  (progn
-				    (setf part :day
-					  offset days-offset
-					  sec new-sec)
-				    (when (= offset 0)
-				      (return-from direct-adjust (values nsec sec day)))
-				    (go top))
-				  (progn
-				    (setf sec new-sec)
- 				    (incf day days-offset)
-				    (return-from direct-adjust (values nsec sec day))))))
+                              (if *use-political-time*
+                                  (progn
+                                    (setf part :day
+                                          offset days-offset
+                                          sec new-sec)
+                                    (when (= offset 0)
+                                      (return-from direct-adjust (values nsec sec day)))
+                                    (go top))
+                                  (progn
+                                    (setf sec new-sec)
+                                    (incf day days-offset)
+                                    (return-from direct-adjust (values nsec sec day))))))
                            (:day
                             (incf day offset)
                             (setf new-utc-offset (or utc-offset
                                                      (timestamp-subtimezone (make-timestamp :nsec nsec :sec sec :day day)
                                                                             timezone)))
                             (when (and *use-political-time*
-				       (not (= old-utc-offset
-					       new-utc-offset)))
+                                       (not (= old-utc-offset
+                                               new-utc-offset)))
                               ;; We hit the DST boundary. We need to restart again
                               ;; with :sec, but this time we know both old and new
                               ;; UTC offset will be the same, so it's safe to do
@@ -825,8 +825,8 @@ the previous day given by OFFSET."
 
            (safe-adjust (part offset time)
              (with-decoded-timestamp (:nsec nsec :sec sec :minute minute :hour hour :day day
-                                      :month month :year year :timezone timezone :offset utc-offset)
-                 time
+                                            :month month :year year :timezone timezone :offset utc-offset)
+               time
                (multiple-value-bind (month-new year-new)
                    (%normalize-month-year-pair
                     (+ (ecase part
@@ -1619,7 +1619,7 @@ It should be an instance of a class that responds to one or more of the methods 
                (princ (aref +day-names+ weekday) result))
               ((eql fmt :short-weekday)
                (princ (aref +short-day-names+ weekday) result))
-	      ((eql fmt :minimal-weekday)
+              ((eql fmt :minimal-weekday)
                (princ (aref +minimal-day-names+ weekday) result))
               ((eql fmt :timezone)
                (princ abbrev result))
