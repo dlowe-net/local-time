@@ -239,7 +239,7 @@
   "Returns a string created from the vector of unsigned bytes VECTOR starting at OFFSET which is terminated by a 0."
   (declare (type (vector (unsigned-byte 8)) vector))
   (let* ((null-pos (or (position 0 vector :start offset) (length vector)))
-         (result (make-string (- null-pos offset) :element-type 'character)))
+         (result (make-string (- null-pos offset))))
     (loop for input-index :from offset :upto (1- null-pos)
           for output-index :upfrom 0
           do (setf (aref result output-index) (code-char (aref vector input-index))))
@@ -1594,7 +1594,7 @@ It should be an instance of a class that responds to one or more of the methods 
         (%timestamp-decode-iso-week timestamp)
       (let ((*print-pretty* nil)
             (*print-circle* nil))
-        (with-output-to-string (result nil :element-type 'character)
+        (with-output-to-string (result nil)
           (dolist (fmt format)
             (cond
               ((member fmt '(:gmt-offset :gmt-offset-or-z :gmt-offset-hhmm))
