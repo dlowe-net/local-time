@@ -23,7 +23,7 @@
        "Thu Jun  5 04:03:02 2008"
        (format-timestring nil test-timestamp :format +asctime-format+)
 
-       "Thu, 05 Jun 2008 04:03:02 UTC"
+       "Thu, 05 Jun 2008 04:03:02 +0000"
        (format-timestring nil test-timestamp :format +rfc-1123-format+)
 
        ""
