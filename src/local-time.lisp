@@ -445,7 +445,7 @@ In other words:
       (cl-fad:walk-directory root-directory #'visitor :directories nil
                              :test (lambda (file)
                                      (not (find "etc" (pathname-directory file) :test #'string=))))
-      (cl-fad:walk-directory (merge-pathnames "/etc/" root-directory) #'visitor :directories nil))))
+      (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) #'visitor :directories nil))))
 
 (defmacro make-timestamp (&rest args)
   `(make-instance 'timestamp ,@args))
