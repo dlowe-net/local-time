@@ -122,6 +122,18 @@
          (modified-timestamp (adjust-timestamp timestamp (timezone +utc-zone+) (offset :day-of-week :wednesday))))
     (is (timestamp= (parse-timestring "2014-01-01T00:00:00.000000+00:00") modified-timestamp))))
 
+(deftest adjust-timestamp/across-dst/scientific ()
+  (let* ((local-time::*use-political-time* nil)
+         (timestamp (parse-timestring "2014-03-09T01:00:00.000000-05:00"))
+         (modified-timestamp (adjust-timestamp timestamp (timezone eastern-tz) (offset :day 1))))
+    (is (timestamp= (parse-timestring "2014-03-10T02:00:00.000000-04:00") modified-timestamp))))
+
+(deftest adjust-timestamp/across-dst/political ()
+  (let* ((eastern-tz (local-time:find-timezone-by-location-name "US/Eastern"))
+         (timestamp (parse-timestring "2014-03-09T01:00:00.000000-05:00"))
+         (modified-timestamp (adjust-timestamp timestamp (timezone eastern-tz) (offset :day 1))))
+    (is (timestamp= (parse-timestring "2014-03-10T01:00:00.000000-04:00") modified-timestamp))))
+
 #+nil
 (deftest test/adjust-days ()
   (let ((sunday (parse-timestring "2006-12-17T01:02:03Z")))
