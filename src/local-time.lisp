@@ -1058,6 +1058,14 @@ It should be an instance of a class that responds to one or more of the methods 
   "Returns a timestamp representing the present day."
   (clock-today *clock*))
 
+(defgeneric clock-now (clock)
+  (:documentation "Returns a timestamp for the current time given a clock."))
+
+(defgeneric clock-today (clock)
+  (:documentation "Returns a timestamp for the current date given a
+  clock.  The date is encoded by convention as a timestamp with the
+  time set to 12:00UTC."))
+
 (defmethod clock-now (clock)
   (declare (ignore clock))
   (multiple-value-bind (sec nsec) (%get-current-time)
