@@ -58,6 +58,7 @@
            #:clock-now
            #:clock-today
            #:find-timezone-by-location-name
+           #:reread-timezone-repository
            #:now
            #:today
            #:enable-read-macros

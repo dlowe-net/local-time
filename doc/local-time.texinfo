@@ -110,12 +110,20 @@ upon Erik Naggum's paper @emph{The Long Painful History of Time}
 such as the seperation of days and seconds, the choice of 2000-03-01
 as the standard epoch, and the timestring format.
 
-@quotation Caveats
+@c ===================================================================
+@node Portability
+@chapter Portability
+
 This implementation assumes that time zone information is stored in
 the tzfile format. The default timezone is loaded from
 /etc/localtime. On non-POSIX systems, this will certainly give
 different results than the system time handling.
-@end quotation
+
+local-time currently supports subsecond precision clocks with allegro,
+cmucl, sbcl, and non-Windows ccl.  All others will be able to retrieve
+the time with second precision using @code{get-universal-time}.  You
+may add support for your own implementation by implementing the clock
+generic protocol documented here.
 
 @c ===================================================================
 @node Public API
@@ -208,6 +216,24 @@ the zoneinfo directory on this system.  If @var{load} is true, load
 immediately.
 
 @end defmac
+
+@itindex find-timezone-by-location-name
+@defun find-timezone-by-location-name name
+
+Returns the timezone found at the location name (such as
+@code{US/Eastern}).  @code{reread-timezone-repository} must be called
+before this function is used.
+
+@end defun
+
+@itindex reread-timezone-repository
+@defun reread-timezone-repository &key (timezone-repository *default-timezone-repository-path*)
+
+Walks the current repository, reading all tzinfo files updating
+indexes.  The default timezone repository is set to the zoneinfo/
+directory of the local-time system.
+
+@end defun
 
 @c ===================================================================
 @node Creating timestamp Objects
@@ -436,6 +462,20 @@ Returns the decoded part of the timestamp.
 @node Manipulating Date and Time Values
 @section Manipulating Date and Time Values
 
+@itindex *use-political-time*
+@defvr Default *use-political-time*
+@defmacx with-scientific-time &rest body
+@defmacx with-political-time &rest body
+When political time is enabled, changes in timezone offset are
+considered when adjusting timestamp values.  Adding 24 hours to a
+timestamp across a DST boundary will result in the same wall-clock
+time.
+
+When scientific time is used, changes in timezone offset are not
+considered.  Adding 24 hours to a timestamp across a DST boundary will
+result in a different wall-clock time.
+@end defvr
+
 @itindex timestamp+
 @itindex timestamp-
 @defun timestamp+ time amount unit
@@ -607,6 +647,8 @@ day of month as an ordinal (e.g. 1st, 23rd)
 long form of weekday (e.g. Sunday, Monday)
 @item :short-weekday
 short form of weekday (e.g. Sun, Mon)
+@item :minimal-weekday
+minimal form of weekday (e.g. Su, Mo)
 @item :long-month
 long form of month (e.g. January, February)
 @item :short-month

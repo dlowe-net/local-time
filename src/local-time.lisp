@@ -111,7 +111,7 @@
 ;;; Per Naggum we use the terms Political Time and Scientific Time to
 ;;; distinguish between two ways to think about adjusting times around
 ;;; DST boundaries.  If *use-political-time* is nil, we do not
-;;; concider changes in timezone offset when adjusting local-time
+;;; consider changes in timezone offset when adjusting timestamp
 ;;; values.
 
 (defparameter *use-political-time* t)
