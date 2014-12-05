@@ -1,3 +1,9 @@
+2006-07-18    <dlowe@bitmuse.com>
+	* local-time-tests.lisp: Added tests for reader macro functions
+	* local-time.lisp: Reader macros now return LOCAL-TIME objects
+	  instead of the code to generate them.
+	* RELEASE: New release as local-time-0.9.1
+	
 2006-04-14    <dlowe@bitmuse.com> <svg@surnet.ru>
 	* local-time-tests.lisp: Added tests for LOCAL-TIME-ADJUST with
 	  negatively adjusting timezones

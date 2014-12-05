@@ -342,7 +342,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (deftest parse-timestring-1 ()
     (let ((local-time (now)))
       (local-time= (parse-timestring
@@ -386,6 +385,8 @@
     (declare (ignore ms ss mm hh))
     (encode-local-time 80 7 6 5 day mon year)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (deftest local-time-adjust-1 ((test-zone (make-timezone
                                           :subzones '((-3600 NIL "UTC-1" T NIL))
                                           :loaded t)))
@@ -410,5 +411,16 @@
   ;; ms ss mm hh day mon year
   00 00 00 01 01 01 1970)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftest read-timestring-1 ((now (now)))
+  (with-input-from-string (ins (format-timestring nil now nil nil))
+    (read-timestring ins #\@))
+  now)
+
+(deftest read-universal-time-1 ((now (now)))
+  (with-input-from-string (ins (format nil "~a" (universal-time now)))
+    (read-universal-time ins #\@ nil))
+  now)
 
 (run-tests)

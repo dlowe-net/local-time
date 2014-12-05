@@ -60,6 +60,7 @@
 		   define-timezone
 		   *default-timezone*
            now
+           enable-read-macros
            +month-names+
            +short-month-names+
            +day-names+
@@ -644,22 +645,22 @@
 
 (defun read-timestring (stream char)
   (declare (ignore char))
-  `(parse-timestring
-    ,(with-output-to-string (str)
-       (loop for c = (read-char stream nil #\space)
-          until (or (eql c #\space) (eql c #\)))
-          do (princ c str)
-          finally (unread-char c stream)))))
+  (parse-timestring
+   (with-output-to-string (str)
+     (loop for c = (read-char stream nil #\space)
+           until (or (eql c #\space) (eql c #\)))
+           do (princ c str)
+           finally (unread-char c stream)))))
 
 (defun read-universal-time (stream char arg)
   (declare (ignore char arg))
-  `(local-time :universal
-               ,(parse-integer
-                 (with-output-to-string (str)
-                   (loop for c = (read-char stream nil #\space)
-                      while (digit-char-p c)
-                      do (princ c str)
-                      finally (unread-char c stream))))))
+  (local-time :universal
+              (parse-integer
+               (with-output-to-string (str)
+                 (loop for c = (read-char stream nil #\space)
+                       while (digit-char-p c)
+                       do (princ c str)
+                       finally (unread-char c stream))))))
 
 (defun enable-read-macros ()
   (set-macro-character #\@ 'read-timestring)
