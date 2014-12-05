@@ -1,6 +1,6 @@
 (defsystem #:local-time
   :name "local-time"
-  :version "1.0.4"
+  :version "1.0.5"
   :author "Daniel Lowe <dlowe@dlowe.net>"
   :description "A library for manipulating dates and times, based on a paper by Erik Naggum"
   :depends-on (:cl-fad)
