@@ -8,7 +8,7 @@
 ;;;
 ;;; Authored by Daniel Lowe <dlowe@sanctuary.org>
 ;;;
-;;; Copyright (c) 2005 Daniel Lowe
+;;; Copyright (c) 2005-2006 Daniel Lowe
 ;;; 
 ;;; Permission is hereby granted, free of charge, to any person obtaining
 ;;; a copy of this software and associated documentation files (the
@@ -350,62 +350,180 @@
   "Convert a designator (real number) as a LOCAL-TIME instance"
   nil)
 
+(defun local-time-decoded-date (local-time)
+  (multiple-value-bind (leap-cycle year-days)
+      (floor (local-time-day local-time) 1461)
+    (multiple-value-bind (years month-days)
+        (floor year-days 365)
+      (let* ((month (decode-month month-days))
+             (day (1+ (- month-days (month-days month)))))
+        (values
+         (+ (* leap-cycle 4)
+            years
+            (if (>= month 10)
+                2001
+                2000))
+         (if (>= month 10)
+             (- month 9)
+             (+ month 3))
+         day)))))
+
+(defun local-time-decoded-time (local-time)
+  (multiple-value-bind (hours hour-remainder)
+      (floor (local-time-sec local-time) 3600)
+    (multiple-value-bind (minutes seconds)
+        (floor hour-remainder 60)
+      (values
+       hours
+       minutes
+       seconds))))
+
+(defparameter +leap-factor+ 1461)
+
 (defun decode-local-time (local-time)
   "Returns the decoded time as multiple values: ms, ss, mm, hh, day, month, year, day-of-week, daylight-saving-time-p, timezone, and the customary timezone abbreviation."
-  (let* ((hours (floor (local-time-sec local-time) 3600))
-		 (minutes (floor (- (local-time-sec local-time) (* hours 3600)) 60))
-		 (seconds (- (local-time-sec local-time) (* hours 3600) (* minutes 60)))
-		 (int-year (floor (* (local-time-day local-time) 4) 1461))
-		 (int-month (decode-month (- (local-time-day local-time)
-									 (floor (* int-year 1461) 4))))
-		 (day (- (local-time-day local-time)
-				 (month-days int-month)
-				 (floor (* int-year 1461) 4))))
-	(multiple-value-bind (offset daylight-p abbreviation)
-		(timezone local-time)
-	  (declare (ignore offset daylight-p))
-	  (values
-	   (local-time-msec local-time)
-	   seconds
-	   minutes
-	   hours
-	   (1+ day)
-	   (if (>= int-month 10)
-		   (- int-month 9)
-		   (+ int-month 3))
-	   (if (>= int-month 10)
-		   (+ int-year 2001)
-		   (+ int-year 2000))
-	   (local-time-day-of-week local-time)
-	   (local-time-zone local-time)
-	   abbreviation))))
+  (multiple-value-bind (hours minutes seconds)
+      (local-time-decoded-time local-time)
+    (multiple-value-bind (year month day)
+        (local-time-decoded-date local-time)
+      (values
+       (local-time-msec local-time)
+       seconds minutes hours
+       day month year
+       (local-time-day-of-week local-time)
+       (local-time-zone local-time)
+       (nth-value 2 (timezone local-time))))))
 
-(defun split-timestring (timestring start end junk-allowed)
-  (multiple-value-bind (now-ms now-ss now-mm now-hh now-day now-month now-year)
-      (decode-local-time (now))
-    (let ((year (when (> end 4) (parse-integer timestring :start 0 :end 4)))
-          (month (when (> end 7) (parse-integer timestring :start 5 :end 7)))
-          (day (when (> end 10) (parse-integer timestring :start 8 :end 10)))
-          (hh (when (> end 13) (parse-integer timestring :start 11 :end 13)))
-          (mm (when (> end 17) (parse-integer timestring :start 14 :end 16)))
-          (ss (when (> end 19) (parse-integer timestring :start 17 :end 19)))
-          (ms (when (and (member (char timestring 19) '(#\. #\,)) (> end 20))
-                (parse-integer timestring :start 20 :junk-allowed t))))
+(defun skip-timestring-junk (stream junk-allowed &rest expected)
+  ;; NOTE: this should honor junk-allowed sometime
+  (cond
+    (junk-allowed
+     ;; just skip non-digit characters
+     (loop for c = (read-char stream nil nil)
+           while (and c (not (digit-char-p c)))
+           finally (unread-char c stream)))
+    (t
+     ;; must have an expected character or the string end, then
+     ;; followed by a digit or the string end
+     (let ((c (read-char stream nil nil)))
+       (unless (or (null c) (member c expected :test 'eql))
+         (error
+          "Junk in timestring: expected ~:[(or ~{~s~^ ~})~;~{~s~}~], got ~s"
+          (= (length expected) 1)
+          expected
+          c)))
+     (let ((c (read-char stream nil nil)))
+       (if (or (null c) (digit-char-p c) (member c expected :test 'eql))
+           (when c
+             (unread-char c stream))
+           (error "Junk in timestring: expected digit, got ~s"  c))))))
+
+(defun read-integer-str (stream)
+  (loop for c = (read-char stream nil nil)
+        while (and c (digit-char-p c))
+        collect c into result
+        finally (progn
+                  (when c
+                    (unread-char c stream))
+                  (return
+                    (when result
+                      (parse-integer (coerce result 'string)))))))
+
+(defun read-millisecond-str (stream)
+  (loop for c = (read-char stream nil nil)
+        while (and c (digit-char-p c))
+        collect c into result
+        finally (progn
+                  (when c
+                    (unread-char c stream))
+                  (return
+                    (when result
+                      (* (expt 10 (- 3 (min (length result) 3)))
+                         (parse-integer (coerce result 'string)
+                                        :end (min (length result) 3))))))))
+
+;; YYYY-MM-DDThh:mm:ss,fffffff+zz:zz
+;; YYYY-MM-DDThh:mm:ss,fffffff
+;; YYYY-MM-DDThh:mm:ss
+;; YYYY-MM-DDThh:mm
+;; YYYY-MM-DDThh
+;; YYYY-MM-DD
+;; YYYY
+;; -MM-DDThh:mm:ss,fffffff+zz:zz
+;; --DDThh:mm:ss,fffffff+zz:zz
+;; hh:mm:ss,fffffff+zz:zz
+;; hh:mm:ss,fffffff
+;; hh:mm:ss
+;; hh:mm
+;; hh
+;; hh:mm:ss,fffffff+zz:zz
+
+(defun split-timestring-date (str junk-allowed now-year now-month now-day)
+  (let ((result nil))
+    (with-input-from-string (ins str)
+      ;; Retrieve the year
+      (push (read-integer-str ins) result)
+      (skip-timestring-junk ins junk-allowed #\-)
+      ;; Retrieve the month
+      (push (read-integer-str ins) result)
+      (skip-timestring-junk ins junk-allowed #\-)
+      ;; Retrieve the day
+      (push (read-integer-str ins) result))
+    (list
+     (or (first result) now-day)
+     (or (second result) now-month)
+     (or (third result) now-year))))
+
+(defun split-timestring-time (str junk-allowed now-hour now-minute now-second now-ms)
+    (let ((result nil))
+      (with-input-from-string (ins str)
+        ;; Retrieve the hour
+        (push (read-integer-str ins) result)
+        (skip-timestring-junk ins junk-allowed #\:)
+        ;; Retrieve the minute
+        (push (read-integer-str ins) result)
+        (skip-timestring-junk ins junk-allowed #\:)
+        ;; Retrieve the second
+        (push (read-integer-str ins) result)
+        (skip-timestring-junk ins junk-allowed #\. #\,)
+        ;; Retrieve the fractional second and convert to milliseconds
+        (push (read-millisecond-str ins) result))
       (list
-       (or ms now-ms)
-       (or ss now-ss)
-       (or mm now-mm)
-       (or hh now-hh)
-       (or day now-day)
-       (or month now-month)
-       (or year now-year)))))
+       (or (first result) now-ms)
+       (or (second result) now-second)
+       (or (third result) now-minute)
+       (or (fourth result) now-hour))))
+
+(defun split-timestring (raw-string start end junk-allowed)
+  (let* ((timestring (subseq raw-string start end))
+         (t-pos (position #\t timestring :test #'string-equal)))
+    (multiple-value-bind (now-ms now-second now-minute now-hour now-day now-month now-year)
+        (decode-local-time (now))
+    (cond
+      ((eql t-pos 0)
+       (append (split-timestring-time (subseq timestring 1)
+                                      junk-allowed
+                                      now-hour now-minute now-second now-ms)
+               (list now-year now-month now-day)))
+      ((null t-pos)
+       (append (list now-hour now-minute now-second now-ms)
+               (split-timestring-date timestring junk-allowed
+                                      now-year now-month now-day)))
+      (t
+       (append (split-timestring-time (subseq timestring (1+ t-pos))
+                                      junk-allowed
+                                      now-hour now-minute now-second now-ms)
+               (split-timestring-date (subseq timestring 0 t-pos) junk-allowed
+                                      now-year now-month now-day)))))))
 
 (defun parse-timestring (timestring &key (start 0) (end nil) (junk-allowed nil))
   "Parse a timestring and return the corresponding LOCAL-TIME"
   (declare (ignorable junk-allowed))
-  (let ((end (or end (1- (length timestring)))))
-    (apply #'encode-local-time
-             (split-timestring timestring start end junk-allowed))))
+  (apply #'encode-local-time
+         (split-timestring timestring
+                           start
+                           (or end (length timestring))
+                           junk-allowed)))
 
 (defun construct-timestring (local-time universal-p timezone-p
                              date-elements time-elements date-separator
@@ -418,7 +536,10 @@
         (check-type time-elements (integer 0 4))
         (cond
           ((> date-elements 2)
-           (format str "~4,'0d~c" year date-separator))
+           (format str "~:[~;-~]~4,'0d~c"
+                   (minusp year)
+                   (abs year)
+                   date-separator))
           ((plusp date-elements)
            ;; if the year is not shown, but other parts of the date are,
            ;; the year is replaced with a hyphen
@@ -436,7 +557,7 @@
         (when (> time-elements 2)
           (format str "~c~2,'0d" time-separator sec))
         (when (> time-elements 3)
-          (format str ",~6,'0d" msec))
+          (format str ",~3,'0d" msec))
         (when timezone-p
           (let* ((zone (if universal-p +utc-zone+ zone))
                  (offset (local-timezone local-time zone)))
