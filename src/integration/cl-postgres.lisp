@@ -34,10 +34,12 @@
          (assert (= days 0))
          (multiple-value-bind (secs usecs)
              (floor usecs 1000000)
-           (local-time:make-timestamp
-            :nsec (* usecs 1000)
-            :sec secs
-            :day 0)))))))
+           (let ((time-of-day (local-time:make-timestamp
+                               :nsec (* usecs 1000)
+                               :sec secs
+                               :day 0)))
+             (check-type time-of-day time-of-day)
+             time-of-day)))))))
 
 (defmethod cl-postgres:to-sql-string ((arg local-time:timestamp))
   (format nil "'~a'"
