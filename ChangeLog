@@ -1,3 +1,39 @@
+2006-04-14    <dlowe@bitmuse.com> <svg@surnet.ru>
+	* local-time-tests.lisp: Added tests for LOCAL-TIME-ADJUST with
+	  negatively adjusting timezones
+	* local-time-tests.lisp: Test failure now mentions which value
+	  didn't match
+	* local-time-tests.lisp: Test compilation now results in fewer
+	  warnings
+	* local-time.lisp: LOCAL-TIME-ADJUST now works better with
+	  negatively adjusting timezones
+	
+2006-04-09    <svg@surnet.ru>
+	* local-time.lisp: According to draft
+	  http://www.w3.org/TR/NOTE-datetime, the decimal fraction of a
+	  second is separated by a dot, not a comma.  FORMAT-LOCAL-TIME
+	  now follows this convention.
+	* local-time.lisp: Daylight savings indicator is now returned
+	  by DECODE-LOCAL-TIME, as per the specification and doc string.
+	* local-time.lisp: Leading #\@ is no longer printed when
+	  aesthetic printing is requested.
+	
+2006-04-03    <dlowe@bitmuse.com>
+	* local-time.lisp: Added many potentially useful constants to the
+	  package
+	* local-time.lisp: Added calculation of julian dates
+	* local-time.lisp: PARSE-TIMESTRING now accepts many more valid
+	  timestrings than it once did.  JUNK-ALLOWED now does something
+	  useful.
+	* local-time.lisp: Timestrings now only show the three digits of
+	  precision that a millisecond resolution implies.
+	* local-time-test.lisp: Fixed stupid typo in RESET-TESTS
+	* local-time-test.lisp: Random DECODE-LOCAL-TIME tester no longer
+	  produces invalid dates
+	* local-time-test.lisp: More PARSE-TIMESTRING tests
+	* TODO: Added a bunch of wishlist items
+	* RELEASE: New release as local-time-0.8
+	    
 2006-02-07    <dlowe@bitmuse.com>
 
 	* local-time.lisp: Fixed DECODE-LOCAL-TIME which calculated the leap

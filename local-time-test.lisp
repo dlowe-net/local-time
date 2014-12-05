@@ -25,8 +25,9 @@
                      as idx from 0
                      collect
                      `((not (equalp (nth ,idx ,result-sym) ,value))
-                       (format t "Test ~a failed!~%Expected value: ~a~%Actual value: ~a~%"
+                       (format t "Test ~a failed for value ~a!~%Expected value: ~s~%Actual value: ~s~%"
                         ,(string name)
+                        ,idx
                         ,value
                         (nth ,idx ,result-sym))
                        nil))
@@ -42,7 +43,7 @@
 	   (incf total)
 	   (let* ((error-result (gensym "ERROR"))
               (result (handler-case
-					   (multiple-value-list (funcall func noisy))
+					   (funcall func noisy)
 					   (error (str)
 						 (setf last-err str)
 						 error-result))))
@@ -55,8 +56,7 @@
 	(format t "~d/~d tests passed.~%" passed total)))
 
 (defun reset-tests ()
-  (clrhash *test-funcs*)
-  (clrhash *test-values*))
+  (clrhash *test-funcs*))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (deftest make-local-time-1 ()
@@ -234,18 +234,18 @@
 	   (local-time-day local-time)))
   0 0 365)
 
-(deftest decode-local-time-1 ()
-	(let ((local-time (encode-local-time 1 2 3 4 5 6 2008)))
-	  (equal (multiple-value-list (decode-local-time local-time))
-			 `(1 2 3 4 5 6 2008 4
-				 ,*default-timezone*
-				 ,(nth-value 2 (timezone local-time)))))
-  t)
+(deftest decode-local-time-1 ((local-time (encode-local-time 1 2 3 4 5 6 2008)))
+  (decode-local-time local-time)
+  1 2 3 4 5 6 2008 4
+  (nth-value 1 (timezone local-time))
+  *default-timezone*
+  (nth-value 2 (timezone local-time)))
 
 (deftest decode-local-time-2 ()
 	(let ((local-time (encode-local-time 0 0 0 0 1 1 0)))
 	  (equal (multiple-value-list (decode-local-time local-time))
 			 `(0 0 0 0 1 1 0 5
+               ,(nth-value 1 (timezone local-time))
                ,*default-timezone*
                ,(nth-value 2 (timezone local-time)))))
   t)
@@ -253,49 +253,49 @@
 (deftest decode-local-time-3 
     ((local-time (encode-local-time 0 0 0 0 1 3 2001)))
   (decode-local-time local-time)
-  0 0 0 0 1 3 2001 4 *default-timezone* (nth-value 2 (timezone local-time)))
+  0 0 0 0 1 3 2001 4
+  (nth-value 1 (timezone local-time))
+  *default-timezone*
+  (nth-value 2 (timezone local-time)))
 
 (deftest decode-local-time-4
     ((local-time (encode-local-time 0 0 0 0 1 3 1998)))
   (decode-local-time local-time)
-  0 0 0 0 1 3 1998 0 *default-timezone* (nth-value 2 (timezone local-time)))
-
-(deftest decode-local-time-5 ((msec (random 1000000))
-                              (sec (random 60))
-                              (min (random 60))
-                              (hour (random 24))
-                              (day (random 31))
-                              (mon (random 12))
-                              (year (+ (random 800) 1600))
-                              (local-time (encode-local-time msec sec min hour day mon year)))
-
-  (decode-local-time local-time)
-
-  msec sec min hour day mon year (mod (+ 3 (local-time-day local-time)) 7)
+  0 0 0 0 1 3 1998 0
+  (nth-value 1 (timezone local-time))
   *default-timezone*
   (nth-value 2 (timezone local-time)))
+
+(deftest decode-local-time-5 ((local-time (make-local-time
+                                           :day (- (random 65535) 36767)
+                                           :sec (random 86400)
+                                           :msec (random 1000))))
+  (multiple-value-bind (ms ss mm hh day mon year)
+      (decode-local-time local-time)
+    (local-time= local-time (encode-local-time ms ss mm hh day mon year)))
+  t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest format-timestring-1 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil)
-  "2008-06-05T04:03:02,001")
+  "2008-06-05T04:03:02.001")
 (deftest format-timestring-2 ()
     ;; This test only works on CDT (so far)
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil t)
-  "2008-06-05T04:03:02,001-5:00")
+  "2008-06-05T04:03:02.001-5:00")
 (deftest format-timestring-3 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008 +utc-zone+) t t)
-  "2008-06-05T04:03:02,001+0:00")
+  "2008-06-05T04:03:02.001+0:00")
 (deftest format-timestring-4 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 2)
-  "-06-05T04:03:02,001")
+  "-06-05T04:03:02.001")
 (deftest format-timestring-5 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 1)
-  "-05T04:03:02,001")
+  "-05T04:03:02.001")
 (deftest format-timestring-6 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 0)
-  "04:03:02,001")
+  "04:03:02.001")
 (deftest format-timestring-7 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 2008) nil nil 0 3)
   "04:03:02")
@@ -310,7 +310,7 @@
   "")
 (deftest format-timestring-11 ()
     (format-timestring nil (encode-local-time 1 2 3 4 5 6 -5) nil nil)
-  "-0005-06-05T04:03:02,001")
+  "-0005-06-05T04:03:02.001")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -376,7 +376,39 @@
   (parse-timestring "--23T::02")
   (multiple-value-bind (ms ss mm hh day mon year)
       (decode-local-time (now))
-    (declare (ignore ms day))
+    (declare (ignore ss day))
     (encode-local-time ms 02 mm hh 23 mon year)))
+
+(deftest parse-timestring-7 ()
+  (parse-timestring "T05:06:07,08")
+  (multiple-value-bind (ms ss mm hh day mon year)
+      (decode-local-time (now))
+    (declare (ignore ms ss mm hh))
+    (encode-local-time 80 7 6 5 day mon year)))
+
+(deftest local-time-adjust-1 ((test-zone (make-timezone
+                                          :subzones '((-3600 NIL "UTC-1" T NIL))
+                                          :loaded t)))
+  (let ((epoch (local-time :unix 0 :zone +utc-zone+)))
+    (decode-local-time (local-time-adjust epoch test-zone (make-local-time))))
+  ;; ms ss mm hh day mon year wday ds-p zone abbrev
+  00 00 00 23 31 12 1969 3 nil test-zone)
+
+(deftest local-time-adjust-2 ()
+  (let ((test-zone (make-timezone :subzones '((-3600 NIL "UTC-1" T NIL))
+                                   :loaded t))
+         (epoch (local-time :unix 3600 :zone +utc-zone+)))
+    (decode-local-time (local-time-adjust epoch test-zone (make-local-time))))
+  ;; ms ss mm hh day mon year
+  00 00 00 00 01 01 1970)
+
+(deftest local-time-adjust-3 ()
+  (let ((test-zone (make-timezone :subzones '((+3600 NIL "UTC+1" T NIL))
+                                   :loaded t))
+         (epoch (local-time :unix 0 :zone +utc-zone+)))
+    (decode-local-time (local-time-adjust epoch test-zone (make-local-time))))
+  ;; ms ss mm hh day mon year
+  00 00 00 01 01 01 1970)
+
 
 (run-tests)
