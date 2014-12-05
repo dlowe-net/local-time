@@ -103,6 +103,10 @@ based on Erik Naggum's  @emph{The Long, Painful History of Time}
 @node Introduction
 @chapter Introduction
 
+@menu
+* Portability::
+@end menu
+
 The @name{} library is a Common Lisp library for the manipulation of
 dates, times and intervals. It was originally based almost entirely
 upon Erik Naggum's paper @emph{The Long Painful History of Time}
@@ -112,7 +116,7 @@ as the standard epoch, and the timestring format.
 
 @c ===================================================================
 @node Portability
-@chapter Portability
+@section Portability
 
 This implementation assumes that time zone information is stored in
 the tzfile format. The default timezone is loaded from
@@ -464,8 +468,7 @@ Returns the decoded part of the timestamp.
 
 @itindex *use-political-time*
 @defvr Default *use-political-time*
-@defmacx with-scientific-time &rest body
-@defmacx with-political-time &rest body
+
 When political time is enabled, changes in timezone offset are
 considered when adjusting timestamp values.  Adding 24 hours to a
 timestamp across a DST boundary will result in the same wall-clock
@@ -475,6 +478,14 @@ When scientific time is used, changes in timezone offset are not
 considered.  Adding 24 hours to a timestamp across a DST boundary will
 result in a different wall-clock time.
 @end defvr
+
+@defmac with-scientific-time &rest body
+@defmacx with-political-time &rest body
+
+These macros make it simple to temporarily select political or
+scientific time.
+
+@end defmac
 
 @itindex timestamp+
 @itindex timestamp-
