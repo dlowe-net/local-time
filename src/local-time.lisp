@@ -1,121 +1,4 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; LOCAL-TIME
-;;;
-;;; A package for manipulating times and dates.
-;;;
-;;; Based on Erik Naggum's "A Long, Painful History of Time" (1999)
-;;;
-;;; Authored by Daniel Lowe <dlowe@bitmuse.com>
-;;;
-;;; Copyright (c) 2005-2010 Daniel Lowe
-;;;
-;;; Permission is hereby granted, free of charge, to any person obtaining
-;;; a copy of this software and associated documentation files (the
-;;; "Software"), to deal in the Software without restriction, including
-;;; without limitation the rights to use, copy, modify, merge, publish,
-;;; distribute, sublicense, and/or sell copies of the Software, and to
-;;; permit persons to whom the Software is furnished to do so, subject to
-;;; the following conditions:
-;;;
-;;; The above copyright notice and this permission notice shall be
-;;; included in all copies or substantial portions of the Software.
-;;;
-;;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-;;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-;;; MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-;;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-;;; LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-;;; OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-;;; WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(defpackage :local-time
-    (:use #:cl)
-  (:export #:timestamp
-           #:date
-           #:time-of-day
-           #:make-timestamp
-           #:day-of
-           #:sec-of
-           #:nsec-of
-           #:timestamp<
-           #:timestamp<=
-           #:timestamp>
-           #:timestamp>=
-           #:timestamp=
-           #:timestamp/=
-           #:timestamp-maximum
-           #:timestamp-minimum
-           #:adjust-timestamp
-           #:adjust-timestamp!
-           #:timestamp-whole-year-difference
-           #:days-in-month
-           #:timestamp-
-           #:timestamp+
-           #:timestamp-difference
-           #:timestamp-minimize-part
-           #:timestamp-maximize-part
-           #:with-decoded-timestamp
-           #:decode-timestamp
-           #:timestamp-century
-           #:timestamp-day
-           #:timestamp-day-of-week
-           #:timestamp-decade
-           #:timestamp-hour
-           #:timestamp-microsecond
-           #:timestamp-millennium
-           #:timestamp-millisecond
-           #:timestamp-minute
-           #:timestamp-month
-           #:timestamp-second
-           #:timestamp-week
-           #:timestamp-year
-           #:parse-timestring
-           #:format-timestring
-           #:format-rfc1123-timestring
-           #:to-rfc1123-timestring
-           #:format-rfc3339-timestring
-           #:to-rfc3339-timestring
-           #:encode-timestamp
-           #:parse-rfc3339-timestring
-           #:universal-to-timestamp
-           #:timestamp-to-universal
-           #:unix-to-timestamp
-           #:timestamp-to-unix
-           #:timestamp-subtimezone
-           #:define-timezone
-           #:*default-timezone*
-           #:find-timezone-by-location-name
-           #:now
-           #:today
-           #:enable-read-macros
-           #:+utc-zone+
-           #:+gmt-zone+
-           #:+month-names+
-           #:+short-month-names+
-           #:+day-names+
-           #:+short-day-names+
-           #:+seconds-per-day+
-           #:+seconds-per-hour+
-           #:+seconds-per-minute+
-           #:+minutes-per-day+
-           #:+minutes-per-hour+
-           #:+hours-per-day+
-           #:+days-per-week+
-           #:+months-per-year+
-           #:+iso-8601-format+
-           #:+rfc3339-format+
-           #:+rfc3339-format/date-only+
-           #:+asctime-format+
-           #:+rfc-1123-format+
-           #:astronomical-julian-date
-           #:modified-julian-date
-           #:astronomical-modified-julian-date))
-
-(in-package :local-time)
+(in-package #:local-time)
 
 ;;; Types
 
@@ -205,6 +88,8 @@
 
 ;;; Variables
 
+(defvar *default-timezone*)
+
 (defparameter *default-timezone-repository-path*
   (flet ((try (project-home-directory)
            (when project-home-directory
@@ -269,6 +154,9 @@
   '(:short-weekday ", " (:day 2) #\space :short-month #\space (:year 4) #\space
     (:hour 2) #\: (:min 2) #\: (:sec 2) #\space :timezone)
   "Please note that you should use the +GMT-ZONE+ timezone to format a proper RFC 1123 timestring. See the RFC for the details about the possible values of the timezone field.")
+(defparameter +iso-week-date-format+
+  ;; 2009-W53-5
+  '((:iso-week-year 4) #\- #\W (:iso-week-number 2) #\- (:iso-week-day 1)))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defparameter +rotated-month-days-without-leap-day+
@@ -476,7 +364,6 @@
       ,@(when load
               `((%realize-timezone ,zone-sym))))))
 
-(defvar *default-timezone*)
 (eval-when (:load-toplevel :execute)
   (let ((default-timezone-file #p"/etc/localtime"))
     (if (probe-file default-timezone-file)
@@ -545,7 +432,7 @@ In other words:
 (defun transition-position (needle haystack &optional (start 0) (end (1- (length haystack))))
   (let ((middle (floor (+ end start) 2)))
     (cond
-      ((> start end)
+      ((>= start end)
        (if (minusp end)
            0
            end))
@@ -735,10 +622,12 @@ In other words:
                 (push `(%set-timestamp-part ,part ,value) functions))
                ((string= operation :offset)
                 (push `(%offset-timestamp-part ,part ,value) functions))
-               ((or (string= operation :utc-offset)
-                    (string= operation :timezone))
-                (push (second change) params)
-                (push operation params))
+               ((string= operation :utc-offset)
+                (push part params)
+                (push :utc-offset params))
+               ((string= operation :timezone)
+                (push part params)
+                (push :timezone params))
                (t (error "Unexpected operation ~S" operation)))))
       :finally
          (loop
@@ -916,7 +805,11 @@ the previous day given by OFFSET."
         (decode-timestamp time-a)
       (declare (ignore nsec-b sec-b minute-b hour-b day-b month-b day-of-week-b daylight-p-b zone-b))
       (let ((year-difference (- year-b year-a)))
-        (if (timestamp<= (encode-timestamp nsec-a sec-a minute-a hour-a day-a month-a
+        (if (timestamp<= (encode-timestamp nsec-a sec-a minute-a hour-a
+                                           (if (= month-a 2)
+                                               (min 28 day-a)
+                                               day-a)
+                                           month-a
                                            (+ year-difference year-a))
                          time-a)
             year-difference
@@ -1077,7 +970,6 @@ elements."
 (defun now ()
   "Returns a timestamp representing the present moment."
   (multiple-value-bind (sec nsec) (%get-current-time)
-    (assert (and sec nsec) () "Failed to get the current time from the operating system. How did this happen?")
     (unix-to-timestamp sec :nsec nsec)))
 
 (defun today ()
@@ -1222,6 +1114,18 @@ elements."
        1-based-month
        1-based-day))))
 
+(defun %timestamp-decode-iso-week (timestamp)
+  "Returns the year, week number, and day of week components of an ISO week date."
+  ;; Algorithm from http://en.wikipedia.org/wiki/Talk:ISO_week_date#Algorithms
+  (let* ((dn (timestamp-day-of-week timestamp))
+         (day-of-week (if (zerop dn) 7 dn)) ; ISO weekdays are Monday=1 and Sunday=7
+         (nearest-thursday (timestamp+ timestamp (- 4 day-of-week) :day))
+         (base-year (encode-timestamp 0 0 0 0 1 1 (timestamp-year nearest-thursday)))
+         (ordinal-day (- (day-of nearest-thursday) (day-of base-year))))
+    (values (timestamp-year base-year)
+            (nth-value 0 (floor (1+ (/ ordinal-day 7))))
+            day-of-week)))
+
 (defun %timestamp-decode-time (seconds)
   "Returns the hours, minutes, and seconds, given the number of seconds since midnight."
   (declare (type integer seconds))
@@ -1237,10 +1141,9 @@ elements."
 (defun decode-timestamp (timestamp &key (timezone *default-timezone*) offset)
   "Returns the decoded time as multiple values: nsec, ss, mm, hh, day, month, year, day-of-week"
   (declare (type timestamp timestamp))
-  (when offset
-    (setf timezone (the timezone +none-zone+)))
-  (multiple-value-bind (offset* daylight-p abbreviation)
-      (timestamp-subtimezone timestamp timezone)
+  (let ((timezone (if offset (the timezone +none-zone+) timezone)))
+    (multiple-value-bind (offset* daylight-p abbreviation)
+        (timestamp-subtimezone timestamp timezone)
       (multiple-value-bind (adjusted-secs adjusted-days)
           (%adjust-to-timezone timestamp timezone offset)
         (multiple-value-bind (hours minutes seconds)
@@ -1254,7 +1157,7 @@ elements."
              (timestamp-day-of-week timestamp :timezone timezone :offset offset)
              daylight-p
              (or offset offset*)
-             abbreviation))))))
+             abbreviation)))))))
 
 (defun timestamp-year (timestamp &key (timezone *default-timezone*))
   "Returns the cardinal year upon which the timestamp falls."
@@ -1472,11 +1375,14 @@ elements."
                              (declare (type (integer 0 #.array-dimension-limit) start end))
                              (passert (<= (- end start) 9))
                              (let ((new-end (position-if (lambda (el)
+                                                           (declare (type character el))
                                                            (not (char= #\0 el)))
-                                                         time-string :start start :end end :from-end t)))
+                                                         (the (simple-array character (*)) time-string)
+                                                         :start start
+                                                         :end end
+                                                         :from-end t)))
                                (when new-end
                                  (setf end (min (1+ new-end)))))
-                             ;;(break "~S: ~S" (subseq time-string start end) (- end start))
                              (setf nsec (* (the (integer 0 999999999) (parse-integer time-string :start start :end end))
                                            (aref #.(coerce #(1000000000 100000000 10000000
                                                              1000000 100000 10000 1000 100 10 1)
@@ -1550,17 +1456,14 @@ elements."
 (defun ordinalize (day)
   "Return an ordinal string representing the position of DAY in a sequence (1st, 2nd, 3rd, 4th, etc)."
   (declare (type (integer 1 31) day))
-  (flet ((suffix ()
-           (if (<= 11 day 13)
-               "th"
-               (multiple-value-bind (quotient remainder) (floor day 10)
-                 (declare (ignore quotient))
-                 (case remainder
-                   (1 "st")
-                   (2 "nd")
-                   (3 "rd")
-                   (t "th"))))))
-    (format nil "~d~a" day (suffix))))
+  (format nil "~d~a" day
+          (if (<= 11 day 13)
+              "th"
+              (case (mod day 10)
+                (1 "st")
+                (2 "nd")
+                (3 "rd")
+                (t "th")))))
 
 (defun %construct-timestring (timestamp format timezone)
   "Constructs a string representing TIMESTAMP given the FORMAT of the string and the TIMEZONE.  See the documentation of FORMAT-TIMESTRING for the structure of FORMAT."
@@ -1569,66 +1472,73 @@ elements."
   (multiple-value-bind (nsec sec minute hour day month year weekday daylight-p offset abbrev)
       (decode-timestamp timestamp :timezone timezone)
     (declare (ignore daylight-p))
-    (let ((*print-pretty* nil)
-          (*print-circle* nil))
-      (with-output-to-string (result nil :element-type 'base-char)
-        (dolist (fmt format)
-          (cond
-            ((or (eql fmt :gmt-offset)
-                 (eql fmt :gmt-offset-or-z))
-             (multiple-value-bind (offset-hours offset-secs)
-                 (floor offset +seconds-per-hour+)
-               (declare (fixnum offset-hours offset-secs))
-               (if (and (eql fmt :gmt-offset-or-z) (zerop offset))
-                   (princ #\Z result)
-                   (format result "~c~2,'0d:~2,'0d"
-                           (if (minusp offset-hours) #\- #\+)
-                           (abs offset-hours)
-                           (truncate (abs offset-secs)
-                                     +seconds-per-minute+)))))
-            ((eql fmt :long-month)
-             (princ (aref +month-names+ month) result))
-            ((eql fmt :short-month)
-             (princ (aref +short-month-names+ month) result))
-            ((eql fmt :long-weekday)
-             (princ (aref +day-names+ weekday) result))
-            ((eql fmt :short-weekday)
-             (princ (aref +short-day-names+ weekday) result))
-            ((eql fmt :timezone)
-             (princ abbrev result))
-            ((eql fmt :hour12)
-             (princ (1+ (mod (1- hour) 12)) result))
-            ((eql fmt :ampm)
-             (princ (if (< hour 12) "am" "pm") result))
-            ((eql fmt :ordinal-day)
-             (princ (ordinalize day) result))
-            ((or (stringp fmt) (characterp fmt))
-             (princ fmt result))
-            (t
-             (let ((val (ecase (if (consp fmt) (car fmt) fmt)
-                          (:nsec nsec)
-                          (:usec (floor nsec 1000))
-                          (:msec (floor nsec 1000000))
-                          (:sec sec)
-                          (:min minute)
-                          (:hour hour)
-                          (:day day)
-                          (:weekday weekday)
-                          (:month month)
-                          (:year year))))
-               (cond
-                 ((atom fmt)
-                  (princ val result))
-                 ((minusp val)
-                  (format result "-~v,vd"
-                          (second fmt)
-                          (or (third fmt) #\0)
-                          (abs val)))
-                 (t
-                  (format result "~v,vd"
-                          (second fmt)
-                          (or (third fmt) #\0)
-                          val)))))))))))
+    (multiple-value-bind (iso-year iso-week iso-weekday)
+        (%timestamp-decode-iso-week timestamp)
+      (let ((*print-pretty* nil)
+            (*print-circle* nil))
+        (with-output-to-string (result nil :element-type 'base-char)
+          (dolist (fmt format)
+            (cond
+              ((or (eql fmt :gmt-offset)
+                   (eql fmt :gmt-offset-or-z))
+               (multiple-value-bind (offset-hours offset-secs)
+                   (floor offset +seconds-per-hour+)
+                 (declare (fixnum offset-hours offset-secs))
+                 (if (and (eql fmt :gmt-offset-or-z) (zerop offset))
+                     (princ #\Z result)
+                     (format result "~c~2,'0d:~2,'0d"
+                             (if (minusp offset-hours) #\- #\+)
+                             (abs offset-hours)
+                             (truncate (abs offset-secs)
+                                       +seconds-per-minute+)))))
+              ((eql fmt :short-year)
+               (princ (mod year 100) result))
+              ((eql fmt :long-month)
+               (princ (aref +month-names+ month) result))
+              ((eql fmt :short-month)
+               (princ (aref +short-month-names+ month) result))
+              ((eql fmt :long-weekday)
+               (princ (aref +day-names+ weekday) result))
+              ((eql fmt :short-weekday)
+               (princ (aref +short-day-names+ weekday) result))
+              ((eql fmt :timezone)
+               (princ abbrev result))
+              ((eql fmt :hour12)
+               (princ (1+ (mod (1- hour) 12)) result))
+              ((eql fmt :ampm)
+               (princ (if (< hour 12) "am" "pm") result))
+              ((eql fmt :ordinal-day)
+               (princ (ordinalize day) result))
+              ((or (stringp fmt) (characterp fmt))
+               (princ fmt result))
+              (t
+               (let ((val (ecase (if (consp fmt) (car fmt) fmt)
+                            (:nsec nsec)
+                            (:usec (floor nsec 1000))
+                            (:msec (floor nsec 1000000))
+                            (:sec sec)
+                            (:min minute)
+                            (:hour hour)
+                            (:day day)
+                            (:weekday weekday)
+                            (:month month)
+                            (:year year)
+                            (:iso-week-year iso-year)
+                            (:iso-week-number iso-week)
+                            (:iso-week-day iso-weekday))))
+                 (cond
+                   ((atom fmt)
+                    (princ val result))
+                   ((minusp val)
+                    (format result "-~v,vd"
+                            (second fmt)
+                            (or (third fmt) #\0)
+                            (abs val)))
+                   (t
+                    (format result "~v,vd"
+                            (second fmt)
+                            (or (third fmt) #\0)
+                            val))))))))))))
 
 (defun format-timestring (destination timestamp &key
                           (format +iso-8601-format+)
@@ -1647,6 +1557,9 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :MSEC              *milliseconds
   :USEC              *microseconds
   :NSEC              *nanoseconds
+  :ISO-WEEK-YEAR     *year for ISO week date (can be different from regular calendar year)
+  :ISO-WEEK-NUMBER   *ISO week number (i.e. 1 through 53)
+  :ISO-WEEK-DAY      *ISO compatible weekday number (monday=1, sunday=7)
   :LONG-WEEKDAY      long form of weekday (e.g. Sunday, Monday)
   :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
   :LONG-MONTH        long form of month (e.g. January, February)
@@ -1665,7 +1578,7 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
   (declare (type (or boolean stream) destination))
   (let ((result (%construct-timestring timestamp format timezone)))
     (when destination
-      (write-string result destination))
+      (write-string result (if (eq t destination) *standard-output* destination)))
     result))
 
 (defun format-rfc1123-timestring (destination timestamp)
@@ -1679,7 +1592,7 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
 (defun format-rfc3339-timestring (destination timestamp &key
                                   omit-date-part
                                   omit-time-part
-                                  omit-timezone-part
+                                  (omit-timezone-part omit-time-part)
                                   (use-zulu t)
                                   (timezone *default-timezone*))
   "Formats a timestring in the RFC 3339 format, a restricted form of the ISO-8601 timestring specification for Internet timestamps."

@@ -1,9 +1,9 @@
 (in-package #:local-time.test)
 
 (defsuite* (timezone :in test))
-
-(local-time::define-timezone eastern-tz
-    (merge-pathnames #p"EST5EDT" local-time::*default-timezone-repository-path*))
+(eval-when (:load-toplevel :execute)
+  (local-time::define-timezone eastern-tz
+      (merge-pathnames #p"EST5EDT" local-time::*default-timezone-repository-path*)))
 
 (deftest test/timezone/decode-timestamp-dst ()
   ;; Testing DST calculation with a known timezone
