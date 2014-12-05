@@ -1064,9 +1064,10 @@ elements."
       (assert success? () "sb-unix:unix-gettimeofday reported failure?!")
       (values sec (* 1000 nsec))))
   #+(and ccl (not windows))
-  (let ((r (ccl:make-record :timeval)))
-    (ccl::gettimeofday r)
-    (values  (ccl:pref r :timeval.tv_sec) (ccl:pref r :timeval.tv_usec)))
+  (ccl:rlet ((tv :timeval))
+    (let ((err (ccl:external-call "gettimeofday" :address tv :address (ccl:%null-ptr) :int)))
+      (assert (zerop err) nil "gettimeofday failed")
+      (values (ccl:pref tv :timeval.tv_sec) (* 1000 (ccl:pref tv :timeval.tv_usec)))))
   #-(or cmu sbcl (and ccl (not windows)))
   (values (- (get-universal-time)
              ;; CL's get-universal-time uses an epoch of 1/1/1900, so adjust the result to the Unix epoch
