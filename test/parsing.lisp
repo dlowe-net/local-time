@@ -54,6 +54,15 @@
     (compare 940703000 28 56 16 20 2 2008 "2008-02-20T16:56:28.940703Z"
              :offset 0)))
 
+(deftest test/parsing/split ()
+  (is (equal (local-time::%split-timestring "2006-01-02T03:04:05,6-05")
+             '(2006 1 2 3 4 5 600000000 -5 0)))
+  (is (equal (local-time::%split-timestring "2006-01-02T03:04:05,6-0515")
+             '(2006 1 2 3 4 5 600000000 -5 -15)))
+  (is (equal (local-time::%split-timestring "2006-01-02T03:04:05,6-05:15")
+             '(2006 1 2 3 4 5 600000000 -5 -15))))
+
+
 (deftest test/parsing/reader ()
   (let ((now (now)))
     (setf (nsec-of now) 123456000)

@@ -3,7 +3,7 @@
 (defpackage :local-time.test
   (:use :alexandria
         :common-lisp
-        :hu.dwim.stefil
+        :stefil
         :local-time))
 
 (in-package :local-time.test)

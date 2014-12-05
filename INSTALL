@@ -1,4 +1,13 @@
-Installation
+# Installation
+
+## Using Quicklisp
+
+1. Install quicklisp
+2. Use quicklisp to install local-time
+
+      (ql:quickload :local-time)
+
+## Manual Installation
 
 1. Make sure the ASDF library is loaded.  In SBCL, this involves:
 
@@ -20,3 +29,12 @@ Installation
       (defsystem myproject
           :depends-on (local-time)
           ...)
+
+## Testing
+
+local-time uses Stefil for testing. To run the Stefil test suite, do
+the following:-
+
+    (ql:quickload :local-time.test)
+    (in-suite test)
+    (test)

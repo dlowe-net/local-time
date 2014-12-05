@@ -54,7 +54,11 @@
            #:timestamp-subtimezone
            #:define-timezone
            #:*default-timezone*
+           #:*clock*
+           #:clock-now
+           #:clock-today
            #:find-timezone-by-location-name
+           #:reread-timezone-repository
            #:now
            #:today
            #:enable-read-macros
@@ -73,6 +77,8 @@
            #:+days-per-week+
            #:+months-per-year+
            #:+iso-8601-format+
+           #:+iso-8601-date-format+
+           #:+iso-8601-time-format+
            #:+rfc3339-format+
            #:+rfc3339-format/date-only+
            #:+asctime-format+
@@ -80,4 +86,7 @@
            #:+iso-week-date-format+
            #:astronomical-julian-date
            #:modified-julian-date
-           #:astronomical-modified-julian-date))
+           #:astronomical-modified-julian-date
+           #:*use-political-time*
+           #:with-scientific-time
+           #:with-political-time))
