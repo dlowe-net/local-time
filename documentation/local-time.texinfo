@@ -1,0 +1,563 @@
+\input texinfo   @c -*- Mode: Texinfo; Mode: auto-fill -*-
+@c %**start of header
+@setfilename local-time.info
+@settitle The local-time Manual
+@exampleindent 2
+
+@c @documentencoding utf-8
+
+@macro name {}
+@code{local-time}
+@end macro
+
+@macro mathx {tex, non-tex}
+@iftex
+@math{\tex\}
+@end iftex
+@ifnottex
+@emph{\non-tex\}
+@end ifnottex
+@end macro
+
+@macro impnote {text}
+@quotation Implementor's note
+@emph{\text\}
+@end quotation
+@end macro
+
+@c Set ROMANCOMMENTS to get comments in roman font.
+@ifset ROMANCOMMENTS
+@alias lispcmt = r
+@end ifset
+@ifclear ROMANCOMMENTS
+@alias lispcmt = asis
+@end ifclear
+
+@c Index for public api.
+@defindex it
+
+@macro pub {name}
+@itindex \name\
+@c
+@end macro
+
+@macro k {what}
+@code{\what\}
+@end macro
+
+@iftex
+@alias v = asis
+@alias cl = code
+@end iftex
+
+@ifnottex
+@alias v = var
+@alias cl = strong
+@end ifnottex
+
+@c Show variables, clauses, and concepts in the same index.
+@syncodeindex it cp
+@syncodeindex vr cp
+
+@copying
+Copyright @copyright{} 2008 Daniel Lowe <dlowe bitmuse.com> @*
+Copyright @copyright{} 2008 Attila Lendvai <attila.lendvai gmail.com> @*
+
+@quotation
+This manual describes the @name{} Common Lisp library which is
+based on Erik Naggum's  @emph{The Long, Painful History of Time}
+[NaggumPaper] paper.
+
+@end quotation
+@end copying
+@c %**end of header
+
+@titlepage
+@title The @name{} Manual
+@subtitle Version 0.9.3
+@author Daniel Lowe
+@author Attila Lendvai
+
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@contents
+
+@ifnottex
+@node Top
+@top @name{}
+@insertcopying
+@end ifnottex
+
+@menu
+* Introduction::
+* Public API::
+* Other Features::
+* References::
+* Comprehensive Index::
+@end menu
+
+@c ===================================================================
+@node Introduction
+@chapter Introduction
+
+The @name{} library is a Common Lisp library for the manipulation of
+dates, times and durations. It is based almost entirely upon Erik
+Naggum's paper @emph{The Long Painful History of Time} [NaggumPaper].
+In that paper, Naggum outlined a system that here has been
+implemented, mostly.
+
+@quotation Caveats
+This implementation assumes that time zone information is stored in
+the tzfile format. The default timezone is loaded from
+/etc/localtime. This will likely break on non-POSIX systems.
+@end quotation
+
+@c ===================================================================
+@node Public API
+@chapter Public API
+
+@menu
+* Types::
+* Timezones::
+* Creating local-time Objects::
+* Querying local-time Objects::
+* Manipulating Date and Time Values::
+* Parsing and Formatting::
+@end menu
+
+@c ===================================================================
+@node Types
+@section Types
+
+It's a good idea to treat all values as immutable objects. @name{}
+will not modify any object it was given unless explicitly asked to by
+the @code{:into} keyword argument.
+
+@itindex local-time
+@deffn type local-time
+
+@code{local-time} values can represent either a @emph{date},
+a @emph{daytime} or a @emph{time} value. It has the following slots:
+
+@lisp
+(defclass local-time ()
+  ((day :type integer)
+   (sec :type integer)
+   (nsec :type (integer 0 999999999))
+   (timezone :initform *default-timezone*)))
+@end lisp
+
+The following constraints apply to the specific types:
+@itemize
+
+@item
+@emph{date}: must have a @code{+utc-zone+} timezone and the @code{sec}
+slot must be the first second of a day; In other words, the time
+elements of the @code{local-time} value must have their least possible
+values.
+
+@item
+@emph{time}: the @code{day} slot must be zero, and the @code{timezone}
+must be @code{+utc-zone+}.
+
+@end itemize
+@end deffn
+
+@c ===================================================================
+@node Timezones
+@section Timezones
+
+@itindex *default-timezone*
+@deffn variable *default-timezone*
+
+The variable @code{*default-timezone*} contains the timezone that will be
+used by default if none is specified.  It is loaded from
+@emph{/etc/localtime} when the library is loaded.
+
+@end deffn
+
+@itindex define-timezone
+@deffn function define-timezone zone-name zone-file &key (load nil)
+
+Define @code{zone-name} (a symbol or a string) as a new timezone, lazy-loaded
+from @code{zone-file} (a pathname designator relative to the
+zoneinfo directory on this system.  If @code{load} is true, load immediately.
+
+@end deffn
+
+@itindex +utc-time+
+@deffn variable +utc-time+
+
+The variable @code{+utc-zone+} contains a timezone corresponding to UTC.
+
+@end deffn
+
+
+@c ===================================================================
+@node Creating local-time Objects
+@section Creating @code{local-time} Objects
+
+@itindex make-local-time
+@deffn function local-time &key universal unix nsec timezone
+
+Produces a @code{local-time} instance from the provided numeric time
+representation. If nothing is specified then return the current time
+just like as @code{(now)} would.
+@end deffn
+
+
+@itindex make-local-time
+@deffn macro make-local-time &key :day :sec :nsec :timezone
+
+This macro expands to an expression that creates an instance of a
+@code{local-time} exactly as specified.
+@end deffn
+
+
+@itindex now
+@deffn function now
+
+Produces a @code{local-time} instance with the current time and timezone.
+@end deffn
+
+
+@itindex today
+@deffn function today
+
+Produces a @code{local-time} instance that corresponds to today's
+date, which is the midnight of the current day in the UTC zone.
+@end deffn
+
+
+@itindex clone-local-time
+@deffn macro clone-local-time local-time
+
+This macro expands to an expression that creates another copy of
+@code{local-time} that is @code{local-time=} to it.
+@end deffn
+
+
+@itindex encode-local-time
+@deffn function encode-local-time nsec sec minute hour day month year &optional timezone
+
+Returns a new @code{local-time} instance corresponding to the specified time
+elements.
+@end deffn
+
+
+@c ===================================================================
+@node Querying local-time Objects
+@section Querying @code{local-time} Objects
+
+@itindex day-of
+@deffn function day-of local-time
+
+Returns the day component of the time.  Although the paper specifies
+that the day should be a signed fixnum, it is left unbounded for
+flexibility reasons.
+@end deffn
+
+@itindex sec-of
+@deffn function sec-of local-time
+
+Returns the 'seconds' component of the time.  Valid values for the
+seconds range from 0 to 86399.
+@end deffn
+
+@itindex nsec-of
+@deffn function nsec-of local-time
+
+Returns the 'microseconds' component of the time.  Valid values for
+the nanoseconds range from 0 to 999999999.
+@end deffn
+
+@itindex unix-time
+@deffn function unix-time local-time
+
+This function returns the date/time specified in @code{local-time} encoded as
+the number of seconds since January 1st, 1970 12:00am UTC.  It
+corresponds with the time received from the POSIX call @code{time()}.
+@end deffn
+
+@itindex timezone
+@deffn function timezone local-time &optional timezone
+
+Returns as multiple values the time zone as the number of seconds east
+of UTC, a boolean daylight-saving-p, the customary abbreviation of the
+timezone, the starting time of this timezone, and the ending time of
+this timezone.
+@end deffn
+
+
+@itindex with-decoded-local-time
+@deffn function with-decoded-local-time (&key nsec sec minute hour day month year day-of-week daylight-p timezone) local-time &body body
+
+This macro binds variables to the decoded elements of @code{local-time}.
+@end deffn
+
+
+@itindex decode-local-time
+@deffn function decode-local-time local-time
+
+Returns the decoded time as @code{(values ns ss mm hh day month
+year day-of-week daylight-saving-time-p timezone timezone-abbreviation)}.
+@end deffn
+
+
+@itindex local-time<
+@itindex local-time<=
+@itindex local-time>
+@itindex local-time>=
+@itindex local-time=
+@itindex local-time/=
+@deffn function @emph{comparator-name} time-a time-b
+
+@itemize
+@item
+local-time<
+@item
+local-time<=
+@item
+local-time>
+@item
+local-time>=
+@item
+local-time=
+@item
+local-time/=
+@end itemize
+
+These comparison functions act like their string and char counterparts.
+@end deffn
+
+
+@itindex local-time-day-of-week
+@deffn function local-time-day-of-week local-time
+
+This function returns the index of the day of the week,
+starting at 0 which means Sunday.
+@quotation Note
+''Day of the week'' is ambigous and locale dependent.
+@end quotation
+@end deffn
+
+
+@itindex universal-time
+@deffn function universal-time local-time
+
+Returns the UNIVERSAL-TIME corresponding to @code{local-time}.
+@quotation Note
+Microseconds are lost.
+@end quotation
+@end deffn
+
+
+@itindex internal-time
+@deffn function internal-time local-time
+
+Returns the internal system time corresponding to @code{local-time}.
+@quotation Note
+Currently unimplemented due to portability concerns.
+@end quotation
+@end deffn
+
+
+@itindex local-timezone
+@deffn function local-timezone adjusted-local-time &optional timezone
+
+Return the local timezone adjustment applicable at the already
+adjusted-local-time.  Used to reverse the effect of @code{timezone} and
+@code{local-time-adjust}.
+@end deffn
+
+
+@c ===================================================================
+@node Manipulating Date and Time Values
+@section Manipulating Date and Time Values
+
+
+@itindex adjust-local-time
+@deffn macro adjust-local-time local-time &body changes
+
+This macro is useful for changing various parts of the @code{local-time}. Nothings
+speaks better then a few examples:
+
+@itemize
+
+@item
+Return a new @code{local-time} value that points to the previous Monday:
+@lisp
+(adjust-local-time (today) (offset :day-of-week :monday))
+@end lisp
+
+@item
+Return a new @code{local-time} value that points three days ahead from now:
+@lisp
+(adjust-local-time (today) (offset :day 3))
+@end lisp
+
+@item
+Move the current local time into the UTC timezone:
+@lisp
+(adjust-local-time (now) (set :timezone +utc-zone+))
+@end lisp
+
+@end itemize
+
+Keep in mind that @code{adjust-local-time} is not a mere setter for
+fields but instead it handles overflows and timezone conversions as
+expected. Also note that it's possible to specify mutliple commands.
+
+The list of possible places to manipulate are: @code{:nsec}
+@code{:sec} @code{:sec-of-day} @code{:minute} @code{:hour}
+@code{:day} @code{:day-of-month} @code{:month} @code{:year}
+@code{:timezone}.
+@end deffn
+
+
+@itindex adjust-local-time!
+@deffn macro adjust-local-time! local-time &body changes
+
+Just like @code{adjust-local-time}, but instead of returning a freshly
+constructed value, it alters the provided @code{local-time} value (and
+returns it).
+@end deffn
+
+
+@itindex maximize-time-part
+@deffn function maximize-time-part local-time &key timezone into
+
+Returns a @code{local-time} with the time set to the end of the day.
+@end deffn
+
+
+@itindex minimize-time-part
+@deffn function minimize-time-part local-time &key timezone into
+
+Returns a local-time with the time part set to the beginning of the day.
+@end deffn
+
+
+@itindex local-time-whole-year-difference
+@deffn function local-time-whole-year-difference time-a time-b
+
+Returns the number of whole years elapsed between @code{time-a} and @code{time-b}.
+@quotation Note
+This is useful for calculating anniversaries and birthdays.
+@end quotation
+@end deffn
+
+
+@itindex days-in-month
+@deffn function days-in-month month year
+
+Returns the number of days in a given month of the specified year.
+@end deffn
+
+
+@itindex first-day-of-year
+@deffn function first-day-of-year local-time-or-year &key into
+
+Returns a local-time date containing the first day of the year. The year
+may be taken from a local-time or an integer.
+@end deffn
+
+
+@itindex last-day-of-year
+@deffn function last-day-of-year local-time-or-year &key into
+
+Returns a local-time date containing the last day of the year. The year
+may be taken from a local-time or an integer.
+@end deffn
+
+
+@c ===================================================================
+@node Parsing and Formatting
+@section Parsing and Formatting
+
+
+@itindex parse-timestring
+@deffn function parse-timestring timestring &key (start 0) end junk-allowed
+
+Parses a timestring and returns the corresponding @code{local-time}.
+Parsing begins at @code{start} and stops at the @code{end}
+position. If @code{junk-allowed} is @code{T}, ignores any invalid characters
+within @code{timestring}.
+@end deffn
+
+
+@itindex format-timestring
+@deffn function format-timestring (local-time &key destination timezone (omit-date-part-p nil) (omit-time-part-p nil) (omit-timezone-part-p omit-time-part-p) (use-zulu-p t) (date-elements (if omit-date-part-p 0 3)) (time-elements (if omit-time-part-p 0 4)) (date-separator #\-) (time-separator #\:) (date-time-separator #\T))
+
+Produces on @code{stream} the timestring corresponding to the @code{local-time} with
+the given options.  If @code{stream} is @code{nil}, only returns a string containing what
+would have been the output.  If @code{stream} is @code{t}, prints the string to
+@code{*standard-output*}.
+
+Example output:
+@lisp
+LOCAL-TIME> (format-timestring (now))
+"2008-03-01T19:42:34.608506+01:00"
+@end lisp
+@end deffn
+
+
+@itindex format-rfc3339-timestring
+@deffn function format-rfc3339-timestring (local-time &key destination omit-date-part-p omit-time-part-p omit-timezone-part-p (use-zulu-p t))
+
+Very similar to @code{format-timestring} but it formats the time
+according to RFC 3339.
+@end deffn
+
+
+
+@c ===================================================================
+@node Other Features
+@chapter Other Features
+
+@section Reader Macros
+
+@itindex enable-read-macros
+@deffn function enable-read-macros
+
+Adds @@TIMESTRING and #@@UNIVERSAL-TIME as reader macros.
+@end deffn
+
+
+@section Support for non-Gregorian Calendars
+
+@itindex astronomical-julian-date
+@deffn function astronomical-julian-date local-time
+
+Returns the julian date of the date portion of @code{local-time}.
+@end deffn
+
+
+@itindex modified-julian-date
+@deffn function astronomical-julian-date local-time
+
+Returns the modified julian date of the date portion of LOCAL-TIME.
+@end deffn
+
+@c ===================================================================
+@node References
+@chapter References
+
+@itemize
+
+@item
+[NaggumPaper] Erik Naggum. @emph{The Long Painful History of Time}
+@url{http://naggum.no/lugm-time.html}, 1999.
+
+@end itemize
+
+
+@c ===================================================================
+@node Comprehensive Index
+@unnumbered Index
+@printindex cp
+
+@bye

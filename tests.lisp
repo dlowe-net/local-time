@@ -169,7 +169,7 @@
     (is (= 3 (length (multiple-value-list (timezone local-time))))))
   (encode-decode-test (0 0 0 0 1 1 0)
     (is (equal (multiple-value-list (decode-local-time local-time))
-               `(0 0 0 0 1 1 0 5
+               `(0 0 0 0 1 1 0 6
                  ,(nth-value 1 (timezone local-time))
                  ,*default-timezone*
                  ,(nth-value 2 (timezone local-time))))))
@@ -196,7 +196,8 @@
     "2008-06-05T04:03:02.000001Z"
     (format-timestring (encode-local-time 1000 2 3 4 5 6 2008 :timezone +utc-zone+) :use-zulu-p t)
 
-    "2008-06-05T04:03:02.1234567+00:00"
+    ;; note: nsec overflows here
+    "2008-06-05T04:03:03.234567+00:00"
     (format-timestring (encode-local-time 1234567890 2 3 4 5 6 2008 :timezone +utc-zone+) :use-zulu-p nil)
 
     "-06-05T04:03:02.000001"
@@ -261,9 +262,9 @@
 (test adjust-days
   (let ((sunday (parse-timestring "2006-12-17T01:02:03Z")))
     (is (local-time= (parse-timestring "2006-12-11T01:02:03Z")
-                     (local-time-adjust-days sunday :monday)))
+                     (adjust-local-time sunday (offset :day-of-week :monday))))
     (is (local-time= (parse-timestring "2006-12-20T01:02:03Z")
-                     (local-time-adjust-days sunday 3)))))
+                     (adjust-local-time sunday (offset :day 3))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -291,24 +292,28 @@
   (is (local-time= (encode-local-time 0 02 0 0 23 3 2000)
                    (parse-timestring "--23T::02" :allow-missing-elements-p t)))
   (is (local-time= (encode-local-time 80000000 7 6 5 1 3 2000)
-                   (parse-timestring "T05:06:07,08"))))
+                   (parse-timestring "T05:06:07,08")))
+  (is (local-time= (encode-local-time 940703000 28 56 16 20 2 2008 :timezone +utc-zone+)
+                   (parse-timestring "2008-02-20T16:56:28.940703Z")))
+  (let ((value "2006-06-06T06:06:06-02:30"))
+    (is (string= value (format-timestring (parse-timestring value))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(test local-time-adjust
+(test adjust-local-time
   (let ((utc-1 (local-time::make-timezone :subzones '((-3600 NIL "UTC-1" T NIL))
                                           :loaded t))
         (utc+1 (local-time::make-timezone :subzones '((+3600 NIL "UTC+1" T NIL))
                                           :loaded t))
         (epoch (local-time :unix 0 :timezone +utc-zone+)))
-    (is (equal (decode-local-time (local-time-adjust epoch utc-1 (make-local-time)))
+    (is (equal (decode-local-time (adjust-local-time epoch (set :timezone utc-1)))
                ;; ms ss mm hh day mon year wday ds-p zone abbrev
                (values 00 00 00 23 31 12 1969 3 nil utc-1 "UTC-1")))
     (let ((local-time (local-time :unix 3600 :timezone +utc-zone+)))
-      (is (equal (decode-local-time (local-time-adjust local-time utc-1 (make-local-time)))
+      (is (equal (decode-local-time (adjust-local-time local-time (set :timezone utc-1)))
                  ;; ms ss mm hh day mon year
                  (values 00 00 00 00 01 01 1970 4 nil utc-1 "UTC-1"))))
-    (is (equal (decode-local-time (local-time-adjust epoch utc+1 (make-local-time)))
+    (is (equal (decode-local-time (adjust-local-time epoch (set :timezone utc+1)))
                ;; ms ss mm hh day mon year
                (values 00 00 00 01 01 01 1970 4 nil utc+1 "UTC+1")))))
 
@@ -349,11 +354,14 @@
              (is (= day day*)))))
 
 (defun valid-date-p (year month day)
+  ;; it works only on the gregorian calendar
   (let ((month-days #(31 28 31 30 31 30 31 31 30 31 30 31)))
     (and (<= 1 month 12)
          (<= 1 day (+ (aref month-days (1- month))
                       (if (and (= month 2)
-                               (zerop (mod year 4)))
+                               (zerop (mod year 4))
+                               (not (zerop (mod year 100)))
+                               (zerop (mod year 400)))
                           1
                           0))))))
 
@@ -369,3 +377,26 @@
                           (is (= year year*))
                           (is (= month month*))
                           (is (= day day*)))))))))
+
+(test local-time-uses-nsec
+      (let ((universal-time (local-time :universal (get-universal-time)
+                                        :nsec 123456789))
+            (unix-time (local-time :unix 0 :nsec 123456789))
+            (now-time (local-time :nsec 123456789)))
+        (is (= (nsec-of universal-time) 123456789))
+        (is (= (nsec-of unix-time) 123456789))
+        (is (= (nsec-of now-time) 123456789))))
+
+(defun test-parse/format-consistency (&key (start-day -100000) (end-day 100000)
+                                      (timezone +utc-zone+))
+  (declare (optimize debug))
+  (loop
+     with time = (make-local-time :timezone timezone)
+     for day from start-day upto end-day
+     for index upfrom 0 do
+       (setf (day-of time) day)
+       (when (zerop (mod index 1000))
+         (print time))
+       (let ((parsed (parse-timestring (format-timestring time))))
+         (unless (local-time= parsed time)
+           (error "oops, mismatch: ~A ~A" parsed time)))))
