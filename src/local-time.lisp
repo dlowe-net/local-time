@@ -108,22 +108,6 @@
           (when path
             (try (merge-pathnames "../" path)))))))
 
-;;; Per Naggum we use the terms Political Time and Scientific Time to
-;;; distinguish between two ways to think about adjusting times around
-;;; DST boundaries.  If *use-political-time* is nil, we do not
-;;; consider changes in timezone offset when adjusting timestamp
-;;; values.
-
-(defparameter *use-political-time* t)
-
-(defmacro with-scientific-time (&rest body)
-  `(let ((*use-political-time* nil))
-     ,@body))
-
-(defmacro with-political-time (&rest body)
-  `(let ((*use-political-time* t))
-     ,@body))
-
 ;;; Month information
 (defparameter +month-names+
   #("" "January" "February" "March" "April" "May" "June" "July" "August"
@@ -428,23 +412,21 @@ In other words:
   (let* ((root-directory timezone-repository)
          (cutoff-position (length (princ-to-string root-directory))))
     (flet ((visitor (file)
-             (let* ((full-name (subseq (princ-to-string file) cutoff-position))
-                    (name (pathname-name file))
-                    timezone)
-               (handler-case
-                   (progn
-                     (setf timezone (%realize-timezone (make-timezone :path file :name name)))
-                     (setf (gethash full-name *location-name->timezone*) timezone)
-                     (map nil (lambda (subzone)
-                                (push timezone (gethash (subzone-abbrev subzone)
-                                                        *abbreviated-subzone-name->timezone-list*)))
-                          (timezone-subzones timezone)))
-                 (invalid-timezone-file () nil)))))
+             (handler-case
+                 (let* ((full-name (subseq (princ-to-string file) cutoff-position))
+                        (name (pathname-name file))
+                        (timezone (%realize-timezone (make-timezone :path file :name name))))
+                   (setf (gethash full-name *location-name->timezone*) timezone)
+                   (map nil (lambda (subzone)
+                              (push timezone (gethash (subzone-abbrev subzone)
+                                                      *abbreviated-subzone-name->timezone-list*)))
+                        (timezone-subzones timezone)))
+               (invalid-timezone-file () nil))))
       (setf *location-name->timezone* (make-hash-table :test 'equal))
       (setf *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal))
       (cl-fad:walk-directory root-directory #'visitor :directories nil
                              :test (lambda (file)
-                                     (not (find "etc" (pathname-directory file) :test #'string=))))
+                                     (not (find "Etc" (pathname-directory file) :test #'string=))))
       (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) #'visitor :directories nil))))
 
 (defmacro make-timestamp (&rest args)
@@ -502,10 +484,9 @@ In other words:
   "Returns two values, the values of new DAY and SEC slots of the timestamp adjusted to the given timezone."
   (declare (type integer sec day offset))
   (multiple-value-bind (offset-day offset-sec)
-      (truncate (abs offset) +seconds-per-day+)
-    (let* ((offset-sign (signum offset))
-           (new-sec (+ sec (* offset-sign offset-sec)))
-           (new-day (+ day (* offset-sign offset-day))))
+      (truncate offset +seconds-per-day+)
+    (let* ((new-sec (+ sec offset-sec))
+           (new-day (+ day offset-day)))
       (cond ((minusp new-sec)
              (incf new-sec +seconds-per-day+)
              (decf new-day))
@@ -793,26 +774,14 @@ the previous day given by OFFSET."
                                                           (:minute +seconds-per-minute+)
                                                           (:hour +seconds-per-hour+))))
                                        +seconds-per-day+)
-                              (cond
-                                (*use-political-time*
-                                 (setf part :day
-                                       offset days-offset
-                                       sec new-sec)
-                                 (when (= offset 0)
-                                   (return-from direct-adjust (values nsec sec day)))
-                                 (go top))
-                                (t
-                                 (setf sec new-sec)
-                                 (incf day days-offset)
-                                 (return-from direct-adjust (values nsec sec day))))))
+                              (return-from direct-adjust (values nsec new-sec (+ day days-offset)))))
                            (:day
                             (incf day offset)
                             (setf new-utc-offset (or utc-offset
                                                      (timestamp-subtimezone (make-timestamp :nsec nsec :sec sec :day day)
                                                                             timezone)))
-                            (when (and *use-political-time*
-                                       (not (= old-utc-offset
-                                               new-utc-offset)))
+                            (when (not (= old-utc-offset
+                                          new-utc-offset))
                               ;; We hit the DST boundary. We need to restart again
                               ;; with :sec, but this time we know both old and new
                               ;; UTC offset will be the same, so it's safe to do
@@ -1064,7 +1033,7 @@ It should be an instance of a class that responds to one or more of the methods 
 (defgeneric clock-today (clock)
   (:documentation "Returns a timestamp for the current date given a
   clock.  The date is encoded by convention as a timestamp with the
-  time set to 12:00UTC."))
+  time set to 00:00:00UTC."))
 
 (defmethod clock-now (clock)
   (declare (ignore clock))
