@@ -466,27 +466,6 @@ Returns the decoded part of the timestamp.
 @node Manipulating Date and Time Values
 @section Manipulating Date and Time Values
 
-@itindex *use-political-time*
-@defvr Default *use-political-time*
-
-When political time is enabled, changes in timezone offset are
-considered when adjusting timestamp values.  Adding 24 hours to a
-timestamp across a DST boundary will result in the same wall-clock
-time.
-
-When scientific time is used, changes in timezone offset are not
-considered.  Adding 24 hours to a timestamp across a DST boundary will
-result in a different wall-clock time.
-@end defvr
-
-@defmac with-scientific-time &rest body
-@defmacx with-political-time &rest body
-
-These macros make it simple to temporarily select political or
-scientific time.
-
-@end defmac
-
 @itindex timestamp+
 @itindex timestamp-
 @defun timestamp+ time amount unit

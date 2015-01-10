@@ -56,3 +56,13 @@
                        `(0 0 ,@(reverse (first test-case)) :offset 0))))
            (local-time:decode-timestamp timestamp :timezone eastern-tz))
          (apply 'values `(0 0 ,@(reverse (second test-case)))))))))
+
+(deftest test/timezone/adjust-across-dst-by-days ()
+  (let* ((old (parse-timestring "2014-03-09T01:00:00.000000-05:00"))
+         (new (timestamp+ old 1 :day eastern-tz)))
+    (is (= (* 23 60 60) (timestamp-difference new old)))))
+
+(deftest test/timezone/adjust-across-dst-by-hours ()
+  (let* ((old (parse-timestring "2014-03-09T01:00:00.000000-05:00"))
+         (new (timestamp+ old 24 :hour eastern-tz)))
+    (is (= (* 24 60 60) (timestamp-difference new old)))))
