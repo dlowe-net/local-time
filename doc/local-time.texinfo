@@ -124,10 +124,11 @@ the tzfile format. The default timezone is loaded from
 different results than the system time handling.
 
 local-time currently supports subsecond precision clocks with allegro,
-cmucl, sbcl, and non-Windows ccl.  All others will be able to retrieve
-the time with second precision using @code{get-universal-time}.  You
-may add support for your own implementation by implementing the clock
-generic protocol documented here.
+cmucl, sbcl, abcl, and non-Windows ccl. All others will be able to
+retrieve the time with second precision using
+@code{get-universal-time}. You may add support for your own
+implementation by implementing the clock generic protocol documented
+here.
 
 @c ===================================================================
 @node Public API
