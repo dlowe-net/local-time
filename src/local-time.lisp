@@ -1010,7 +1010,7 @@ elements."
       (values (ccl:pref tv :timeval.tv_sec) (* 1000 (ccl:pref tv :timeval.tv_usec)))))
   #+abcl
   (multiple-value-bind (sec millis)
-      (java:jstatic "currentTimeMillis" "java.lang.System")
+      (truncate (java:jstatic "currentTimeMillis" "java.lang.System") 1000)
     (values sec (* millis 1000000)))
   #-(or allegro cmu sbcl abcl (and ccl (not windows)))
   (values (- (get-universal-time)
