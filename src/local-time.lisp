@@ -1009,8 +1009,9 @@ elements."
       (assert (zerop err) nil "gettimeofday failed")
       (values (ccl:pref tv :timeval.tv_sec) (* 1000 (ccl:pref tv :timeval.tv_usec)))))
   #+abcl
-  (let ((millis (java:jstatic "currentTimeMillis" "java.lang.System")))
-    (values (truncate millis 1000) (* (mod millis 1000) 1000000)))
+  (multiple-value-bind (sec millis)
+      (java:jstatic "currentTimeMillis" "java.lang.System")
+    (values sec (* millis 1000000)))
   #-(or allegro cmu sbcl abcl (and ccl (not windows)))
   (values (- (get-universal-time)
              ;; CL's get-universal-time uses an epoch of 1/1/1900, so adjust the result to the Unix epoch
