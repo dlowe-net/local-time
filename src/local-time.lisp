@@ -62,7 +62,7 @@
 
 ;;; Declaims
 
-(declaim (inline now format-timestring %get-current-time
+(declaim (inline now %get-current-time
                  format-rfc3339-timestring to-rfc3339-timestring
                  format-rfc1123-timestring to-rfc1123-timestring)
          (ftype (function (&rest t) string) format-rfc3339-timestring)
@@ -1606,6 +1606,12 @@ It should be an instance of a class that responds to one or more of the methods 
                (princ abbrev result))
               ((eql fmt :ampm)
                (princ (if (< hour 12) "am" "pm") result))
+              ((eql fmt :ap)
+               (princ (if (< hour 12) "a" "p") result))
+              ((eql fmt :campm)
+               (princ (if (< hour 12) "AM" "PM") result))
+              ((eql fmt :cap)
+               (princ (if (< hour 12) "A" "P") result))
               ((eql fmt :ordinal-day)
                (princ (ordinalize day) result))
               ((or (stringp fmt) (characterp fmt))
@@ -1615,6 +1621,14 @@ It should be an instance of a class that responds to one or more of the methods 
                             (:nsec nsec)
                             (:usec (floor nsec 1000))
                             (:msec (floor nsec 1000000))
+                            (:p (floor nsec (case (second fmt)
+                                                    (1 100000000)
+                                                    (2 10000000)
+                                                    (3 1000000)
+                                                    (4 100000)
+                                                    (5 10000)
+                                                    (6 1000)
+                                                    (t 1000))))
                             (:sec sec)
                             (:min minute)
                             (:hour hour)
@@ -1641,8 +1655,8 @@ It should be an instance of a class that responds to one or more of the methods 
                             val))))))))))))
 
 (defun format-timestring (destination timestamp &key
-                          (format +iso-8601-format+)
-                          (timezone *default-timezone*))
+                                            (format +iso-8601-format+)
+                                            (timezone *default-timezone*))
   "Constructs a string representation of TIMESTAMP according to FORMAT and returns it.  If destination is T, the string is written to *standard-output*.  If destination is a stream, the string is written to the stream.
 
 FORMAT is a list containing one or more of strings, characters, and keywords. Strings and characters are output literally, while keywords are replaced by the values here:
@@ -1657,6 +1671,7 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :MSEC              *milliseconds
   :USEC              *microseconds
   :NSEC              *nanoseconds
+  :ORDINAL-DAY       day ordinal suffix
   :ISO-WEEK-YEAR     *year for ISO week date (can be different from regular calendar year)
   :ISO-WEEK-NUMBER   *ISO week number (i.e. 1 through 53)
   :ISO-WEEK-DAY      *ISO compatible weekday number (monday=1, sunday=7)
@@ -1665,8 +1680,12 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :MINIMAL-WEEKDAY   minimal form of weekday (e.g. Su, Mo)
   :LONG-MONTH        long form of month (e.g. January, February)
   :SHORT-MONTH       short form of month (e.g. Jan, Feb)
+  :SHORT-YEAR        short form of year (e.g. 39, 45)
   :HOUR12            *hour on a 12-hour clock
   :AMPM              am/pm marker in lowercase
+  :AP                am/pm marker in lowercase printed as a/p
+  :CAMPM             am/pm marker in upcase
+  :CAP               am/pm marker in upcase printed as a/p
   :GMT-OFFSET        the gmt-offset of the time, in +00:00 form
   :GMT-OFFSET-OR-Z   like :GMT-OFFSET, but is Z when UTC
   :GMT-OFFSET-HHMM   like :GMT-OFFSET, but in +0000 form
@@ -1678,10 +1697,23 @@ The string representation of the value will be padded with the padchar.
 
 You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMAT+."
   (declare (type (or boolean stream) destination))
-  (let ((result (%construct-timestring timestamp format timezone)))
+  (let ((result (%construct-timestring timestamp (if (stringp format) (parse-string-format format) format) timezone)))
     (when destination
       (write-string result (if (eq t destination) *standard-output* destination)))
     result))
+
+(define-compiler-macro format-timestring (destination timestamp &key
+                                                      (format +iso-8601-format+ format-supplied-p)
+                                                      (timezone '*default-timezone*))
+  (let ((destination (if (eq t destination) '*standard-output* destination))
+        (format (if (stringp format)
+                    `(quote ,(parse-string-format format))
+                    (if format-supplied-p
+                        format
+                        `(quote ,format)))))
+    (if destination
+        `(write-string (%construct-timestring ,timestamp ,format ,timezone) ,destination)
+        `(%construct-timestring ,timestamp ,format ,timezone))))
 
 (defun format-rfc1123-timestring (destination timestamp &key
                                   (timezone *default-timezone*))
@@ -1783,5 +1815,3 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
 (defun modified-julian-date (timestamp)
   "Returns the modified julian date referred to by the timestamp."
   (- (day-of timestamp) +modified-julian-date-offset+))
-
-(declaim (notinline format-timestring))

@@ -95,3 +95,29 @@
 (deftest test/formatting/leap-year ()
   (let ((timestamp (parse-timestring "2004-02-29")))
     (is (timestamp= timestamp (parse-timestring (format-timestring nil timestamp))))))
+
+(deftest test/formatting/string-pattern ()
+  (let ((timestamp (parse-timestring "2014-11-03T04:05:06.416462-08:00")))
+    (macrolet ((frob (&rest args)
+                 `(progn
+                    ,@(loop
+                        :for (a b) :on args :by #'cddr
+                        :collect `(is (string= ,a (local-time:format-timestring nil timestamp :format ,b)))))))
+    (frob
+     "4:5:6" "h:M:s"
+     "20141103" "yyyymmdd"
+     "Mon Nov 03 2014 04:05:06" "ddd mmm dd yyyy HH:MM:ss"
+     "11/03/14" "m/dd/yy"
+     "Nov 3, 2014" "mmm d, yyyy"
+     "November 3, 2014" "mmmm d, yyyy"
+     "Monday, November 3, 2014" "dddd, mmmm d, yyyy"
+     "4:05 AM" "h:MM TT"
+     "4:05:06 AM" "h:MM:ss TT"
+     "4:05:06 AM PST" "h:MM:ss TT Z"
+     "2014-11-03" "yyyy-mm-dd"
+     "04:05:06" "HH:MM:ss"
+     "2014-11-03T04:05:06" "yyyy-mm-dd\\THH:MM:ss"
+     "Mon, 03 Nov 2014 04:05:06 -0800" "ddd, dd mmm yyyy hh:MM:ss O" ;;rfc1123
+     "2014-11-03T04:05:06.416462-08:00" "yyyy-mm-dd\\THH:MM:ss.uuuuuuo" ;;iso8601
+     "it is the 3rd day" "i\\t i\\s \\t\\he S \\da\\y"
+     "Printed on 11/03/2014 at 04:05AM" "Prin\\te\\d \\on mm/dd/yyyy a\\t hh:MMTT"))))
