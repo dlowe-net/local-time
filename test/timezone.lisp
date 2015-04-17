@@ -66,3 +66,31 @@
   (let* ((old (parse-timestring "2014-03-09T01:00:00.000000-05:00"))
          (new (timestamp+ old 24 :hour eastern-tz)))
     (is (= (* 24 60 60) (timestamp-difference new old)))))
+
+(deftest test/timezone/timestamp-minimize-part ()
+  (is (timestamp=
+       (timestamp-minimize-part
+	(encode-timestamp 999999999 59 59 1 14 3 2010 :timezone eastern-tz)
+	:month
+	:timezone eastern-tz)
+       (encode-timestamp 0 0 0 0 1 1 2010 :timezone eastern-tz)))
+  (is (timestamp=
+       (timestamp-minimize-part
+	(encode-timestamp 0 0 0 2 14 3 2010 :timezone eastern-tz)
+	:month
+	:timezone eastern-tz)
+       (encode-timestamp 0 0 0 0 1 1 2010 :timezone eastern-tz))))
+
+(deftest test/timezone/timestamp-maximize-part ()
+  (is (timestamp=
+       (timestamp-maximize-part
+	(encode-timestamp 999999999 59 59 1 7 11 2010 :timezone eastern-tz)
+	:month
+	:timezone eastern-tz)
+       (encode-timestamp 999999999 59 59 23 31 12 2010 :timezone eastern-tz)))
+  (is (timestamp=
+       (timestamp-maximize-part
+	(encode-timestamp 0 0 0 2 7 11 2010 :timezone eastern-tz)
+	:month
+	:timezone eastern-tz)
+       (encode-timestamp 999999999 59 59 23 31 12 2010 :timezone eastern-tz))))
