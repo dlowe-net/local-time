@@ -520,7 +520,7 @@ In other words:
                         (if (> part-count 3) 1 day)
                         (if (> part-count 4) 1 month)
                         year
-                        :offset offset
+                        :offset (if timezone nil offset)
                         :timezone timezone
                         :into into))))
 
@@ -544,7 +544,7 @@ In other words:
                           (if (> part-count 3) (days-in-month month year) day)
                           month
                           year
-                          :offset offset
+                          :offset (if timezone nil offset)
                           :timezone timezone
                           :into into)))))
 
