@@ -1047,10 +1047,23 @@ It should be an instance of a class that responds to one or more of the methods 
   clock.  The date is encoded by convention as a timestamp with the
   time set to 00:00:00UTC."))
 
+(defun %leap-seconds-offset (leap-seconds sec)
+  "Find the latest leap second adjustment effective at SEC system time."
+  (elt (leap-seconds-adjustment leap-seconds)
+       (transition-position sec (leap-seconds-sec leap-seconds))))
+
+(defun %adjust-sec-for-leap-seconds (sec)
+  "Ajdust SEC from system time to Unix time (on systems those clock does not jump back over leap seconds)."
+  (let ((leap-seconds (timezone-leap-seconds (%realize-timezone *default-timezone*))))
+    (when leap-seconds
+      (decf sec (%leap-seconds-offset leap-seconds sec))))
+  sec)
+
 (defmethod clock-now (clock)
   (declare (ignore clock))
   (multiple-value-bind (sec nsec) (%get-current-time)
-    (unix-to-timestamp sec :nsec nsec)))
+    (let ((sec (%adjust-sec-for-leap-seconds sec)))
+      (unix-to-timestamp sec :nsec nsec))))
 
 (defmethod clock-today (clock)
   (declare (ignore clock))

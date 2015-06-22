@@ -3,7 +3,9 @@
 (defsuite* (timezone :in test))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (local-time::define-timezone eastern-tz
-      (merge-pathnames #p"EST5EDT" local-time::*default-timezone-repository-path*)))
+      (merge-pathnames #p"EST5EDT" local-time::*default-timezone-repository-path*))
+  (local-time::define-timezone utc-leaps
+      (merge-pathnames #p"../zoneinfo-leaps/UTC" local-time::*default-timezone-repository-path*)))
 
 
 
@@ -94,3 +96,11 @@
 	:month
 	:timezone eastern-tz)
        (encode-timestamp 999999999 59 59 23 31 12 2010 :timezone eastern-tz))))
+
+(deftest test/leaps/tai-to-utc ()
+  (let ((*default-timezone* utc-leaps))
+    (is (= 1435708799
+           (local-time::%adjust-sec-for-leap-seconds 1435708824)
+           (local-time::%adjust-sec-for-leap-seconds 1435708825)))
+    (is (= 1435708800
+           (local-time::%adjust-sec-for-leap-seconds 1435708826)))))
