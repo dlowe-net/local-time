@@ -247,11 +247,11 @@
 
 (defun %tz-read-header (inf)
   `(:utc-count ,(%read-binary-integer inf 4)
-         :wall-count ,(%read-binary-integer inf 4)
-         :leap-count ,(%read-binary-integer inf 4)
-         :transition-count ,(%read-binary-integer inf 4)
-         :type-count ,(%read-binary-integer inf 4)
-         :abbrev-length ,(%read-binary-integer inf 4)))
+    :wall-count ,(%read-binary-integer inf 4)
+    :leap-count ,(%read-binary-integer inf 4)
+    :transition-count ,(%read-binary-integer inf 4)
+    :type-count ,(%read-binary-integer inf 4)
+    :abbrev-length ,(%read-binary-integer inf 4)))
 
 (defun %tz-read-transitions (inf count)
   (make-array count
@@ -319,8 +319,8 @@
              (timezone-transitions (%tz-read-transitions inf (getf header :transition-count)))
              (subzone-indexes (%tz-read-indexes inf (getf header :transition-count)))
              (subzone-raw-info (%tz-read-subzone inf (getf header :type-count)))
-             (leap-second-info (%tz-read-leap-seconds inf (getf header :leap-count)))
              (abbreviation-buf (%tz-read-abbrevs inf (getf header :abbrev-length)))
+             (leap-second-info (%tz-read-leap-seconds inf (getf header :leap-count)))
              (std-indicators (%tz-read-indicators inf (getf header :wall-count)))
              (gmt-indicators (%tz-read-indicators inf (getf header :utc-count)))
              (subzone-info (%tz-make-subzones subzone-raw-info
