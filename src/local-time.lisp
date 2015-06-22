@@ -271,10 +271,18 @@
                    (%read-binary-integer inf 1)
                    (%read-binary-integer inf 1))))
 
+(defun leap-seconds-sec (leap-seconds)
+  (car leap-seconds))
+(defun leap-seconds-adjustment (leap-seconds)
+  (cdr leap-seconds))
+
 (defun %tz-read-leap-seconds (inf count)
-  (loop for idx from 1 upto count
-     collect (list (%read-binary-integer inf 4)
-                   (%read-binary-integer inf 4))))
+  (when (plusp count)
+    (loop for idx from 1 upto count
+          collect (%read-binary-integer inf 4) into sec
+          collect (%read-binary-integer inf 4) into adjustment
+          finally (return (cons (make-array count :initial-contents sec)
+                                (make-array count :initial-contents adjustment))))))
 
 (defun %tz-read-abbrevs (inf length)
   (let ((a (make-array length :element-type '(unsigned-byte 8))))
