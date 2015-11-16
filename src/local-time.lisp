@@ -426,7 +426,8 @@ In other words:
       (setf *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal))
       (cl-fad:walk-directory root-directory #'visitor :directories nil
                              :test (lambda (file)
-                                     (not (find "Etc" (pathname-directory file) :test #'string=))))
+                                     (not (find "Etc" (pathname-directory file) :test #'string=)))
+                             :follow-symlinks nil)
       (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) #'visitor :directories nil))))
 
 (defmacro make-timestamp (&rest args)
