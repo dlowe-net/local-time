@@ -2,6 +2,10 @@
 
 (defsuite* (simple :in test))
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (local-time::define-timezone amsterdam-tz
+      (merge-pathnames #p"Europe/Amsterdam" local-time::*default-timezone-repository-path*)))
+
 (deftest test/simple/make-timestamp ()
   (let ((timestamp (make-timestamp :nsec 1 :sec 2 :day 3)))
     (is (= (nsec-of timestamp) 1))
@@ -94,7 +98,11 @@
 
   (let ((a (parse-timestring "2006-01-01T00:00:00"))
         (b (parse-timestring "2001-01-02T00:00:00")))
-    (is (= 4 (timestamp-whole-year-difference a b)))))
+    (is (= 4 (timestamp-whole-year-difference a b))))
+  
+  (let* ((local-time::*default-timezone* amsterdam-tz)
+         (a (parse-timestring "1978-10-01")))
+    (is (= 0 (timestamp-whole-year-difference a a)))))
 
 (deftest test/adjust-timestamp/bug1 ()
   (let* ((timestamp (parse-timestring "2006-01-01T00:00:00Z"))

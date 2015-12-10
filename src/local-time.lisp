@@ -821,18 +821,20 @@ the previous day given by OFFSET."
 (defun timestamp-whole-year-difference (time-a time-b)
   "Returns the number of whole years elapsed between time-a and time-b (hint: anniversaries)."
   (declare (type timestamp time-b time-a))
-  (multiple-value-bind (nsec-a sec-a minute-a hour-a day-a month-a year-a)
+  (multiple-value-bind (nsec-b sec-b minute-b hour-b day-b month-b year-b day-of-week-b daylight-p-b offset-b)
       (decode-timestamp time-b)
-    (multiple-value-bind (nsec-b sec-b minute-b hour-b day-b month-b year-b day-of-week-b daylight-p-b zone-b)
+    (declare (ignore day-of-week-b daylight-p-b))
+    (multiple-value-bind (nsec-a sec-a minute-a hour-a day-a month-a year-a)
         (decode-timestamp time-a)
-      (declare (ignore nsec-b sec-b minute-b hour-b day-b month-b day-of-week-b daylight-p-b zone-b))
-      (let ((year-difference (- year-b year-a)))
-        (if (timestamp<= (encode-timestamp nsec-a sec-a minute-a hour-a
-                                           (if (= month-a 2)
-                                               (min 28 day-a)
-                                               day-a)
-                                           month-a
-                                           (+ year-difference year-a))
+      (declare (ignore nsec-a sec-a minute-a hour-a day-a month-a))
+      (let ((year-difference (- year-a year-b)))
+        (if (timestamp<= (encode-timestamp nsec-b sec-b minute-b hour-b
+                                           (if (= month-b 2)
+                                               (min 28 day-b)
+                                               day-b)
+                                           month-b
+                                           (+ year-difference year-b)
+                                           :offset offset-b)
                          time-a)
             year-difference
             (1- year-difference))))))
