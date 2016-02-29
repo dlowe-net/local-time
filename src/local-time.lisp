@@ -1030,9 +1030,12 @@ elements."
           0))
 
 (defvar *clock* t
-  "Use the `*clock*' special variable if you need to define your own idea of the current time
+  "Use the `*clock*' special variable if you need to define your own idea of the current time.
 
-It should be an instance of a class that responds to one or more of the methods `clock-now', and `clock-today'")
+The value of this variable should have the methods `local-time::clock-now', and
+`local-time::clock-today'. The currently supported values in local-time are:
+  t - use the standard clock
+  local-time:leap-second-adjusted - use a clock which adjusts for leap seconds using the information in *default-timezone*.")
 
 (defun now ()
   "Returns a timestamp representing the present moment."
@@ -1062,11 +1065,15 @@ It should be an instance of a class that responds to one or more of the methods 
       (decf sec (%leap-seconds-offset leap-seconds sec))))
   sec)
 
+(defmethod clock-now ((clock (eql 'leap-second-adjusted)))
+  (multiple-value-bind (sec nsec) (%get-current-time)
+    (unix-to-timestamp (%adjust-sec-for-leap-seconds sec)
+                       :nsec nsec)))
+
 (defmethod clock-now (clock)
   (declare (ignore clock))
   (multiple-value-bind (sec nsec) (%get-current-time)
-    (let ((sec (%adjust-sec-for-leap-seconds sec)))
-      (unix-to-timestamp sec :nsec nsec))))
+    (unix-to-timestamp sec :nsec nsec)))
 
 (defmethod clock-today (clock)
   (declare (ignore clock))

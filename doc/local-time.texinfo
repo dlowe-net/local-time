@@ -601,7 +601,7 @@ If there is no timezone specified in @code{timestring} then
 @itindex format-timestring
 @defun format-timestring (destination timestamp &key (format +iso-8601-format+) (timezone *default-timezone*))
 
-Constructs a string representation of TIMESTAMP according to FORMAT and returns it.  If destination is T, the string is written to *standard-output*.  If destination is a stream, the string is written to the stream.
+Constructs a string representation of TIMESTAMP according to FORMAT and returns it.  If destination is @code{T}, the string is written to @code{*standard-output*}.  If destination is a stream, the string is written to the stream.
 
 FORMAT is a list containing one or more of strings, characters, and keywords.  Strings and characters are output literally, while keywords are replaced by the values here:
 
@@ -691,9 +691,17 @@ Formats the time like format-timestring, but in RFC 3339 format. The options con
 
 @defvr Default *clock*
 
-We expose the *clock* special variable and the following generic
-functions so that applications may re-define the current time or
-date as required.
+The *clock* special variable and the following generic functions are
+exposed so that applications may re-define the current time or date as
+required.  This can be used for testing or to support alternate clocks.
+
+The currently supported values are:
+
+@itemize
+@item @code{t} - Use the standard system clock with no adjustments
+@item @code{leap-second-adjusted} - The system clock, adjusted for leap seconds using the information in *default-timezone*.
+@end itemize
+
 @end defvr
 
 @defun clock-now (clock)
