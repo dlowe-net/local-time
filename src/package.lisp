@@ -55,6 +55,7 @@
            #:define-timezone
            #:*default-timezone*
            #:*clock*
+           #:leap-second-adjusted
            #:clock-now
            #:clock-today
            #:find-timezone-by-location-name
