@@ -3,6 +3,8 @@
 (defsuite* (simple :in test))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
+  (local-time::define-timezone eastern-tz
+      (merge-pathnames #p"US/Eastern" local-time::*default-timezone-repository-path*))
   (local-time::define-timezone amsterdam-tz
       (merge-pathnames #p"Europe/Amsterdam" local-time::*default-timezone-repository-path*)))
 
@@ -244,3 +246,28 @@
                (encode-timestamp 0 49 26 13 9 12 2010 :offset -18000)
                :min)
               (encode-timestamp 0 0 0 13 9 12 2010 :offset -18000)))
+
+(deftest test/decode-iso-week ()
+  (dolist (*default-timezone* (list eastern-tz +utc-zone+ amsterdam-tz))
+    (dolist (testcase '((2005 01 01 2004 53 6)
+                        (2005 01 02 2004 53 7)
+                        (2005 12 31 2005 52 6)
+                        (2007 01 01 2007 1 1)
+                        (2007 12 30 2007 52 7)
+                        (2007 12 31 2008 1 1)
+                        (2008 01 01 2008 1 2)
+                        (2008 12 28 2008 52 7)
+                        (2008 12 29 2009 1 1)
+                        (2008 12 30 2009 1 2)
+                        (2008 12 31 2009 1 3)
+                        (2009 01 01 2009 1 4)
+                        (2009 12 31 2009 53 4)
+                        (2010 01 01 2009 53 5)
+                        (2010 01 02 2009 53 6)
+                        (2010 01 03 2009 53 7)
+                        (2016 01 04 2016 1 1)))
+      (destructuring-bind (year month day iso-year iso-week iso-dow)
+          testcase
+        (let ((ts (encode-timestamp 0 0 0 12 day month year)))
+          (is (equal (list iso-year iso-week iso-dow)
+                     (multiple-value-list (local-time::%timestamp-decode-iso-week ts)))))))))
