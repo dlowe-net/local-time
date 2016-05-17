@@ -22,7 +22,7 @@
   (loaded nil :type boolean))
 
 (deftype timezone-offset ()
-  '(integer -43199 50400))
+  '(integer -43200 50400))
 
 (defun %valid-time-of-day? (timestamp)
   (zerop (day-of timestamp)))
