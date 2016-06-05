@@ -1233,10 +1233,13 @@ The value of this variable should have the methods `local-time::clock-now', and
   (let* ((dn (timestamp-day-of-week timestamp))
          (day-of-week (if (zerop dn) 7 dn)) ; ISO weekdays are Monday=1 and Sunday=7
          (nearest-thursday (timestamp+ timestamp (- 4 day-of-week) :day))
-         (base-year (encode-timestamp 0 0 0 0 1 1 (timestamp-year nearest-thursday)))
-         (ordinal-day (- (day-of nearest-thursday) (day-of base-year))))
-    (values (timestamp-year base-year)
-            (nth-value 0 (floor (1+ (/ ordinal-day 7))))
+         (year (timestamp-year nearest-thursday))
+         (month (timestamp-month nearest-thursday))
+         (day (timestamp-day nearest-thursday))
+         (ordinal-day (- (day-of (encode-timestamp 0 0 0 0 day month year :timezone +utc-zone+))
+                         (day-of (encode-timestamp 0 0 0 0 1 1 year :timezone +utc-zone+)))))
+    (values year
+            (1+ (floor ordinal-day 7))
             day-of-week)))
 
 (defun %timestamp-decode-time (seconds)
