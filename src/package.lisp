@@ -87,4 +87,5 @@
            #:+iso-week-date-format+
            #:astronomical-julian-date
            #:modified-julian-date
-           #:astronomical-modified-julian-date))
+           #:astronomical-modified-julian-date
+           #:invalid-timestring))
