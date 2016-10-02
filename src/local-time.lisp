@@ -1557,7 +1557,8 @@ The value of this variable should have the methods `local-time::clock-now', and
                          (allow-missing-date-part allow-missing-elements)
                          (allow-missing-time-part allow-missing-elements)
                          (allow-missing-timezone-part allow-missing-elements)
-                         (offset 0))
+                         (offset 0)
+                         (timezone *default-timezone* tz-provided))
   "Parse a timestring and return the corresponding TIMESTAMP. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value, and timezone offset is 0 (UTC) unless explicitly specified in the input string."
   (let ((parts (%split-timestring (coerce timestring 'simple-string)
                                   :start (or start 0)
@@ -1573,18 +1574,21 @@ The value of this variable should have the methods `local-time::clock-now', and
     (when parts
       (destructuring-bind (year month day hour minute second nsec offset-hour offset-minute)
           parts
-        (encode-timestamp
-         (or nsec 0)
-         (or second 0)
-         (or minute 0)
-         (or hour 0)
-         (or day 1)
-         (or month 3)
-         (or year 2000)
-         :offset (if offset-hour
-                     (+ (* offset-hour 3600)
-                        (* (or offset-minute 0) 60))
-                     offset))))))
+        (apply #'encode-timestamp
+               `(,(or nsec 0)
+                  ,(or second 0)
+                  ,(or minute 0)
+                  ,(or hour 0)
+                  ,(or day 1)
+                  ,(or month 3)
+                  ,(or year 2000)
+                  ,@(if tz-provided
+                        (list :timezone timezone)
+                        (list :offset
+                              (if offset-hour
+                                  (+ (* offset-hour 3600)
+                                     (* (or offset-minute 0) 60))
+                                  offset)))))))))
 
 (defun ordinalize (day)
   "Return an ordinal string representing the position of DAY in a sequence (1st, 2nd, 3rd, 4th, etc)."
