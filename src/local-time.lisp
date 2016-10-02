@@ -1545,7 +1545,6 @@ The value of this variable should have the methods `local-time::clock-now', and
                     :allow-missing-timezone-part nil
                     :allow-missing-time-part allow-missing-time-part
                     :allow-missing-date-part nil))
-
 (defun parse-timestring (timestring &key
                          start
                          end
@@ -1557,8 +1556,9 @@ The value of this variable should have the methods `local-time::clock-now', and
                          (allow-missing-date-part allow-missing-elements)
                          (allow-missing-time-part allow-missing-elements)
                          (allow-missing-timezone-part allow-missing-elements)
-                         (offset 0))
-  "Parse a timestring and return the corresponding TIMESTAMP. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value, and timezone offset is 0 (UTC) unless explicitly specified in the input string."
+                         (offset 0)
+                         (timezone *default-timezone*))
+  "Parse a timestring and return the corresponding TIMESTAMP. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value, and timezone offset is 0 (UTC) unless explicitly specified in the input string. If offset is nil, default timezone is used, or the timezone provided by the timezone keyword."
   (let ((parts (%split-timestring (coerce timestring 'simple-string)
                                   :start (or start 0)
                                   :end (or end (length timestring))
@@ -1584,7 +1584,8 @@ The value of this variable should have the methods `local-time::clock-now', and
          :offset (if offset-hour
                      (+ (* offset-hour 3600)
                         (* (or offset-minute 0) 60))
-                     offset))))))
+                     offset)
+         :timezone timezone)))))
 
 (defun ordinalize (day)
   "Return an ordinal string representing the position of DAY in a sequence (1st, 2nd, 3rd, 4th, etc)."
