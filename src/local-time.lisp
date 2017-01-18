@@ -1800,7 +1800,7 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
                  (nsec-of object))))
     (t
      (when *print-escape*
-       (princ "@" stream))
+       (write-char #\@ stream))
      (format-rfc3339-timestring stream object))))
 
 (defmethod print-object ((object timezone) stream)
