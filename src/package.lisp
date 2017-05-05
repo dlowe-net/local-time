@@ -4,6 +4,7 @@
            #:date
            #:time-of-day
            #:make-timestamp
+           #:clone-timestamp
            #:day-of
            #:sec-of
            #:nsec-of
