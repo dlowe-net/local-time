@@ -381,9 +381,10 @@
 
 (eval-when (:load-toplevel :execute)
   (let ((default-timezone-file #p"/etc/localtime"))
-    (if (probe-file default-timezone-file)
+    (handler-case
         (define-timezone *default-timezone* default-timezone-file :load t)
-        (setf *default-timezone* +utc-zone+))))
+      (t ()
+        (setf *default-timezone* +utc-zone+)))))
 
 (defparameter *location-name->timezone* (make-hash-table :test 'equal)
   "A hashtable with entries like \"Europe/Budapest\" -> timezone-instance")
