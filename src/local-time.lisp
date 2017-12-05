@@ -411,33 +411,29 @@ In other words:
 
 (defun reread-timezone-repository (&key (timezone-repository *default-timezone-repository-path*))
   (check-type timezone-repository (or pathname string))
-  (multiple-value-bind (valid? error)
-      (ignore-errors
-        (truename timezone-repository)
-        t)
-    (unless valid?
-      (error "REREAD-TIMEZONE-REPOSITORY was called with invalid PROJECT-DIRECTORY (~A). The error is ~A."
-             timezone-repository error)))
-  (let* ((root-directory timezone-repository)
-         (cutoff-position (length (princ-to-string root-directory))))
-    (flet ((visitor (file)
-             (handler-case
-                 (let* ((full-name (subseq (princ-to-string file) cutoff-position))
-                        (name (pathname-name file))
-                        (timezone (%realize-timezone (make-timezone :path file :name name))))
-                   (setf (gethash full-name *location-name->timezone*) timezone)
-                   (map nil (lambda (subzone)
-                              (push timezone (gethash (subzone-abbrev subzone)
-                                                      *abbreviated-subzone-name->timezone-list*)))
-                        (timezone-subzones timezone)))
-               (invalid-timezone-file () nil))))
-      (setf *location-name->timezone* (make-hash-table :test 'equal))
-      (setf *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal))
-      (cl-fad:walk-directory root-directory #'visitor :directories nil
-                             :test (lambda (file)
-                                     (not (find "Etc" (pathname-directory file) :test #'string=)))
-                             :follow-symlinks nil)
-      (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) #'visitor :directories nil))))
+  (let ((root-directory (fad:directory-exists-p timezone-repository)))
+    (unless root-directory
+      (error "REREAD-TIMEZONE-REPOSITORY was called with invalid PROJECT-DIRECTORY (~A)."
+             timezone-repository))
+    (let ((cutoff-position (length (princ-to-string root-directory))))
+      (flet ((visitor (file)
+               (handler-case
+                   (let* ((full-name (subseq (princ-to-string file) cutoff-position))
+                          (name (pathname-name file))
+                          (timezone (%realize-timezone (make-timezone :path file :name name))))
+                     (setf (gethash full-name *location-name->timezone*) timezone)
+                     (map nil (lambda (subzone)
+                                (push timezone (gethash (subzone-abbrev subzone)
+                                                        *abbreviated-subzone-name->timezone-list*)))
+                          (timezone-subzones timezone)))
+                 (invalid-timezone-file () nil))))
+        (setf *location-name->timezone* (make-hash-table :test 'equal))
+        (setf *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal))
+        (cl-fad:walk-directory root-directory #'visitor :directories nil
+                               :test (lambda (file)
+                                       (not (find "Etc" (pathname-directory file) :test #'string=)))
+                               :follow-symlinks nil)
+        (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) #'visitor :directories nil)))))
 
 (defmacro make-timestamp (&rest args)
   `(make-instance 'timestamp ,@args))
