@@ -1016,11 +1016,22 @@ elements."
     (let ((err (ccl:external-call "gettimeofday" :address tv :address (ccl:%null-ptr) :int)))
       (assert (zerop err) nil "gettimeofday failed")
       (values (ccl:pref tv :timeval.tv_sec) (* 1000 (ccl:pref tv :timeval.tv_usec)))))
+  #+(and ccl windows)
+  (let ((unix-epoch-filetime 116444736000000000))
+    (ccl:rlet ((time #>FILETIME))
+      (#_GetSystemTimeAsFileTime time)
+      (let* ((filetime
+               (logior (ccl:pref time #>FILETIME.dwLowDateTime)
+                       (ash (ccl:pref time #>FILETIME.dwHighDateTime) 32)))
+             (filetime (- filetime unix-epoch-filetime)))
+        (multiple-value-bind (secs 100ns-periods)
+            (floor filetime #.(round 1e7))
+          (values secs (* 100ns-periods 100))))))
   #+abcl
   (multiple-value-bind (sec millis)
       (truncate (java:jstatic "currentTimeMillis" "java.lang.System") 1000)
     (values sec (* millis 1000000)))
-  #-(or allegro cmu sbcl abcl (and ccl (not windows)))
+  #-(or allegro cmu sbcl abcl ccl)
   (values (- (get-universal-time)
              ;; CL's get-universal-time uses an epoch of 1/1/1900, so adjust the result to the Unix epoch
              #.(encode-universal-time 0 0 0 1 1 1970 0))
