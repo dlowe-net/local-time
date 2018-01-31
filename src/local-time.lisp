@@ -621,9 +621,9 @@ In other words:
 
   (defun %expand-adjust-timestamp-changes (timestamp changes visitor)
     (loop
-      :for change in changes
       :with params = ()
       :with functions = ()
+      :for change in changes
       :do
          (progn
            (assert (or
