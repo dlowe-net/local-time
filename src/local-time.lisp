@@ -971,7 +971,7 @@ elements."
   (declare (type timestamp timestamp))
   (timestamp-values-to-unix (sec-of timestamp) (day-of timestamp)))
 
-#+allegro
+#+(and allegro (not os-windows))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   ;; Allegro common lisp requires some toplevel hoops through which to
   ;; jump in order to call unix's gettimeofday properly.
@@ -986,9 +986,31 @@ elements."
        (timezone :foreign-address))
     :returning (:int fixnum)))
 
+#+(and allegro os-windows)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  ;; Allegro common lisp requires some toplevel hoops through which to
+  ;; jump in order to call unix's gettimeofday properly.
+  (ff:def-foreign-type filetime
+      (:struct (|dwLowDateTime| :int)
+               (|dwHighDateTime| :int)))
+
+  (ff:def-foreign-call
+      (allegro-ffi-get-system-time-as-file-time "GetSystemTimeAsFileTime")
+      ((filetime (* filetime)))
+    :returning :void))
+
+(defun filetime-to-current-time (low high)
+  "Convert a Windows time into (values sec nano-sec)."
+  (let* ((unix-epoch-filetime 116444736000000000)
+         (filetime (logior low (ash high 32)))
+         (filetime (- filetime unix-epoch-filetime)))
+    (multiple-value-bind (secs 100ns-periods)
+        (floor filetime #.(round 1e7))
+      (values secs (* 100ns-periods 100)))))
+
 (defun %get-current-time ()
   "Cross-implementation abstraction to get the current time measured from the unix epoch (1/1/1970). Should return (values sec nano-sec)."
-  #+allegro
+  #+(and allegro (not os-windows))
   (flet ((allegro-gettimeofday ()
            (let ((tv (ff:allocate-fobject 'timeval :c)))
              (allegro-ffi-gettimeofday tv 0)
@@ -998,6 +1020,12 @@ elements."
                (values sec usec)))))
     (multiple-value-bind (sec usec) (allegro-gettimeofday)
       (values sec (* 1000 usec))))
+  #+(and allegro os-windows)
+  (let* ((ft (ff:allocate-fobject 'filetime :c)))
+    (allegro-ffi-get-system-time-as-file-time ft)
+    (let* ((low (ff:fslot-value-typed 'filetime :c ft '|dwLowDateTime|))
+           (high (ff:fslot-value-typed 'filetime :c ft '|dwHighDateTime|)))
+      (filetime-to-current-time low high)))
   #+cmu
   (multiple-value-bind (success? sec usec) (unix:unix-gettimeofday)
     (assert success? () "unix:unix-gettimeofday reported failure?!")
@@ -1017,16 +1045,11 @@ elements."
       (assert (zerop err) nil "gettimeofday failed")
       (values (ccl:pref tv :timeval.tv_sec) (* 1000 (ccl:pref tv :timeval.tv_usec)))))
   #+(and ccl windows)
-  (let ((unix-epoch-filetime 116444736000000000))
-    (ccl:rlet ((time #>FILETIME))
-      (#_GetSystemTimeAsFileTime time)
-      (let* ((filetime
-               (logior (ccl:pref time #>FILETIME.dwLowDateTime)
-                       (ash (ccl:pref time #>FILETIME.dwHighDateTime) 32)))
-             (filetime (- filetime unix-epoch-filetime)))
-        (multiple-value-bind (secs 100ns-periods)
-            (floor filetime #.(round 1e7))
-          (values secs (* 100ns-periods 100))))))
+  (ccl:rlet ((time :<lpfiletime>))
+    (ccl:external-call "GetSystemTimeAsFileTime" :<lpfiletime> time :void)
+    (let* ((low (ccl:%get-unsigned-long time (/ 0 8)))
+           (high (ccl:%get-unsigned-long time (/ 32 8))))
+      (filetime-to-current-time low high)))
   #+abcl
   (multiple-value-bind (sec millis)
       (truncate (java:jstatic "currentTimeMillis" "java.lang.System") 1000)
