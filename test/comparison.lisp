@@ -122,5 +122,7 @@
            :correct-error)))
 
 (deftest test/simple/comparison/timestamp/= ()
-  (is (timestamp/= (make-timestamp) (make-timestamp :nsec 1)))
+  (is (timestamp/= (make-timestamp :nsec 1) (make-timestamp :nsec 2)))
+  (is (timestamp/= (make-timestamp :nsec 1) (make-timestamp :nsec 2) (make-timestamp :nsec 3)))
+  (is (not (timestamp/= (make-timestamp :nsec 1) (make-timestamp :nsec 2) (make-timestamp :nsec 1))))
   (is (not (timestamp/= (make-timestamp) (make-timestamp)))))
