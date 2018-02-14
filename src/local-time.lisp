@@ -999,6 +999,8 @@ elements."
       ((filetime (* filetime)))
     :returning :void))
 
+#+(or (and allegro os-windows)
+      (and ccl windows))
 (defun filetime-to-current-time (low high)
   "Convert a Windows time into (values sec nano-sec)."
   (let* ((unix-epoch-filetime 116444736000000000)
@@ -1007,6 +1009,36 @@ elements."
     (multiple-value-bind (secs 100ns-periods)
         (floor filetime #.(round 1e7))
       (values secs (* 100ns-periods 100)))))
+
+#+(and lispworks (or linux darwin))
+(progn
+  (fli:define-c-typedef time-t :long)
+  (fli:define-c-typedef suseconds-t #+linux :long
+                                    #+darwin :int)
+
+  (fli:define-c-struct timeval
+    (tv-sec time-t)
+    (tv-usec suseconds-t))
+
+  (fli:define-foreign-function (gettimeofday/ffi "gettimeofday")
+      ((tv (:pointer (:struct timeval)))
+       (tz :pointer))
+    :result-type :int)
+
+  (defun lispworks-gettimeofday ()
+    (declare (optimize speed (safety 1)))
+    (fli:with-dynamic-foreign-objects ((tv (:struct timeval)))
+      (let ((ret (gettimeofday/ffi tv fli:*null-pointer*)))
+        (assert (zerop ret) nil "gettimeofday failed")
+        (let ((secs
+                (fli:foreign-slot-value tv 'tv-sec
+                                        :type 'time-t
+                                        :object-type '(:struct timeval)))
+              (usecs
+                (fli:foreign-slot-value tv 'tv-usec
+                                        :type 'suseconds-t
+                                        :object-type '(:struct timeval))))
+          (values secs (* 1000 usecs)))))))
 
 (defun %get-current-time ()
   "Cross-implementation abstraction to get the current time measured from the unix epoch (1/1/1970). Should return (values sec nano-sec)."
@@ -1054,7 +1086,9 @@ elements."
   (multiple-value-bind (sec millis)
       (truncate (java:jstatic "currentTimeMillis" "java.lang.System") 1000)
     (values sec (* millis 1000000)))
-  #-(or allegro cmu sbcl abcl ccl)
+  #+(and lispworks (or linux darwin))
+  (lispworks-gettimeofday)
+  #-(or allegro cmu sbcl abcl ccl (and lispworks (or linux darwin)))
   (values (- (get-universal-time)
              ;; CL's get-universal-time uses an epoch of 1/1/1900, so adjust the result to the Unix epoch
              #.(encode-universal-time 0 0 0 1 1 1970 0))
