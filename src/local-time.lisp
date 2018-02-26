@@ -1176,8 +1176,14 @@ The value of this variable should have the methods `local-time::clock-now', and
 (%defcomparator timestamp=
   (eql (%timestamp-compare time-a time-b) '=))
 
-(%defcomparator timestamp/=
-  (not (eql (%timestamp-compare time-a time-b) '=)))
+(defun timestamp/= (&rest timestamps)
+  "Returns T if no pair of timestamps is equal. Otherwise return NIL."
+  (declare (dynamic-extent timestamps))
+  (loop for ts-head on timestamps do
+       (loop for ts in (rest ts-head) do
+            (when (timestamp= (car ts-head) ts)
+              (return-from timestamp/= nil))))
+  t)
 
 (defun contest (test list)
   "Applies TEST to pairs of elements in list, keeping the element which last tested T.  Returns the winning element."
