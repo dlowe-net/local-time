@@ -77,3 +77,16 @@
                      (with-input-from-string (ins (princ-to-string (timestamp-to-universal now)))
                        (local-time::%read-universal-time ins #\@ nil))))))
 
+(deftest test/parsing/optional-components ()
+  (is (timestamp=
+       (parse-timestring "2013-04-01T20:00:00,0+02:00" :allow-missing-elements NIL)
+       (parse-timestring "2013-04-01 20+02:00" :date-time-separator #\Space)))
+  (is (timestamp=
+       (parse-timestring "2013-04-01T20:39:00,0+02:00" :allow-missing-elements NIL)
+       (parse-timestring "2013-04-01 20:39+02:00" :date-time-separator #\Space)))
+  (is (timestamp=
+       (parse-timestring "2013-04-01T00:39:00,0+02:00" :allow-missing-elements NIL)
+       (parse-timestring "2013-04-01 :39+02:00" :date-time-separator #\Space)))
+  (is (timestamp=
+       (parse-timestring "2013-04-01T20:00:00,0+02:00" :allow-missing-elements NIL)
+       (parse-timestring "2013-04-01 20:+02:00" :date-time-separator #\Space))))
