@@ -724,7 +724,7 @@ In other words:
 different kinds of overflows. The setting :day-of-week is possible
 using a keyword symbol name of a week-day (see
 +DAY-NAMES-AS-KEYWORDS+) as value. In that case point the result to
-the previous day given by OFFSET."
+day given by OFFSET in the week that contains TIME."
   (labels ((direct-adjust (part offset nsec sec day)
              (cond ((eq part :day-of-week)
                     (with-decoded-timestamp (:day-of-week day-of-week
