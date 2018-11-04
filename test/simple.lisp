@@ -106,6 +106,17 @@
          (a (parse-timestring "1978-10-01")))
     (is (= 0 (timestamp-whole-year-difference a a)))))
 
+(deftest test/adjust-timestamp/day-of-week/basic ()
+  (let ((sunday (parse-timestring "2020-09-13T00:00:00"))
+        (saturday (parse-timestring "2020-09-19T00:00:00"))
+        (base (parse-timestring "2020-09-15T00:00:00")))
+    (loop for dow in '(:sunday :monday :tuesday)
+       do (let ((modified (adjust-timestamp base (timezone +utc-zone+) (offset :day-of-week dow))))
+            (is (and (timestamp>= modified sunday) (timestamp<= modified base)))))
+    (loop for dow in '(:wednesday :thursday :friday :saturday)
+       do (let ((modified (adjust-timestamp base (timezone +utc-zone+) (offset :day-of-week dow))))
+            (is (and (timestamp> modified base) (timestamp<= modified saturday)))))))
+
 (deftest test/adjust-timestamp/bug1 ()
   (let* ((timestamp (parse-timestring "2006-01-01T00:00:00Z"))
          (modified-timestamp (adjust-timestamp timestamp (timezone +utc-zone+) (offset :year 1))))
