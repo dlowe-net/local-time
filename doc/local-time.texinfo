@@ -508,7 +508,8 @@ changes are in the format @code{(offset part value)} and @code{(set
 part value)}.
 
 @lisp
-;; Return a new @code{timestamp} value that points to the previous Monday
+;; Return a new @code{timestamp} value that points to the Monday in
+;; the week of @code{(today)}
 (adjust-timestamp (today) (offset :day-of-week :monday))
 
 ;; Return a new @code{timestamp} value that points three days ahead from now
