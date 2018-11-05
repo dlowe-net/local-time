@@ -69,6 +69,20 @@
          (new (timestamp+ old 24 :hour eastern-tz)))
     (is (= (* 24 60 60) (timestamp-difference new old)))))
 
+(deftest test/timezone/parse-timestring-different-timezones ()
+   (let ((*default-timezone* eastern-tz))
+     (is (timestamp=
+          (parse-timestring "2016-12-01" :offset nil)                               ;; Use default timezone
+          (parse-timestring "2016-12-01" :offset (* 60 60 -5))                      ;; Ignore timezone 
+          (parse-timestring "2016-12-01" :offset (* 60 60 -5) :timezone utc-leaps)  ;; Ignore timezone
+          (parse-timestring "2016-12-01" :offset nil :timezone eastern-tz)          ;; Use timezone
+          (adjust-timestamp (parse-timestring "2016-12-01" :offset nil :timezone utc-leaps) (offset :hour +5)) ;; Use different timezone
+          ;; Rest use timezone from timestring
+          (parse-timestring "2016-12-01T00:00:00-05:00")
+          (parse-timestring "2016-12-01T00:00:00-05:00" :offset 0)
+          (parse-timestring "2016-12-01T00:00:00-05:00" :offset -10)
+          (parse-timestring "2016-12-01T00:00:00-05:00" :offset nil :timezone utc-leaps)))))
+
 (deftest test/timezone/timestamp-minimize-part ()
   (is (timestamp=
        (timestamp-minimize-part
