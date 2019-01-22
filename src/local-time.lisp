@@ -1768,6 +1768,7 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :LONG-WEEKDAY      long form of weekday (e.g. Sunday, Monday)
   :SHORT-WEEKDAY     short form of weekday (e.g. Sun, Mon)
   :MINIMAL-WEEKDAY   minimal form of weekday (e.g. Su, Mo)
+  :SHORT-YEAR        short form of year (last 2 digits, e.g. 41, 42 instead of 2041, 2042)
   :LONG-MONTH        long form of month (e.g. January, February)
   :SHORT-MONTH       short form of month (e.g. Jan, Feb)
   :HOUR12            *hour on a 12-hour clock

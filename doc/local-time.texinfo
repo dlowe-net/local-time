@@ -641,6 +641,8 @@ long form of weekday (e.g. Sunday, Monday)
 short form of weekday (e.g. Sun, Mon)
 @item :minimal-weekday
 minimal form of weekday (e.g. Su, Mo)
+@item :short-year
+short form of year (last 2 digits, e.g. 41, 42 instead of 2041, 2042)
 @item :long-month
 long form of month (e.g. January, February)
 @item :short-month
