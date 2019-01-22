@@ -1629,7 +1629,11 @@ The value of this variable should have the methods `local-time::clock-now', and
                          (allow-missing-time-part allow-missing-elements)
                          (allow-missing-timezone-part allow-missing-elements)
                          (offset 0))
-  "Parse a timestring and return the corresponding TIMESTAMP. See split-timestring for details. Unspecified fields in the timestring are initialized to their lowest possible value, and timezone offset is 0 (UTC) unless explicitly specified in the input string."
+  "Parse a timestring and return the corresponding TIMESTAMP.
+See split-timestring for details. Unspecified fields in the
+timestring are initialized to their lowest possible value,
+and timezone offset is 0 (UTC) unless explicitly specified
+in the input string."
   (let ((parts (%split-timestring (coerce timestring 'simple-string)
                                   :start (or start 0)
                                   :end (or end (length timestring))
@@ -1658,7 +1662,8 @@ The value of this variable should have the methods `local-time::clock-now', and
                      offset))))))
 
 (defun ordinalize (day)
-  "Return an ordinal string representing the position of DAY in a sequence (1st, 2nd, 3rd, 4th, etc)."
+  "Return an ordinal string representing the position
+of DAY in a sequence (1st, 2nd, 3rd, 4th, etc)."
   (declare (type (integer 1 31) day))
   (format nil "~d~a" day
           (if (<= 11 day 13)
@@ -1670,7 +1675,9 @@ The value of this variable should have the methods `local-time::clock-now', and
                 (t "th")))))
 
 (defun %construct-timestring (timestamp format timezone)
-  "Constructs a string representing TIMESTAMP given the FORMAT of the string and the TIMEZONE.  See the documentation of FORMAT-TIMESTRING for the structure of FORMAT."
+  "Constructs a string representing TIMESTAMP given the FORMAT
+of the string and the TIMEZONE.
+See the documentation of FORMAT-TIMESTRING for the structure of FORMAT."
   (declare (type timestamp timestamp)
            (optimize (speed 3)))
   (multiple-value-bind (nsec sec minute hour day month year weekday daylight-p offset abbrev)
@@ -1748,9 +1755,14 @@ The value of this variable should have the methods `local-time::clock-now', and
 (defun format-timestring (destination timestamp &key
                           (format +iso-8601-format+)
                           (timezone *default-timezone*))
-  "Constructs a string representation of TIMESTAMP according to FORMAT and returns it.  If destination is T, the string is written to *standard-output*.  If destination is a stream, the string is written to the stream.
+  "Constructs a string representation of TIMESTAMP according
+to FORMAT and returns it.
+If destination is T, the string is written to *standard-output*.
+If destination is a stream, the string is written to the stream.
 
-FORMAT is a list containing one or more of strings, characters, and keywords. Strings and characters are output literally, while keywords are replaced by the values here:
+FORMAT is a list containing one or more of strings, characters,
+and keywords. Strings and characters are output literally,
+while keywords are replaced by the values here:
 
   :YEAR              *year
   :MONTH             *numeric month
@@ -1778,7 +1790,8 @@ FORMAT is a list containing one or more of strings, characters, and keywords. St
   :GMT-OFFSET-HHMM   like :GMT-OFFSET, but in +0000 form
   :TIMEZONE          timezone abbrevation for the time
 
-Elements marked by * can be placed in a list in the form: \(:keyword padding &optional \(padchar #\0))
+Elements marked by * can be placed in a list in the form
+  \(:keyword padding &optional \(padchar #\\0))
 
 The string representation of the value will be padded with the padchar.
 
