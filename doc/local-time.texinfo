@@ -688,6 +688,13 @@ LOCAL-TIME> (format-timestring nil (now))
 Formats the time like format-timestring, but in RFC 3339 format. The options control valid options in the RFC.
 @end defun
 
+
+@itindex format-rfc1123-timestring
+@defun format-rfc1123-timestring (destination timestamp &key (timezone *default-timezone*))
+
+Formats the time like format-timestring, but in RFC 1123 format.
+@end defun
+
 @c ===================================================================
 @node Clocks
 @section Clocks
