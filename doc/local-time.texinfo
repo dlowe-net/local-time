@@ -123,9 +123,9 @@ the tzfile format. The default timezone is loaded from
 /etc/localtime. On non-POSIX systems, this will certainly give
 different results than the system time handling.
 
-local-time currently supports subsecond precision clocks with allegro,
-cmucl, sbcl, abcl, and non-Windows ccl. All others will be able to
-retrieve the time with second precision using
+local-time currently supports sub-second precision clocks with ABCL,
+Allegro, CMUCL, CCL, SBCL, and LispWorks for Linux or Darwin.  All
+others will be able to retrieve the time with second precision using
 @code{get-universal-time}. You may add support for your own
 implementation by implementing the clock generic protocol documented
 here.
@@ -265,9 +265,10 @@ since 1970-01-01T00:00:00Z.
 @itindex now
 @defun now
 
-Produces a @code{timestamp} instance with the current time.  Under
-sbcl, the new timestamp will be precise to the microsecond.
-Otherwise, the precision is limited to the second.
+Produces a @code{timestamp} instance with the current time.  With
+Allegro, CMUCL, CCL, SBCL, and LispWorks for Linux or Darwin, the new
+timestamp will be precise to the microsecond (usec); with ABCL, to the
+millisecond (ms).  Otherwise, the precision is limited to the second.
 @end defun
 
 
