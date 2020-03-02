@@ -41,6 +41,7 @@
            #:timestamp-week
            #:timestamp-year
            #:parse-timestring
+           #:invalid-timestring
            #:format-timestring
            #:format-rfc1123-timestring
            #:to-rfc1123-timestring

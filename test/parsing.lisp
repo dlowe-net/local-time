@@ -77,3 +77,5 @@
                      (with-input-from-string (ins (princ-to-string (timestamp-to-universal now)))
                        (local-time::%read-universal-time ins #\@ nil))))))
 
+(deftest test/parsing/error ()
+  (signals invalid-timestring (parse-timestring "2019-w2-20")))
