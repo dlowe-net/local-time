@@ -377,7 +377,12 @@
                                                         (string-downcase (symbol-name zone-name))
                                                         zone-name)))
       ,@(when load
-              `((%realize-timezone ,zone-sym))))))
+          `((let ((timezone (%realize-timezone ,zone-sym)))
+              (setf (gethash (timezone-name timezone) *location-name->timezone*) timezone)
+              (map nil (lambda (subzone)
+                         (push timezone (gethash (subzone-abbrev subzone)
+                                                 *abbreviated-subzone-name->timezone-list*)))
+                   (timezone-subzones timezone))))))))
 
 (eval-when (:load-toplevel :execute)
   (let ((default-timezone-file #p"/etc/localtime"))
@@ -396,6 +401,18 @@
   (when (zerop (hash-table-count *location-name->timezone*))
     (error "Seems like the timezone repository has not yet been loaded. Hint: see REREAD-TIMEZONE-REPOSITORY."))
   (gethash name *location-name->timezone*))
+
+(defun find-timezones-by-abbreviated-subzone-name (abbreviated-name)
+  "Returns a list of timezones that have ABBREVIATED-NAME subzone. Sorted in order of appearance of ABBREVIATED-NAME  in subsones list."
+  (stable-sort 
+   (copy-list (gethash abbreviated-name *abbreviated-subzone-name->timezone-list*))
+   #'<
+   :key (lambda (timezone)
+          (position
+           abbreviated-name
+           (timezone-subzones timezone)
+           :key #'subzone-abbrev
+           :test #'string=))))
 
 (defun timezone= (timezone-1 timezone-2)
   "Return two values indicating the relationship between timezone-1 and timezone-2. The first value is whether the two timezones are equal and the second value indicates whether it is sure or not.

@@ -104,3 +104,9 @@
            (local-time::%adjust-sec-for-leap-seconds 1435708825)))
     (is (= 1435708800
            (local-time::%adjust-sec-for-leap-seconds 1435708826)))))
+
+(deftest test/abbrev-subzone/not-found ()
+  (is (not (local-time:find-timezones-by-abbreviated-subzone-name "FOO"))))
+
+(deftest test/abbrev-subzone/find-bst ()
+  (is (equal (local-time:find-timezone-by-location-name "Europe/London") (car (local-time:find-timezones-by-abbreviated-subzone-name "BST")))))
