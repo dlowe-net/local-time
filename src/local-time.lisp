@@ -37,7 +37,10 @@
 
 (deftype date ()
   '(and timestamp
-        (satisfies %valid-date?)))
+    (satisfies %valid-date?)))
+
+(defun zone-name (zone)
+  (timezone-name zone))
 
 (define-condition invalid-timezone-file (error)
   ((path :accessor path-of :initarg :path))
@@ -204,15 +207,13 @@
     (values (elt (timezone-subzones timezone) subzone-idx)
             transition-idx)))
 
-(defun %subzone-previous-transition-time (timezone subzone-idx transition-idx)
+(defun %subzone-previous-transition-index (timezone subzone-idx transition-idx)
   (when transition-idx
     (let ((prev-idx (position subzone-idx
                               (timezone-indexes timezone)
                               :end transition-idx
                               :from-end t)))
-      (when prev-idx
-        (elt (timezone-transitions timezone) prev-idx)))))
-
+      prev-idx)))
 
 (defun %guess-offset (seconds days &optional timezone)
   ;; try converting the local time to a timestamp using each available
@@ -424,31 +425,45 @@
   (gethash name *location-name->timezone*))
 
 (defun find-timezone-by-abbreviated-subzone-name (abbreviated-name &key unix-time timestamp)
-  "Returns a timezone that have active ABBREVIATED-NAME subzone. If multiple active timezones match then list of matches will be returned as a second value. All other matches (historical or future) will be returned as a third value. Extra matches are returned paired with latest known transition time for the matching subzone."
+  "Returns one of the active timezones, matched subzone and last transition time
+   that has subzone matching specified ABBREVIATED-NAME 
+   as of UNIX-TIME or TIMESTAMP moment if provided. 
+   If multiple active timezones match then list of matches will be returned as a forth value. 
+   All other matches (historical or future) will be returned as a fifth value.
+   Extra matches are returned as a list of timezone, subzone and latest known transition time."
   (loop for zone in (gethash abbreviated-name *abbreviated-subzone-name->timezone-list*)
         ;; get the subzone and the latest transition index
         for (subzone transition-idx) = (multiple-value-list (%subzone-as-of zone :unix-time unix-time :timestamp timestamp))
         if (equal abbreviated-name (subzone-abbrev subzone))
-        collect (list zone (elt (timezone-transitions zone) transition-idx)) into current
+        collect (list zone transition-idx)
+        into current
         else
         when transition-idx
         collect (list zone
                       ;; find maximum transition timestamp preceeding transition-idx's for all subzones with matching abbrev name
                       (loop for subzone-idx from 0 to (1- (length (timezone-subzones zone)))
                             for sz = (elt (timezone-subzones zone) subzone-idx)
-                            for tix = (%subzone-previous-transition-time zone subzone-idx transition-idx)
+                            for tix = (%subzone-previous-transition-index zone subzone-idx transition-idx)
                             when (and tix (equal abbreviated-name (subzone-abbrev sz)))
                             maximize tix))
         into other
         finally (return
-                  (values
-                   (caar current)
-                   current
-                   (stable-sort
-                    (remove-if #'null other :key #'cadr)
-                    #'>
-                    :key #'cadr)
-                   ))))
+                  (flet  ((mapzone (x)
+                            (let* ((zone (car x))
+                                   (tix (cadr x))
+                                   (subzone (when zone
+                                              (elt (timezone-subzones zone)
+                                                   (if tix
+                                                       (elt (timezone-indexes zone) tix)
+                                                       0)))))
+                              (list zone
+                                    subzone
+                                    (when tix (elt (timezone-transitions zone) tix))))))
+                    (let ((found (mapzone (car current))))
+                      (values-list
+                       (nconc found
+                              (list (mapcar #'mapzone current))
+                              (list (mapcar #'mapzone other)))))))))
 
 (defun timezone= (timezone-1 timezone-2)
   "Return two values indicating the relationship between timezone-1 and timezone-2. The first value is whether the two timezones are equal and the second value indicates whether it is sure or not.
@@ -472,8 +487,7 @@ In other words:
       (flet ((visitor (file)
                (handler-case
                    (let* ((full-name (subseq (princ-to-string file) cutoff-position))
-                          (name (pathname-name file))
-                          (timezone (%realize-timezone (make-timezone :path file :name name))))
+                          (timezone (%realize-timezone (make-timezone :path file :name full-name))))
                      (setf (gethash full-name *location-name->timezone*) timezone)
                      (map nil (lambda (subzone)
                                 (push timezone (gethash (subzone-abbrev subzone)

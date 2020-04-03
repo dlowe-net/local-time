@@ -106,7 +106,36 @@
            (local-time::%adjust-sec-for-leap-seconds 1435708826)))))
 
 (deftest test/abbrev-subzone/not-found ()
-  (is (not (local-time:find-timezones-by-abbreviated-subzone-name "FOO"))))
+  (is (not (local-time:find-timezone-by-abbreviated-subzone-name "FOO"))))
 
 (deftest test/abbrev-subzone/find-bst ()
-  (is (equal (local-time:find-timezone-by-location-name "Europe/London") (car (local-time:find-timezones-by-abbreviated-subzone-name "BST")))))
+  ;; As of 2020-04-03
+  (is (member
+       "Europe/London"
+       (elt
+        (multiple-value-list
+         (local-time:find-timezone-by-abbreviated-subzone-name
+          "BST"
+          :unix-time 1585906626))
+        3)
+       :key (lambda (x) (local-time:zone-name (car x)))
+       :test #'string=))
+  ;; Some historical timezone
+  (is (member
+       "America/Atka"
+       (elt
+        (multiple-value-list
+         (local-time:find-timezone-by-abbreviated-subzone-name
+          "BST"
+          :unix-time 1585906626))
+        4)
+       :key (lambda (x) (local-time:zone-name (car x)))
+       :test #'string=)))
+
+(deftest test/abbrev-subzone/find-gmt ()
+  ;; As of 2020-04-03
+  (is (equal
+       "Etc/Greenwich"
+       (local-time:zone-name
+        (local-time:find-timezone-by-abbreviated-subzone-name "GMT")))))
+
