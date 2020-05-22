@@ -79,3 +79,10 @@
 
 (deftest test/parsing/error ()
   (signals invalid-timestring (parse-timestring "2019-w2-20")))
+
+(deftest test/parsing/parse-rfc3339 ()
+  (let ((local-time:*default-timezone* local-time:+utc-zone+))
+    (is (equal (multiple-value-list (decode-timestamp (local-time::parse-rfc3339-timestring "2006-01-02T03:04:05.6-05")))
+               '(600000000 5 4 8 2 1 2006 1 NIL 0 "UTC")))
+    ;; rfc3339 only supports . for fractional seconds
+    (signals local-time::invalid-timestring (local-time::parse-rfc3339-timestring "2006-01-02T03:04:05,6-05"))))
