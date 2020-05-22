@@ -1415,6 +1415,7 @@ The value of this variable should have the methods `local-time::clock-now', and
                           (fail-on-error t) (time-separator #\:)
                           (date-separator #\-)
                           (date-time-separator #\T)
+                          (fract-time-separators '(#\. #\,))
                           (allow-missing-elements t)
                           (allow-missing-date-part allow-missing-elements)
                           (allow-missing-time-part allow-missing-elements)
@@ -1552,7 +1553,7 @@ The value of this variable should have the methods `local-time::clock-now', and
                  (time-minute (start-end)
                    (parse-integer-into start-end minute 0 59))
                  (time-second (start-end)
-                   (with-parts-and-count ((car start-end) (cdr start-end) '(#\. #\,))
+                   (with-parts-and-count ((car start-end) (cdr start-end) fract-time-separators)
                      (passert (<= 1 count 2))
                      (let ((*read-eval* nil))
                        (parse-integer-into (first parts) second 0 59)
@@ -1615,7 +1616,8 @@ The value of this variable should have the methods `local-time::clock-now', and
   (parse-timestring timestring :fail-on-error fail-on-error
                     :allow-missing-timezone-part nil
                     :allow-missing-time-part allow-missing-time-part
-                    :allow-missing-date-part nil))
+                    :allow-missing-date-part nil
+                    :fract-time-separators #\.))
 
 (defun parse-timestring (timestring &key
                          start
@@ -1624,6 +1626,7 @@ The value of this variable should have the methods `local-time::clock-now', and
                          (time-separator #\:)
                          (date-separator #\-)
                          (date-time-separator #\T)
+                         (fract-time-separators '(#\. #\,))
                          (allow-missing-elements t)
                          (allow-missing-date-part allow-missing-elements)
                          (allow-missing-time-part allow-missing-elements)
@@ -1641,6 +1644,7 @@ in the input string."
                                   :time-separator time-separator
                                   :date-separator date-separator
                                   :date-time-separator date-time-separator
+                                  :fract-time-separators fract-time-separators
                                   :allow-missing-elements allow-missing-elements
                                   :allow-missing-date-part allow-missing-date-part
                                   :allow-missing-time-part allow-missing-time-part
