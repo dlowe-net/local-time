@@ -188,7 +188,7 @@
 ;; time of day.
 (defparameter +modified-julian-date-offset+ -51604)
 
-(defun %guess-offset (seconds days &optional timezone)
+(defun %guess-unix-offset (unix-time &optional timezone)
   ;; try converting the local time to a timestamp using each available
   ;; subtimezone, until we find one where the offset matches the offset that
   ;; applies at that time (according to the transition table).
@@ -197,7 +197,6 @@
   ;; Whichever subtimezone is listed first in the tzinfo database will be
   ;; the one that we pick to resolve ambiguous local time representations.
   (let* ((zone (%realize-timezone (or timezone *default-timezone*)))
-         (unix-time (timestamp-values-to-unix seconds days))
          (subzone-idx (if (zerop (length (timezone-indexes zone)))
                           0
                           (elt (timezone-indexes zone)
@@ -205,6 +204,13 @@
                                                     (timezone-transitions zone)))))
          (subzone (elt (timezone-subzones zone) subzone-idx)))
     (subzone-offset subzone)))
+
+(defun %guess-offset (seconds days &optional timezone)
+  ;; check that guessed offset still applies
+  (let* ((unix-time (timestamp-values-to-unix seconds days))
+         (offset (%guess-unix-offset unix-time timezone)))
+    (%guess-unix-offset (- unix-time offset) timezone)))
+
 
 (defun %read-binary-integer (stream byte-count &optional (signed nil))
   "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
