@@ -3,7 +3,7 @@
   :license "BSD"
   :author "Daniel Lowe <dlowe@dlowe.net>"
   :description "A library for manipulating dates and times, based on a paper by Erik Naggum"
-  :depends-on (:cl-fad)
+  :depends-on (:uiop)
   :in-order-to ((test-op (test-op "local-time/test")))
   :components ((:module "src"
                         :serial t
