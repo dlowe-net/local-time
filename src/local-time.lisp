@@ -411,7 +411,7 @@ In other words:
 
 (defun reread-timezone-repository (&key (timezone-repository *default-timezone-repository-path*))
   (check-type timezone-repository (or pathname string))
-  (let ((root-directory (fad:directory-exists-p timezone-repository)))
+  (let ((root-directory (uiop:directory-exists-p timezone-repository)))
     (unless root-directory
       (error "REREAD-TIMEZONE-REPOSITORY was called with invalid PROJECT-DIRECTORY (~A)."
              timezone-repository))
@@ -429,11 +429,20 @@ In other words:
                  (invalid-timezone-file () nil))))
         (setf *location-name->timezone* (make-hash-table :test 'equal))
         (setf *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal))
-        (cl-fad:walk-directory root-directory #'visitor :directories nil
-                               :test (lambda (file)
-                                       (not (find "Etc" (pathname-directory file) :test #'string=)))
-                               :follow-symlinks nil)
-        (cl-fad:walk-directory (merge-pathnames "Etc/" root-directory) #'visitor :directories nil)))))
+        (uiop:collect-sub*directories root-directory
+                                      (constantly t)
+                                      (constantly t)
+                                      (lambda (dir)
+                                        (dolist (file (uiop:directory-files dir))
+                                          (when (not (find "Etc" (pathname-directory file)
+                                                           :test #'string=))
+                                            (visitor file)))))
+        (uiop:collect-sub*directories (merge-pathnames "Etc/" root-directory)
+                                      (constantly t)
+                                      (constantly t)
+                                      (lambda (dir)
+                                        (dolist (file (uiop:directory-files dir))
+                                          (visitor file))))))))
 
 (defmacro make-timestamp (&rest args)
   `(make-instance 'timestamp ,@args))
