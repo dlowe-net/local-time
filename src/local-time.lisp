@@ -428,7 +428,7 @@
   "Returns one of the active timezones, matched subzone and last transition time
    that has subzone matching specified ABBREVIATED-NAME 
    as of UNIX-TIME or TIMESTAMP moment if provided. 
-   If multiple active timezones match then list of matches will be returned as a forth value. 
+   If multiple active timezones match then list of matches will be returned as a fourth value. 
    All other matches (historical or future) will be returned as a fifth value.
    Extra matches are returned as a list of timezone, subzone and latest known transition time."
   (loop for zone in (gethash abbreviated-name *abbreviated-subzone-name->timezone-list*)
