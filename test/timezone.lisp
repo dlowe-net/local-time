@@ -53,11 +53,11 @@
                       ((2008 11 2 6  1) (2008 11 2 1  1)))))
     (dolist (test-case test-cases)
       (is (equal 
-         (let ((timestamp
-                (apply 'local-time:encode-timestamp
-                       `(0 0 ,@(reverse (first test-case)) :offset 0))))
-           (local-time:decode-timestamp timestamp :timezone eastern-tz))
-         (apply 'values `(0 0 ,@(reverse (second test-case)))))))))
+           (let ((timestamp
+                   (apply 'local-time:encode-timestamp
+                          `(0 0 ,@(reverse (first test-case)) :offset 0))))
+             (local-time:decode-timestamp timestamp :timezone eastern-tz))
+           (apply 'values `(0 0 ,@(reverse (second test-case)))))))))
 
 (deftest test/timezone/adjust-across-dst-by-days ()
   (let* ((old (parse-timestring "2014-03-09T01:00:00.000000-05:00"))
@@ -106,29 +106,18 @@
            (local-time::%adjust-sec-for-leap-seconds 1435708826)))))
 
 (deftest test/abbrev-subzone/not-found ()
-  (is (not (local-time:find-timezone-by-abbreviated-subzone-name "FOO"))))
+  (is (null (local-time:all-timezones-matching-subzone "FOO"))))
 
 (deftest test/abbrev-subzone/find-bst ()
-  ;; As of 2020-04-03
   (is (member
        "Europe/London"
-       (elt
-        (multiple-value-list
-         (local-time:find-timezone-by-abbreviated-subzone-name
-          "BST"
-          :unix-time 1585906626))
-        3)
+       (local-time:timezones-matching-subzone "BST" (unix-to-timestamp 1585906626))
        :key (lambda (x) (local-time:zone-name (car x)))
        :test #'string=))
   ;; Some historical timezone
   (is (member
        "America/Atka"
-       (elt
-        (multiple-value-list
-         (local-time:find-timezone-by-abbreviated-subzone-name
-          "BST"
-          :unix-time 1585906626))
-        4)
+       (local-time:all-timezones-matching-subzone "BST")
        :key (lambda (x) (local-time:zone-name (car x)))
        :test #'string=)))
 
@@ -137,5 +126,5 @@
   (is (equal
        "Etc/Greenwich"
        (local-time:zone-name
-        (local-time:find-timezone-by-abbreviated-subzone-name "GMT")))))
+        (caar (local-time:timezones-matching-subzone "GMT" (unix-to-timestamp 1585906626)))))))
 

@@ -61,7 +61,8 @@
            #:clock-now
            #:clock-today
            #:find-timezone-by-location-name
-           #:find-timezone-by-abbreviated-subzone-name
+           #:timezones-matching-subzone
+           #:all-timezones-matching-subzone
            #:reread-timezone-repository
            #:now
            #:today

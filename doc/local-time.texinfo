@@ -239,16 +239,23 @@ before this function is used.
 
 @end defun
 
-@itindex find-timezone-by-abbreviated-subzone-name
-@defun find-timezone-by-abbreviated-subzone-name abbreviated-name &key unix-time timestamp
+@itindex timezones-matching-subzone
+@defun timezones-matching-subzone abbreviated-name timestamp
 
-Returns one of the active timezones, matched subzone and last transition time
-that has subzone matching specified @code{ABBREVIATED-NAME} 
-as of @code{UNIX-TIME} or @code{TIMESTAMP} moment if provided. 
-If multiple active timezones match then list of matches will be returned as a fourth value.
+Returns list of lists of active timezone, matched subzone and last transition time
+for timezones that have subzone matching specified @code{ABBREVIATED-NAME} as of @code{TIMESTAMP} moment if provided.
 
-All other matches (historical or future) will be returned as a fifth value.
-Extra matches are returned as a list of timezone, subzone and latest known transition time.
+@code{reread-timezone-repository} must be called before this function
+is used.
+
+@end defun
+
+@itindex all-timezones-matching-subzone
+@defun all-timezones-matching-subzone abbreviated-name
+
+Returns list of lists of timezone, matched subzone and last transition time
+for timezones that have subzone matching specified @code{ABBREVIATED-NAME}.
+Includes both active and historical timezones.
 
 @code{reread-timezone-repository} must be called before this function
 is used.
