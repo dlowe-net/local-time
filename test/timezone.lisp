@@ -5,7 +5,7 @@
   (local-time::define-timezone eastern-tz
       (merge-pathnames #p"EST5EDT" local-time::*default-timezone-repository-path*))
   (local-time::define-timezone utc-leaps
-      (merge-pathnames #p"../zoneinfo-leaps/UTC" local-time::*default-timezone-repository-path*)))
+      (merge-pathnames #p"right/UTC" local-time::*default-timezone-repository-path*)))
 
 
 
@@ -52,7 +52,7 @@
                       ((2008 11 2 6  0) (2008 11 2 1  0))
                       ((2008 11 2 6  1) (2008 11 2 1  1)))))
     (dolist (test-case test-cases)
-      (is (equal 
+      (is (equal
            (let ((timestamp
                    (apply 'local-time:encode-timestamp
                           `(0 0 ,@(reverse (first test-case)) :offset 0))))
