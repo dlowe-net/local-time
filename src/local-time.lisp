@@ -383,17 +383,17 @@
   (declare (type (or string symbol) zone-name))
   (let ((zone-sym (if (symbolp zone-name) zone-name (intern zone-name))))
     `(prog1
-      (defparameter ,zone-sym (make-timezone :path ,zone-file
-                                             :name ,(if (symbolp zone-name)
-                                                        (string-downcase (symbol-name zone-name))
-                                                        zone-name)))
-      ,@(when load
-          `((let ((timezone (%realize-timezone ,zone-sym)))
-              (setf (gethash (timezone-name timezone) *location-name->timezone*) timezone)
-              (map nil (lambda (subzone)
-                         (push timezone (gethash (subzone-abbrev subzone)
-                                                 *abbreviated-subzone-name->timezone-list*)))
-                   (timezone-subzones timezone))))))))
+         (defparameter ,zone-sym (make-timezone :path ,zone-file
+                                                :name ,(if (symbolp zone-name)
+                                                           (string-downcase (symbol-name zone-name))
+                                                           zone-name)))
+       ,@(when load
+           `((let ((timezone (%realize-timezone ,zone-sym)))
+               (setf (gethash (timezone-name timezone) *location-name->timezone*) timezone)
+               (dolist (subzone (timezone-subzones timezone))
+                 (push timezone
+                       (gethash (subzone-abbrev subzone)
+                                *abbreviated-subzone-name->timezone-list*)))))))))
 
 (eval-when (:load-toplevel :execute)
   (let ((default-timezone-file #p"/etc/localtime"))
