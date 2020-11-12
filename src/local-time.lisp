@@ -37,7 +37,10 @@
 
 (deftype date ()
   '(and timestamp
-        (satisfies %valid-date?)))
+    (satisfies %valid-date?)))
+
+(defun zone-name (zone)
+  (timezone-name zone))
 
 (define-condition invalid-timezone-file (error)
   ((path :accessor path-of :initarg :path))
@@ -188,6 +191,19 @@
 ;; time of day.
 (defparameter +modified-julian-date-offset+ -51604)
 
+(defun %subzone-as-of (timezone unix-time)
+  (let* ((as-of-time unix-time)
+         (index-length (length (timezone-indexes timezone)))
+         (transition-idx (cond ((zerop index-length) nil)
+                               (as-of-time (transition-position as-of-time
+                                                                (timezone-transitions timezone)))
+                               (t (1- index-length))))
+         (subzone-idx (if transition-idx
+                          (elt (timezone-indexes timezone) transition-idx)
+                          0)))
+    (values (elt (timezone-subzones timezone) subzone-idx)
+            transition-idx)))
+
 (defun %guess-offset (seconds days &optional timezone)
   ;; try converting the local time to a timestamp using each available
   ;; subtimezone, until we find one where the offset matches the offset that
@@ -198,12 +214,7 @@
   ;; the one that we pick to resolve ambiguous local time representations.
   (let* ((zone (%realize-timezone (or timezone *default-timezone*)))
          (unix-time (timestamp-values-to-unix seconds days))
-         (subzone-idx (if (zerop (length (timezone-indexes zone)))
-                          0
-                          (elt (timezone-indexes zone)
-                               (transition-position unix-time
-                                                    (timezone-transitions zone)))))
-         (subzone (elt (timezone-subzones zone) subzone-idx)))
+         (subzone (%subzone-as-of zone unix-time)))
     (subzone-offset subzone)))
 
 (defun %read-binary-integer (stream byte-count &optional (signed nil))
@@ -372,12 +383,17 @@
   (declare (type (or string symbol) zone-name))
   (let ((zone-sym (if (symbolp zone-name) zone-name (intern zone-name))))
     `(prog1
-      (defparameter ,zone-sym (make-timezone :path ,zone-file
-                                             :name ,(if (symbolp zone-name)
-                                                        (string-downcase (symbol-name zone-name))
-                                                        zone-name)))
-      ,@(when load
-              `((%realize-timezone ,zone-sym))))))
+         (defparameter ,zone-sym (make-timezone :path ,zone-file
+                                                :name ,(if (symbolp zone-name)
+                                                           (string-downcase (symbol-name zone-name))
+                                                           zone-name)))
+       ,@(when load
+           `((let ((timezone (%realize-timezone ,zone-sym)))
+               (setf (gethash (timezone-name timezone) *location-name->timezone*) timezone)
+               (dolist (subzone (timezone-subzones timezone))
+                 (push timezone
+                       (gethash (subzone-abbrev subzone)
+                                *abbreviated-subzone-name->timezone-list*)))))))))
 
 (eval-when (:load-toplevel :execute)
   (let ((default-timezone-file #p"/etc/localtime"))
@@ -396,6 +412,31 @@
   (when (zerop (hash-table-count *location-name->timezone*))
     (error "Seems like the timezone repository has not yet been loaded. Hint: see REREAD-TIMEZONE-REPOSITORY."))
   (gethash name *location-name->timezone*))
+
+
+(defun timezones-matching-subzone (abbreviated-name timestamp)
+  "Returns list of lists of active timezone, matched subzone and last transition time
+   for timezones that have subzone matching specified ABBREVIATED-NAME as of TIMESTAMP moment if provided. "
+  (loop for zone in (gethash abbreviated-name *abbreviated-subzone-name->timezone-list*)
+        ;; get the subzone and the latest transition index
+        for (subzone transition-idx) = (multiple-value-list (%subzone-as-of zone (timestamp-to-unix timestamp)))
+        if (equal abbreviated-name (subzone-abbrev subzone))
+          collect (list zone subzone (when transition-idx (elt (timezone-transitions zone) transition-idx)))))
+
+(defun all-timezones-matching-subzone (abbreviated-name)
+  "Returns list of lists of timezone, matched subzone and last transition time
+   for timezones that have subzone matching specified ABBREVIATED-NAME. Includes both active and historical timezones."
+  (loop for zone in (gethash abbreviated-name *abbreviated-subzone-name->timezone-list*)
+        for (subzone transition-idx) = (multiple-value-list (%subzone-as-of zone nil))
+        if (equal abbreviated-name (subzone-abbrev subzone))
+          collect (list zone subzone (when transition-idx (elt (timezone-transitions zone) transition-idx)))
+        else
+          when transition-idx
+            nconc (loop for subzone-idx from 0 below (length (timezone-subzones zone))
+                        for sz = (elt (timezone-subzones zone) subzone-idx)
+                        for tix = (position subzone-idx (timezone-indexes zone) :from-end t)
+                        when (and tix (equal abbreviated-name (subzone-abbrev sz)))
+                          collect (list zone sz (elt (timezone-transitions zone) tix)))))
 
 (defun timezone= (timezone-1 timezone-2)
   "Return two values indicating the relationship between timezone-1 and timezone-2. The first value is whether the two timezones are equal and the second value indicates whether it is sure or not.
@@ -419,8 +460,7 @@ In other words:
       (flet ((visitor (file)
                (handler-case
                    (let* ((full-name (subseq (princ-to-string file) cutoff-position))
-                          (name (pathname-name file))
-                          (timezone (%realize-timezone (make-timezone :path file :name name))))
+                          (timezone (%realize-timezone (make-timezone :path file :name full-name))))
                      (setf (gethash full-name *location-name->timezone*) timezone)
                      (map nil (lambda (subzone)
                                 (push timezone (gethash (subzone-abbrev subzone)
