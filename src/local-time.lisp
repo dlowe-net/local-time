@@ -405,8 +405,9 @@
 (defparameter *location-name->timezone* (make-hash-table :test 'equal)
   "A hashtable with entries like \"Europe/Budapest\" -> timezone-instance")
 
-(defparameter *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal)
-  "A hashtable of \"CEST\" -> list of timezones with \"CEST\" subzone")
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defparameter *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal)
+    "A hashtable of \"CEST\" -> list of timezones with \"CEST\" subzone"))
 
 (defun find-timezone-by-location-name (name)
   (when (zerop (hash-table-count *location-name->timezone*))
