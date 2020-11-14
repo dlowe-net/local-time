@@ -378,6 +378,12 @@
 
 (defparameter +none-zone+ (%make-simple-timezone "Explicit Offset Given" "NONE" 0))
 
+(defparameter *location-name->timezone* (make-hash-table :test 'equal)
+  "A hashtable with entries like \"Europe/Budapest\" -> timezone-instance")
+
+(defparameter *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal)
+  "A hashtable of \"CEST\" -> list of timezones with \"CEST\" subzone")
+
 (defmacro define-timezone (zone-name zone-file &key (load nil))
   "Define zone-name (a symbol or a string) as a new timezone, lazy-loaded from zone-file (a pathname designator relative to the zoneinfo directory on this system.  If load is true, load immediately."
   (declare (type (or string symbol) zone-name))
@@ -401,13 +407,6 @@
         (define-timezone *default-timezone* default-timezone-file :load t)
       (t ()
         (setf *default-timezone* +utc-zone+)))))
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *location-name->timezone* (make-hash-table :test 'equal)
-    "A hashtable with entries like \"Europe/Budapest\" -> timezone-instance")
-
-  (defparameter *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal)
-    "A hashtable of \"CEST\" -> list of timezones with \"CEST\" subzone"))
 
 (defun find-timezone-by-location-name (name)
   (when (zerop (hash-table-count *location-name->timezone*))
