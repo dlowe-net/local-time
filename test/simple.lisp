@@ -15,7 +15,7 @@
     (is (= (day-of timestamp) 3))))
 
 (deftest test/simple/read-binary-integer ()
-  (let ((tmp-file-path #p"/tmp/local-time-test"))
+  (let ((tmp-file-path (merge-pathnames (uiop:temporary-directory) "local-time-test")))
     (with-open-file (ouf tmp-file-path
                          :direction :output
                          :element-type 'unsigned-byte
