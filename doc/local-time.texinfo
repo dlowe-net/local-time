@@ -222,12 +222,43 @@ immediately.
 
 @end defmac
 
+@itindex zone-name
+@defmac zone-name timezone
+
+Returns timezone name.
+
+@end defmac
+
+
 @itindex find-timezone-by-location-name
 @defun find-timezone-by-location-name name
 
 Returns the timezone found at the location name (such as
 @code{US/Eastern}).  @code{reread-timezone-repository} must be called
 before this function is used.
+
+@end defun
+
+@itindex timezones-matching-subzone
+@defun timezones-matching-subzone abbreviated-name timestamp
+
+Returns list of lists of active timezone, matched subzone and last transition time
+for timezones that have subzone matching specified @code{ABBREVIATED-NAME} as of @code{TIMESTAMP} moment if provided.
+
+@code{reread-timezone-repository} must be called before this function
+is used.
+
+@end defun
+
+@itindex all-timezones-matching-subzone
+@defun all-timezones-matching-subzone abbreviated-name
+
+Returns list of lists of timezone, matched subzone and last transition time
+for timezones that have subzone matching specified @code{ABBREVIATED-NAME}.
+Includes both active and historical timezones.
+
+@code{reread-timezone-repository} must be called before this function
+is used.
 
 @end defun
 

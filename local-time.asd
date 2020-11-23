@@ -3,7 +3,7 @@
   :license "BSD"
   :author "Daniel Lowe <dlowe@dlowe.net>"
   :description "A library for manipulating dates and times, based on a paper by Erik Naggum"
-  :depends-on (:cl-fad)
+  :depends-on (:uiop)
   :in-order-to ((test-op (test-op "local-time/test")))
   :components ((:module "src"
                         :serial t
@@ -14,9 +14,9 @@
   :version "1.0.6"
   :author "Daniel Lowe <dlowe@dlowe.net>"
   :description "Testing code for the local-time library"
-  :depends-on (:stefil
+  :depends-on (:hu.dwim.stefil
                :local-time)
-  :perform (test-op (o s) (uiop:symbol-call '#:stefil
+  :perform (test-op (o s) (uiop:symbol-call '#:hu.dwim.stefil
                                             '#:funcall-test-with-feedback-message
                                             (uiop:find-symbol* '#:test '#:local-time.test)))
   :components ((:module "test"

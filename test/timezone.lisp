@@ -5,7 +5,7 @@
   (local-time::define-timezone eastern-tz
       (merge-pathnames #p"EST5EDT" local-time::*default-timezone-repository-path*))
   (local-time::define-timezone utc-leaps
-      (merge-pathnames #p"../zoneinfo-leaps/UTC" local-time::*default-timezone-repository-path*)))
+      (merge-pathnames #p"right/UTC" local-time::*default-timezone-repository-path*)))
 
 
 
@@ -52,12 +52,12 @@
                       ((2008 11 2 6  0) (2008 11 2 1  0))
                       ((2008 11 2 6  1) (2008 11 2 1  1)))))
     (dolist (test-case test-cases)
-      (is (equal 
-         (let ((timestamp
-                (apply 'local-time:encode-timestamp
-                       `(0 0 ,@(reverse (first test-case)) :offset 0))))
-           (local-time:decode-timestamp timestamp :timezone eastern-tz))
-         (apply 'values `(0 0 ,@(reverse (second test-case)))))))))
+      (is (equal
+           (let ((timestamp
+                   (apply 'local-time:encode-timestamp
+                          `(0 0 ,@(reverse (first test-case)) :offset 0))))
+             (local-time:decode-timestamp timestamp :timezone eastern-tz))
+           (apply 'values `(0 0 ,@(reverse (second test-case)))))))))
 
 (deftest test/timezone/adjust-across-dst-by-days ()
   (let* ((old (parse-timestring "2014-03-09T01:00:00.000000-05:00"))
@@ -104,3 +104,27 @@
            (local-time::%adjust-sec-for-leap-seconds 1435708825)))
     (is (= 1435708800
            (local-time::%adjust-sec-for-leap-seconds 1435708826)))))
+
+(deftest test/abbrev-subzone/not-found ()
+  (is (null (local-time:all-timezones-matching-subzone "FOO"))))
+
+(deftest test/abbrev-subzone/find-bst ()
+  (is (member
+       "Europe/London"
+       (local-time:timezones-matching-subzone "BST" (unix-to-timestamp 1585906626))
+       :key (lambda (x) (local-time:zone-name (car x)))
+       :test #'string=))
+  ;; Some historical timezone
+  (is (member
+       "America/Atka"
+       (local-time:all-timezones-matching-subzone "BST")
+       :key (lambda (x) (local-time:zone-name (car x)))
+       :test #'string=)))
+
+(deftest test/abbrev-subzone/find-gmt ()
+  ;; As of 2020-04-03
+  (is (equal
+       "Etc/Greenwich"
+       (local-time:zone-name
+        (caar (local-time:timezones-matching-subzone "GMT" (unix-to-timestamp 1585906626)))))))
+

@@ -61,6 +61,8 @@
            #:clock-now
            #:clock-today
            #:find-timezone-by-location-name
+           #:timezones-matching-subzone
+           #:all-timezones-matching-subzone
            #:reread-timezone-repository
            #:now
            #:today
@@ -89,4 +91,5 @@
            #:+iso-week-date-format+
            #:astronomical-julian-date
            #:modified-julian-date
-           #:astronomical-modified-julian-date))
+           #:astronomical-modified-julian-date
+           #:zone-name))
