@@ -385,21 +385,29 @@
   "A hashtable of \"CEST\" -> list of timezones with \"CEST\" subzone")
 
 (defmacro define-timezone (zone-name zone-file &key (load nil))
-  "Define zone-name (a symbol or a string) as a new timezone, lazy-loaded from zone-file (a pathname designator relative to the zoneinfo directory on this system.  If load is true, load immediately."
+  "Define zone-name (a symbol or a string) as a new timezone,
+   lazy-loaded from zone-file (a pathname designator relative to the
+   zoneinfo directory on this system.  If load is true, load immediately."
   (declare (type (or string symbol) zone-name))
-  (let ((zone-sym (if (symbolp zone-name) zone-name (intern zone-name))))
+  (let ((zone-sym (if (symbolp zone-name)
+                      zone-name
+                      (intern zone-name))))
     `(prog1
-         (defparameter ,zone-sym (make-timezone :path ,zone-file
-                                                :name ,(if (symbolp zone-name)
-                                                           (string-downcase (symbol-name zone-name))
-                                                           zone-name)))
+         (defparameter ,zone-sym
+           (make-timezone :path ,zone-file
+                          :name ,(if (symbolp zone-name)
+                                     (string-downcase (symbol-name zone-name))
+                                     zone-name)))
        ,@(when load
            `((let ((timezone (%realize-timezone ,zone-sym)))
-               (setf (gethash (timezone-name timezone) *location-name->timezone*) timezone)
-               (dolist (subzone (timezone-subzones timezone))
-                 (push timezone
-                       (gethash (subzone-abbrev subzone)
-                                *abbreviated-subzone-name->timezone-list*)))))))))
+               (setf (gethash (timezone-name timezone)
+                              *location-name->timezone*)
+                     timezone)
+               (loop for subzone across (timezone-subzones timezone)
+                     do
+                        (push timezone
+                              (gethash (subzone-abbrev subzone)
+                                       *abbreviated-subzone-name->timezone-list*)))))))))
 
 (eval-when (:load-toplevel :execute)
   (let ((default-timezone-file #p"/etc/localtime"))
