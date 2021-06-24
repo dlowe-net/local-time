@@ -66,6 +66,8 @@
            #:reread-timezone-repository
            #:now
            #:today
+           #:yesterday
+           #:tomorrow
            #:enable-read-macros
            #:+utc-zone+
            #:+gmt-zone+

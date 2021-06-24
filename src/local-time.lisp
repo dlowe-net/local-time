@@ -1167,6 +1167,14 @@ The value of this variable should have the methods `local-time::clock-now', and
   "Returns a timestamp representing the present day."
   (clock-today *clock*))
 
+(defun yesterday ()
+  "Returns a timestamp representing the day before today."
+  (timestamp- (today) 1 :day))
+
+(defun tomorrow ()
+  "Returns a timestamp representing the day after today."
+  (timestamp+ (today) 1 :day))
+
 (defgeneric clock-now (clock)
   (:documentation "Returns a timestamp for the current time given a clock."))
 
