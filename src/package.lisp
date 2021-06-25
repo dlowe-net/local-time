@@ -19,6 +19,7 @@
            #:adjust-timestamp
            #:adjust-timestamp!
            #:timestamp-whole-year-difference
+           #:leap-year-p
            #:days-in-month
            #:weeks-in-year
            #:timestamp-

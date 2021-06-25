@@ -651,14 +651,18 @@ In other words:
     (values (1+ month-minus-one)
             (+ year year-offset))))
 
+(defun leap-year-p (year)
+  "Returns T if the given year is a leap year."
+  (or (and (zerop (mod year 4))
+           (plusp (mod year 100)))
+      (zerop (mod year 400))))
+
 (defun days-in-month (month year)
   "Returns the number of days in the given month of the specified year."
   (let ((normal-days (aref +rotated-month-days-without-leap-day+
                            (mod (+ month 9) 12))))
     (if (and (= month 2)
-             (or (and (zerop (mod year 4))
-                      (plusp (mod year 100)))
-                 (zerop (mod year 400))))
+             (leap-year-p year))
         (1+ normal-days)                ; February on a leap year
         normal-days)))
 
