@@ -19,7 +19,9 @@
            #:adjust-timestamp
            #:adjust-timestamp!
            #:timestamp-whole-year-difference
+           #:leap-year-p
            #:days-in-month
+           #:weeks-in-year
            #:timestamp-
            #:timestamp+
            #:timestamp-difference
@@ -66,6 +68,8 @@
            #:reread-timezone-repository
            #:now
            #:today
+           #:yesterday
+           #:tomorrow
            #:enable-read-macros
            #:+utc-zone+
            #:+gmt-zone+

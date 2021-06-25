@@ -651,16 +651,27 @@ In other words:
     (values (1+ month-minus-one)
             (+ year year-offset))))
 
+(defun leap-year-p (year)
+  "Returns T if the given year is a leap year."
+  (or (and (zerop (mod year 4))
+           (plusp (mod year 100)))
+      (zerop (mod year 400))))
+
 (defun days-in-month (month year)
   "Returns the number of days in the given month of the specified year."
   (let ((normal-days (aref +rotated-month-days-without-leap-day+
                            (mod (+ month 9) 12))))
     (if (and (= month 2)
-             (or (and (zerop (mod year 4))
-                      (plusp (mod year 100)))
-                 (zerop (mod year 400))))
+             (leap-year-p year))
         (1+ normal-days)                ; February on a leap year
         normal-days)))
+
+(defun weeks-in-year (year)
+  "Returns the number of weeks in the given year."
+  (if (or (= 4 (timestamp-day-of-week (encode-timestamp 0 0 0 0 1 1 year)))
+          (= 4 (timestamp-day-of-week (encode-timestamp 0 0 0 0 31 12 year))))
+      53
+      52))
 
 ;; TODO scan all uses of FIX-OVERFLOW-IN-DAYS and decide where it's ok to silently fix and where should be and error reported
 (defun %fix-overflow-in-days (day month year)
@@ -1166,6 +1177,14 @@ The value of this variable should have the methods `local-time::clock-now', and
 (defun today ()
   "Returns a timestamp representing the present day."
   (clock-today *clock*))
+
+(defun yesterday ()
+  "Returns a timestamp representing the day before today."
+  (timestamp- (today) 1 :day))
+
+(defun tomorrow ()
+  "Returns a timestamp representing the day after today."
+  (timestamp+ (today) 1 :day))
 
 (defgeneric clock-now (clock)
   (:documentation "Returns a timestamp for the current time given a clock."))
