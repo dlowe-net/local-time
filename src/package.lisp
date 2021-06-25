@@ -20,6 +20,7 @@
            #:adjust-timestamp!
            #:timestamp-whole-year-difference
            #:days-in-month
+           #:weeks-in-year
            #:timestamp-
            #:timestamp+
            #:timestamp-difference

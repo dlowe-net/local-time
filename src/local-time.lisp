@@ -662,6 +662,13 @@ In other words:
         (1+ normal-days)                ; February on a leap year
         normal-days)))
 
+(defun weeks-in-year (year)
+  "Returns the number of weeks in the given year."
+  (if (or (= 4 (timestamp-day-of-week (encode-timestamp 0 0 0 0 1 1 year)))
+          (= 4 (timestamp-day-of-week (encode-timestamp 0 0 0 0 31 12 year))))
+      53
+      52))
+
 ;; TODO scan all uses of FIX-OVERFLOW-IN-DAYS and decide where it's ok to silently fix and where should be and error reported
 (defun %fix-overflow-in-days (day month year)
   "In case the day number is higher than the maximal possible for the given month/year pair, returns the last day of the month."
