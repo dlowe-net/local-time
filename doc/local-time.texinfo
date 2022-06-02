@@ -333,11 +333,11 @@ Expands to an expression that creates an instance of a
 
 
 @itindex clone-timestamp
-@defmac clone-timestamp timestamp
+@defun clone-timestamp timestamp
 
 Expands to an expression that creates another copy of @var{timestamp}
 that is @code{timestamp=} to it.
-@end defmac
+@end defun
 
 
 @c ===================================================================
