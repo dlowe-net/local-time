@@ -213,16 +213,13 @@
 
 (defun %subzone-as-of (timezone seconds days &optional guess-p)
   "TIMEZONE is a realized timezone; SECONDS and DAYS are 'timestamp-values'
-describing a local time, or null to ask for the subzone after the last transition. Return the applicable subzone and the transition-index for that subzone."
-  ;; When guess-p is true:
-  ;;   try converting the local time to a timestamp using each available
-  ;;   subtimezone, until we find one where the offset matches the offset that
-  ;;   applies at that time (according to the transition table).
-  ;;
-  ;;   Consequence for ambiguous cases:
-  ;;   Whichever subtimezone is listed first in the tzinfo database will be
-  ;;   the one that we pick to resolve ambiguous local time representations.
-  (declare (ignore guess-p))
+describing a local time, or null to ask for the subzone after the last
+transition. Return the applicable subzone and the transition-index for that
+subzone.
+  When GUESS-P is true, the request is about SECONDS and DAYS in a timezone
+which may not be UTC, and therefore the unix-time derived from SECONDS and
+DAYS has an offset with respect to UTC: the offset of the subzone to be
+found."
   (let* ((indexes (timezone-indexes timezone))
          (index-length (length indexes))
          (subzones (timezone-subzones timezone)))
@@ -235,9 +232,22 @@ describing a local time, or null to ask for the subzone after the last transitio
           (t
            (let* ((transitions (timezone-transitions timezone))
                   (unix-time (timestamp-values-to-unix seconds days))
-                  (transition-idx (transition-position unix-time transitions))
-                  (subzone-idx (elt indexes transition-idx))
-                  (subzone (elt subzones subzone-idx)))
+                  (transition-idx
+                   (transition-position (if guess-p
+                                            (- unix-time 86400)
+                                            unix-time)
+                                        transitions))
+                  (subzone (elt subzones (elt indexes transition-idx))))
+             (when (and guess-p
+                        (< transition-idx (1- index-length))) ;there is a next
+               (let* ((next-idx (1+ transition-idx))
+                      (delta (- (elt transitions next-idx) unix-time)))
+                 (when (<= delta 86400) ;check next offset
+                   (let ((next-subzone (elt subzones (elt indexes next-idx))))
+                     (when (<= (+ delta (subzone-offset next-subzone)) 0)
+                       ;; The next transition is valid
+                       (setf transition-idx next-idx
+                             subzone next-subzone))))))
              (values subzone
                      transition-idx))))))
 
