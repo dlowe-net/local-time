@@ -92,4 +92,6 @@
            #:astronomical-julian-date
            #:modified-julian-date
            #:astronomical-modified-julian-date
-           #:zone-name))
+           #:zone-name
+           #:encode-universal-time-with-tz
+           #:decode-universal-time-with-tz))

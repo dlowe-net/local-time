@@ -2015,3 +2015,37 @@ You can see examples in +ISO-8601-FORMAT+, +ASCTIME-FORMAT+, and +RFC-1123-FORMA
   (- (day-of timestamp) +modified-julian-date-offset+))
 
 (declaim (notinline format-timestring))
+
+(defun encode-universal-time-with-tz (sec minute hour day month year &key timezone)
+  "Like encode-universal-time, but with a timezone object instead of a timezone offset."
+  ;; Use low level functions to prevent allocation of timestamp structures.
+  (declare (type integer sec minute hour day month year))
+  (unless (valid-timestamp-p 0 sec minute hour day month year)
+    (error 'invalid-time-specification))
+  (multiple-value-bind (ts-sec ts-day)
+      (encode-sec-day sec minute hour day month year)
+    (- (ts-sec-day-to-universal ts-sec ts-day)
+       (encode-offset ts-sec
+                      ts-day
+                      (%realize-timezone (or timezone *default-timezone*))))))
+
+(defun decode-universal-time-with-tz (universal &key timezone)
+  "Like decode-universal-time, but with a timezone object instead of an timezone offset.
+Differences with regard to decode-universal-time:
+- the returned offset is the offset applicable in TIMEZONE at UNIVERSAL time,
+  and thus corrected for DST;
+- returns one more value: the abbreviation of the active timezone."
+  (multiple-value-bind (ts-sec ts-day) (universal-sec-day universal)
+    (multiple-value-bind (offset daylight-p abbreviation)
+        (sec-day-subtimezone ts-sec
+                             ts-day
+                             (%realize-timezone (or timezone *default-timezone*)))
+      (multiple-value-bind (sec minute hour day month year day-of-week)
+          (multiple-value-call #'decode-sec-day
+            (%adjust-to-offset ts-sec ts-day offset))
+        (values sec minute hour
+                day month year
+                (mod (1- day-of-week) 7) ;NB In CL: Monday = 0
+                daylight-p
+                (/ offset -3600)        ;NB In CL: hours west
+                abbreviation)))))

@@ -101,6 +101,23 @@ is expected instead.")
                2 7))                 ;min, ..., year and reversed year, ..., min
              (second test-case)))))))
 
+(deftest test/timezone/decode-universal-dst ()
+  ;; Testing DST calculation with a known timezone
+  (dolist (tz-test-cases *dst-test-cases*)
+    (destructuring-bind (tz . test-cases) tz-test-cases
+      (dolist (test-case (cdr test-cases))
+        (is (equal
+             (reverse
+              (subseq
+               (multiple-value-list
+                (let ((universal
+                       (apply #'encode-universal-time
+                              `(0 ,@(reverse (first test-case)) 0))))
+                  (local-time:decode-universal-time-with-tz universal
+                                                            :timezone tz)))
+               1 6))                 ;min, ..., year and reversed year, ..., min
+             (second test-case)))))))
+
 (deftest test/timzone/formatting ()
   ;; Zone Asia/Kolkata has positive fractional hour offset;
   ;; zone Portugal has a negative fractional hour offset (in 1901).
@@ -127,6 +144,44 @@ is expected instead.")
                2 7))
              ;; Allow for ambiguous local times
              (or (third test-case) (first test-case))))))))
+
+(deftest test/timezone/encode-universal-dst ()
+  ;; Testing DST calculation with a known timezone, encoded in the timezone
+  (dolist (tz-test-cases *dst-test-cases*)
+    (destructuring-bind (tz . test-cases) tz-test-cases
+      (dolist (test-case test-cases)
+        (is (equal
+             (reverse
+              (subseq
+               (multiple-value-list
+                (let ((universal
+                       (apply 'local-time:encode-universal-time-with-tz
+                              `(0 ,@(reverse (second test-case)) :timezone ,tz))))
+                  (decode-universal-time universal 0)))
+               1 6))
+             ;; Allow for ambiguous local times
+             (or (third test-case) (first test-case))))))))
+
+(deftest test/timezone/universal-values ()
+  ;; Minimal consistency for day-of-week daylight-p, offset, abbrevation
+  (let ((march-utc (encode-universal-time 0 0 0 1 3 2023 0))
+        (march-decode '(0 0 1 1 3 2023 2 nil -1 "CET"))
+        (june-utc (encode-universal-time 0 0 0 1 6 2023 0))
+        (june-decode '(0 0 2 1 6 2023 3 t -2 "CEST")))
+    (is (equal (multiple-value-list
+                (local-time:decode-universal-time-with-tz march-utc
+                                                          :timezone cet-tz))
+               march-decode))
+    (is (equal (apply #'local-time:encode-universal-time-with-tz
+                      `(,@(subseq march-decode 0 6) :timezone ,cet-tz))
+               march-utc))
+    (is (equal (multiple-value-list
+                (local-time:decode-universal-time-with-tz june-utc
+                                                          :timezone cet-tz))
+               june-decode))
+    (is (equal (apply #'local-time:encode-universal-time-with-tz
+                      `(,@(subseq june-decode 0 6) :timezone ,cet-tz))
+               june-utc))))
 
 (deftest test/timezone/strict-validity ()
   ;; The timezone EET is only defined from 1977-04-03.
