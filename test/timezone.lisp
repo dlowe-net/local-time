@@ -15,6 +15,8 @@
       (merge-pathnames #p"Asia/Kolkata" local-time::*default-timezone-repository-path*))
   (local-time::define-timezone portugal
       (merge-pathnames #p"Portugal" local-time::*default-timezone-repository-path*))
+  (local-time::define-timezone eet
+      (merge-pathnames #p"EET" local-time::*default-timezone-repository-path*))
   )
 
 (deftest offset/type-anchorage ()
@@ -125,6 +127,19 @@ is expected instead.")
                2 7))
              ;; Allow for ambiguous local times
              (or (third test-case) (first test-case))))))))
+
+(deftest test/timezone/strict-validity ()
+  ;; The timezone EET is only defined from 1977-04-03.
+  (flet ((_eet-to-utc ()
+           (multiple-value-list
+            (local-time:decode-timestamp
+             (local-time:encode-timestamp 0 0 0 0 1 4 1977 :timezone eet)
+             :offset 0))))
+    (and (let ((local-time::*strict-first-subzone-validity* nil))
+           (is (equal (reverse (subseq (_eet-to-utc) 2 7))
+                      '(1977 3 31 21 0))))
+         (let ((local-time::*strict-first-subzone-validity* t))
+           (signals simple-error (_eet-to-utc))))))
 
 (deftest test/timezone/adjust-across-dst-by-days ()
   (let* ((old (parse-timestring "2014-03-09T01:00:00.000000-05:00"))

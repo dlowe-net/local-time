@@ -211,6 +211,11 @@
      finally
         (return (if (zerop start) 0 (1- start)))))
 
+(defvar *strict-first-subzone-validity*
+  nil
+  "When true, raise an error if trying to get an offset before the first
+known transition.")
+
 (defun %subzone-as-of (timezone seconds days &optional guess-p)
   "TIMEZONE is a realized timezone; SECONDS and DAYS are 'timestamp-values'
 describing a local time, or null to ask for the subzone after the last
