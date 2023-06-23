@@ -223,17 +223,23 @@ describing a local time, or null to ask for the subzone after the last transitio
   ;;   Whichever subtimezone is listed first in the tzinfo database will be
   ;;   the one that we pick to resolve ambiguous local time representations.
   (declare (ignore guess-p))
-  (let* ((unix-time (when seconds (timestamp-values-to-unix seconds days)))
-         (index-length (length (timezone-indexes timezone)))
-         (transition-idx (cond ((zerop index-length) nil)
-                               (unix-time (transition-position unix-time
-                                                               (timezone-transitions timezone)))
-                               (t (1- index-length))))
-         (subzone-idx (if transition-idx
-                          (elt (timezone-indexes timezone) transition-idx)
-                          0)))
-    (values (elt (timezone-subzones timezone) subzone-idx)
-            transition-idx)))
+  (let* ((indexes (timezone-indexes timezone))
+         (index-length (length indexes))
+         (subzones (timezone-subzones timezone)))
+    (cond ((zerop index-length)
+           (values (elt subzones 0) nil))
+          ((not seconds)
+           (let ((transition-idx (1- index-length)))
+             (values (elt subzones (elt indexes transition-idx))
+                     transition-idx)))
+          (t
+           (let* ((transitions (timezone-transitions timezone))
+                  (unix-time (timestamp-values-to-unix seconds days))
+                  (transition-idx (transition-position unix-time transitions))
+                  (subzone-idx (elt indexes transition-idx))
+                  (subzone (elt subzones subzone-idx)))
+             (values subzone
+                     transition-idx))))))
 
 (defun %read-binary-integer (stream byte-count &optional (signed nil))
   "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
