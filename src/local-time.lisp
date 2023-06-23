@@ -197,28 +197,19 @@
 
 (defun transition-position (needle haystack)
   (declare (type integer needle)
-           (type (simple-array integer (*)) haystack))
+           (type (simple-array integer (*)) haystack)
+           (optimize (speed 3)))
   (loop
-     with start = 0
-     with end = (1- (length haystack))
-     for middle = (floor (+ end start) 2)
-     while (and (< start end)
-                (/= needle (elt haystack middle)))
-     do (cond
-          ((> needle (elt haystack middle))
-           (setf start (1+ middle)))
-          (t
-           (setf end (1- middle))))
+     with start fixnum = 0 
+     with end fixnum = (length haystack)
+     ;; Invariant: haystack[start-1] <= needle < haystack[end]
+     for middle fixnum = (floor (+ end start) 2)
+     while (< start end)
+     do (if (< needle (elt haystack middle))
+            (setf end middle)
+            (setf start (1+ middle)))
      finally
-       (return (max 0 (cond
-                        ((minusp end)
-                         0)
-                        ((= needle (elt haystack middle))
-                         middle)
-                        ((>= needle (elt haystack end))
-                         end)
-                        (t
-                         (1- end)))))))
+        (return (if (zerop start) 0 (1- start)))))
 
 (defun %subzone-as-of (timezone unix-time)
   (let* ((as-of-time unix-time)
