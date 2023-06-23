@@ -1146,8 +1146,8 @@ elements."
 (defvar *clock* t
   "Use the `*clock*' special variable if you need to define your own idea of the current time.
 
-The value of this variable should have the methods `local-time::clock-now', and
-`local-time::clock-today'. The currently supported values in local-time are:
+The value of this variable should have at least a method `local-time::clock-now'; there may also be a `local-time::clock-today' method, although the default based on `local-time::clock-now' will probably do the job.
+The currently supported values in local-time are:
   t - use the standard clock
   local-time:leap-second-adjusted - use a clock which adjusts for leap seconds using the information in *default-timezone*.")
 
@@ -1190,9 +1190,8 @@ The value of this variable should have the methods `local-time::clock-now', and
     (unix-to-timestamp sec :nsec nsec)))
 
 (defmethod clock-today (clock)
-  (declare (ignore clock))
   ;; TODO should return a date value, anyhow we will decide to represent it eventually
-  (let ((result (now)))
+  (let ((result (clock-now clock)))
     (setf (sec-of result) 0)
     (setf (nsec-of result) 0)
     result))
