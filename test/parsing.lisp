@@ -22,8 +22,12 @@
            (let* ((timestamp-a (encode-timestamp nsec sec min hour
                                                  day mon year :offset offset))
                   (used-offset (or offset
-                                   (local-time::%guess-offset (sec-of timestamp-a)
-                                                              (day-of timestamp-a))))
+                                   (let ((zone (local-time::%realize-timezone *default-timezone*)))
+                                     (local-time::subzone-offset
+                                      (local-time::%subzone-as-of zone
+                                                                  (sec-of timestamp-a)
+                                                                  (day-of timestamp-a)
+                                                                  t)))))
                   (timestamp-b (parse-timestring str
                                                  :start start
                                                  :end end

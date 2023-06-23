@@ -211,7 +211,18 @@
      finally
         (return (if (zerop start) 0 (1- start)))))
 
-(defun %subzone-as-of (timezone seconds days)
+(defun %subzone-as-of (timezone seconds days &optional guess-p)
+  "TIMEZONE is a realized timezone; SECONDS and DAYS are 'timestamp-values'
+describing a local time, or null to ask for the subzone after the last transition. Return the applicable subzone and the transition-index for that subzone."
+  ;; When guess-p is true:
+  ;;   try converting the local time to a timestamp using each available
+  ;;   subtimezone, until we find one where the offset matches the offset that
+  ;;   applies at that time (according to the transition table).
+  ;;
+  ;;   Consequence for ambiguous cases:
+  ;;   Whichever subtimezone is listed first in the tzinfo database will be
+  ;;   the one that we pick to resolve ambiguous local time representations.
+  (declare (ignore guess-p))
   (let* ((unix-time (when seconds (timestamp-values-to-unix seconds days)))
          (index-length (length (timezone-indexes timezone)))
          (transition-idx (cond ((zerop index-length) nil)
@@ -223,18 +234,6 @@
                           0)))
     (values (elt (timezone-subzones timezone) subzone-idx)
             transition-idx)))
-
-(defun %guess-offset (seconds days &optional timezone)
-  ;; try converting the local time to a timestamp using each available
-  ;; subtimezone, until we find one where the offset matches the offset that
-  ;; applies at that time (according to the transition table).
-  ;;
-  ;; Consequence for ambiguous cases:
-  ;; Whichever subtimezone is listed first in the tzinfo database will be
-  ;; the one that we pick to resolve ambiguous local time representations.
-  (let* ((zone (%realize-timezone (or timezone *default-timezone*)))
-         (subzone (%subzone-as-of zone seconds days)))
-    (subzone-offset subzone)))
 
 (defun %read-binary-integer (stream byte-count &optional (signed nil))
   "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
@@ -929,9 +928,10 @@ invalid, the condition INVALID-TIME-SPECIFICATION is raised."
                                   (aref +rotated-month-offsets-without-leap-day+ 0-based-rotated-month)
                                   (1- day)))
          (used-offset (or offset
-                          (%guess-offset sec
-                                         days-from-zero-point
-                                         timezone))))
+                          (let* ((zone (%realize-timezone
+                                        (or timezone *default-timezone*))))
+                            (subzone-offset (%subzone-as-of zone sec days-from-zero-point
+                                                            t))))))
     (multiple-value-bind (utc-sec utc-day)
         (%adjust-to-offset sec days-from-zero-point (- used-offset))
       (values nsec utc-sec utc-day))))
