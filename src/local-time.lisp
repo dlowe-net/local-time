@@ -106,8 +106,8 @@
                                 (when system
                                   (asdf:component-pathname system)))"))))
             (try path)))
-        (let ((path (or #.*compile-file-truename*
-                        *load-truename*)))
+        (let ((path #.(or *compile-file-truename*
+                          '*load-truename*)))
           (when path
             (try (merge-pathnames "../" path)))))))
 
