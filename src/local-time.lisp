@@ -1387,7 +1387,7 @@ The value of this variable should have the methods `local-time::clock-now', and
     (multiple-value-bind (offset* daylight-p abbreviation)
         (timestamp-subtimezone timestamp timezone)
       (multiple-value-bind (adjusted-secs adjusted-days)
-          (%adjust-to-timezone timestamp timezone offset)
+          (%adjust-to-timezone timestamp timezone (or offset offset*))
         (multiple-value-bind (hours minutes seconds)
             (%timestamp-decode-time adjusted-secs)
           (multiple-value-bind (year month day)
@@ -1396,7 +1396,7 @@ The value of this variable should have the methods `local-time::clock-now', and
              (nsec-of timestamp)
              seconds minutes hours
              day month year
-             (timestamp-day-of-week timestamp :timezone timezone :offset offset)
+             (timestamp-day-of-week timestamp :timezone timezone :offset (or offset offset*))
              daylight-p
              (or offset offset*)
              abbreviation)))))))
