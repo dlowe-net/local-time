@@ -211,12 +211,12 @@
      finally
         (return (if (zerop start) 0 (1- start)))))
 
-(defun %subzone-as-of (timezone unix-time)
-  (let* ((as-of-time unix-time)
+(defun %subzone-as-of (timezone seconds days)
+  (let* ((unix-time (when seconds (timestamp-values-to-unix seconds days)))
          (index-length (length (timezone-indexes timezone)))
          (transition-idx (cond ((zerop index-length) nil)
-                               (as-of-time (transition-position as-of-time
-                                                                (timezone-transitions timezone)))
+                               (unix-time (transition-position unix-time
+                                                               (timezone-transitions timezone)))
                                (t (1- index-length))))
          (subzone-idx (if transition-idx
                           (elt (timezone-indexes timezone) transition-idx)
@@ -233,8 +233,7 @@
   ;; Whichever subtimezone is listed first in the tzinfo database will be
   ;; the one that we pick to resolve ambiguous local time representations.
   (let* ((zone (%realize-timezone (or timezone *default-timezone*)))
-         (unix-time (timestamp-values-to-unix seconds days))
-         (subzone (%subzone-as-of zone unix-time)))
+         (subzone (%subzone-as-of zone seconds days)))
     (subzone-offset subzone)))
 
 (defun %read-binary-integer (stream byte-count &optional (signed nil))
@@ -447,7 +446,7 @@
    for timezones that have subzone matching specified ABBREVIATED-NAME as of TIMESTAMP moment if provided. "
   (loop for zone in (gethash abbreviated-name *abbreviated-subzone-name->timezone-list*)
         ;; get the subzone and the latest transition index
-        for (subzone transition-idx) = (multiple-value-list (%subzone-as-of zone (timestamp-to-unix timestamp)))
+        for (subzone transition-idx) = (multiple-value-list (%subzone-as-of zone (sec-of timestamp) (day-of timestamp)))
         if (equal abbreviated-name (subzone-abbrev subzone))
           collect (list zone subzone (when transition-idx (elt (timezone-transitions zone) transition-idx)))))
 
@@ -455,7 +454,7 @@
   "Returns list of lists of timezone, matched subzone and last transition time
    for timezones that have subzone matching specified ABBREVIATED-NAME. Includes both active and historical timezones."
   (loop for zone in (gethash abbreviated-name *abbreviated-subzone-name->timezone-list*)
-        for (subzone transition-idx) = (multiple-value-list (%subzone-as-of zone nil))
+        for (subzone transition-idx) = (multiple-value-list (%subzone-as-of zone nil nil))
         if (equal abbreviated-name (subzone-abbrev subzone))
           collect (list zone subzone (when transition-idx (elt (timezone-transitions zone) transition-idx)))
         else
@@ -526,7 +525,8 @@ In other words:
   (declare (type timestamp timestamp)
            (type (or null timezone) timezone))
   (let ((subzone (%subzone-as-of (%realize-timezone (or timezone *default-timezone*))
-                                 (timestamp-to-unix timestamp))))
+                                 (sec-of timestamp)
+                                 (day-of timestamp))))
     (values
      (subzone-offset subzone)
      (subzone-daylight-p subzone)
