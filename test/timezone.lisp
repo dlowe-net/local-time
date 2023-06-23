@@ -53,11 +53,15 @@
                       ((2008 11 2 6  1) (2008 11 2 1  1)))))
     (dolist (test-case test-cases)
       (is (equal
-           (let ((timestamp
-                   (apply 'local-time:encode-timestamp
-                          `(0 0 ,@(reverse (first test-case)) :offset 0))))
-             (local-time:decode-timestamp timestamp :timezone eastern-tz))
-           (apply 'values `(0 0 ,@(reverse (second test-case)))))))))
+           (reverse
+            (subseq
+             (multiple-value-list
+              (let ((timestamp
+                     (apply 'local-time:encode-timestamp
+                            `(0 0 ,@(reverse (first test-case)) :offset 0))))
+                (local-time:decode-timestamp timestamp :timezone eastern-tz)))
+             2 7)) ;min, ..., year and reversed year, ..., min
+           (second test-case))))))
 
 (deftest test/timezone/adjust-across-dst-by-days ()
   (let* ((old (parse-timestring "2014-03-09T01:00:00.000000-05:00"))
