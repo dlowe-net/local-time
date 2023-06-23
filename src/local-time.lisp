@@ -431,10 +431,14 @@ found."
 
 (defparameter +none-zone+ (%make-simple-timezone "Explicit Offset Given" "NONE" 0))
 
-(defparameter *location-name->timezone* (make-hash-table :test 'equal)
+(defparameter *location-name->timezone*
+  (make-hash-table :test 'equal
+                   #+sbcl :synchronized #+sbcl t)
   "A hashtable with entries like \"Europe/Budapest\" -> timezone-instance")
 
-(defparameter *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal)
+(defparameter *abbreviated-subzone-name->timezone-list*
+  (make-hash-table :test 'equal
+                   #+sbcl :synchronized #+sbcl t)
   "A hashtable of \"CEST\" -> list of timezones with \"CEST\" subzone")
 
 (defmacro define-timezone (zone-name zone-file &key (load nil))
@@ -528,8 +532,12 @@ In other words:
                                                         *abbreviated-subzone-name->timezone-list*)))
                           (timezone-subzones timezone)))
                  (invalid-timezone-file () nil))))
-        (setf *location-name->timezone* (make-hash-table :test 'equal))
-        (setf *abbreviated-subzone-name->timezone-list* (make-hash-table :test 'equal))
+        (setf *location-name->timezone*
+          (make-hash-table :test 'equal
+                           #+sbcl :synchronized #+sbcl t)) 
+        (setf *abbreviated-subzone-name->timezone-list*
+          (make-hash-table :test 'equal
+                           #+sbcl :synchronized #+sbcl t))
         (uiop:collect-sub*directories root-directory
                                       (constantly t)
                                       (constantly t)
