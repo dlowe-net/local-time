@@ -195,6 +195,31 @@
 ;; time of day.
 (defparameter +modified-julian-date-offset+ -51604)
 
+(defun transition-position (needle haystack)
+  (declare (type integer needle)
+           (type (simple-array integer (*)) haystack))
+  (loop
+     with start = 0
+     with end = (1- (length haystack))
+     for middle = (floor (+ end start) 2)
+     while (and (< start end)
+                (/= needle (elt haystack middle)))
+     do (cond
+          ((> needle (elt haystack middle))
+           (setf start (1+ middle)))
+          (t
+           (setf end (1- middle))))
+     finally
+       (return (max 0 (cond
+                        ((minusp end)
+                         0)
+                        ((= needle (elt haystack middle))
+                         middle)
+                        ((>= needle (elt haystack end))
+                         end)
+                        (t
+                         (1- end)))))))
+
 (defun %subzone-as-of (timezone unix-time)
   (let* ((as-of-time unix-time)
          (index-length (length (timezone-indexes timezone)))
@@ -504,31 +529,6 @@ In other words:
                  :nsec (nsec-of timestamp)
                  :sec (sec-of timestamp)
                  :day (day-of timestamp)))
-
-(defun transition-position (needle haystack)
-  (declare (type integer needle)
-           (type (simple-array integer (*)) haystack))
-  (loop
-     with start = 0
-     with end = (1- (length haystack))
-     for middle = (floor (+ end start) 2)
-     while (and (< start end)
-                (/= needle (elt haystack middle)))
-     do (cond
-          ((> needle (elt haystack middle))
-           (setf start (1+ middle)))
-          (t
-           (setf end (1- middle))))
-     finally
-       (return (max 0 (cond
-                        ((minusp end)
-                         0)
-                        ((= needle (elt haystack middle))
-                         middle)
-                        ((>= needle (elt haystack end))
-                         end)
-                        (t
-                         (1- end)))))))
 
 (defun timestamp-subtimezone (timestamp timezone)
   "Return as multiple values the time zone as the number of seconds east of UTC, a boolean daylight-saving-p, and the customary abbreviation of the timezone."
