@@ -21,8 +21,12 @@
   (name "anonymous" :type string)
   (loaded nil :type boolean))
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defconstant +timezone-offset-min+ -86400)
+  (defconstant +timezone-offset-max+ 86400))
+
 (deftype timezone-offset ()
-  '(integer -43200 50400))
+  '(integer #.+timezone-offset-min+ #.+timezone-offset-max+))
 
 (defun %valid-time-of-day? (timestamp)
   (zerop (day-of timestamp)))
