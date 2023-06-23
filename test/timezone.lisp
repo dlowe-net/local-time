@@ -9,6 +9,10 @@
   (local-time::define-timezone anchorage
       (merge-pathnames #p"America/Anchorage" local-time::*default-timezone-repository-path*)
     :load t)
+  (local-time::define-timezone ist
+      (merge-pathnames #p"Asia/Kolkata" local-time::*default-timezone-repository-path*))
+  (local-time::define-timezone portugal
+      (merge-pathnames #p"Portugal" local-time::*default-timezone-repository-path*))
   )
 
 (deftest offset/type-anchorage ()
@@ -72,6 +76,16 @@
                 (local-time:decode-timestamp timestamp :timezone eastern-tz)))
              2 7)) ;min, ..., year and reversed year, ..., min
            (second test-case))))))
+
+(deftest test/timzone/formatting ()
+  ;; Zone Asia/Kolkata has positive fractional hour offset;
+  ;; zone Portugal has a negative fractional hour offset (in 1901).
+  (is (equal (format-timestring t (encode-timestamp 0 0 0 0 1 1 2000 :offset 0)
+                                :timezone ist)
+             "2000-01-01T05:30:00.000000+05:30"))
+  (is (equal (format-timestring t (encode-timestamp 0 0 0 0 5 12 1901 :offset 0)
+                                :timezone portugal)
+             "1901-12-04T23:23:15.000000-00:37")))
 
 (deftest test/timezone/adjust-across-dst-by-days ()
   (let* ((old (parse-timestring "2014-03-09T01:00:00.000000-05:00"))
