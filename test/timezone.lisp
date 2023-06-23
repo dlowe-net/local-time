@@ -5,9 +5,19 @@
   (local-time::define-timezone eastern-tz
       (merge-pathnames #p"EST5EDT" local-time::*default-timezone-repository-path*))
   (local-time::define-timezone utc-leaps
-      (merge-pathnames #p"right/UTC" local-time::*default-timezone-repository-path*)))
+      (merge-pathnames #p"right/UTC" local-time::*default-timezone-repository-path*))
+  (local-time::define-timezone anchorage
+      (merge-pathnames #p"America/Anchorage" local-time::*default-timezone-repository-path*)
+    :load t)
+  )
 
-
+(deftest offset/type-anchorage ()
+  (every (lambda (subzone)
+           (let ((offset (local-time::subzone-offset subzone)))
+             (is (typep offset 'local-time::timezone-offset)
+                 "offset ~a not of type timezone-offset"
+                 offset)))
+         (local-time::timezone-subzones anchorage)))
 
 (deftest transition-position/correct-position ()
   (let ((cases '((0 #(1 2 3 4 5) 0)
