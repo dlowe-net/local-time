@@ -525,14 +525,8 @@ In other words:
   "Return as multiple values the time zone as the number of seconds east of UTC, a boolean daylight-saving-p, and the customary abbreviation of the timezone."
   (declare (type timestamp timestamp)
            (type (or null timezone) timezone))
-  (let* ((zone (%realize-timezone (or timezone *default-timezone*)))
-         (unix-time (timestamp-to-unix timestamp))
-         (subzone-idx (if (zerop (length (timezone-indexes zone)))
-                          0
-                          (elt (timezone-indexes zone)
-                               (transition-position unix-time
-                                                   (timezone-transitions zone)))))
-         (subzone (elt (timezone-subzones zone) subzone-idx)))
+  (let ((subzone (%subzone-as-of (%realize-timezone (or timezone *default-timezone*))
+                                 (timestamp-to-unix timestamp))))
     (values
      (subzone-offset subzone)
      (subzone-daylight-p subzone)
