@@ -1020,7 +1020,7 @@ elements."
     (make-timestamp :day (- days 11017) :sec secs :nsec nsec)))
 
 (defun timestamp-values-to-unix (seconds day)
-  "Return the Unix time correspondint to the values used to encode a TIMESTAMP"
+  "Return the Unix time corresponding to the values used to encode a TIMESTAMP"
   (+ (* (+ day 11017) +seconds-per-day+) seconds))
 
 (defun timestamp-to-unix (timestamp)
