@@ -4,6 +4,8 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (local-time::define-timezone eastern-tz
       (merge-pathnames #p"EST5EDT" local-time::*default-timezone-repository-path*))
+  (local-time::define-timezone cet-tz
+      (merge-pathnames #p"Europe/Amsterdam" local-time::*default-timezone-repository-path*))
   (local-time::define-timezone utc-leaps
       (merge-pathnames #p"right/UTC" local-time::*default-timezone-repository-path*))
   (local-time::define-timezone anchorage
@@ -64,7 +66,12 @@
      ((2008 11 2 5 59) (2008 11 2 1 59))
      ((2008 11 2 6  0) (2008 11 2 1  0))
      ((2008 11 2 6  1) (2008 11 2 1  1))
-     ((2008 11 2 6 59) (2008 11 2 1  59))))
+     ((2008 11 2 6 59) (2008 11 2 1  59)))
+    (,cet-tz
+     ;; Spring forward 
+     ((2023 3 26 0 59) (2023 3 26 1 59))
+     ((2023 3 26 1  0) (2023 3 26 3  0))
+     ((2023 3 26 1  1) (2023 3 26 3  1))))
   "A list of expressions (tz test-case*).
 Each test-case consists of two time expressions:
   (T-UTC T-TZ)
@@ -95,6 +102,22 @@ Encoding T-UTC in UTC and decoding the result in TZ should yield T-TZ.")
   (is (equal (format-timestring t (encode-timestamp 0 0 0 0 5 12 1901 :offset 0)
                                 :timezone portugal)
              "1901-12-04T23:23:15.000000-00:37")))
+
+(deftest test/timezone/encode-timestamp-dst ()
+  ;; Testing DST calculation with a known timezone, encoded in the timezone
+  (dolist (tz-test-cases *dst-test-cases*)
+    (destructuring-bind (tz . test-cases) tz-test-cases
+      (dolist (test-case test-cases)
+        (is (equal
+             (reverse
+              (subseq
+               (multiple-value-list
+                (let ((timestamp
+                       (apply 'local-time:encode-timestamp
+                              `(0 0 ,@(reverse (second test-case)) :timezone ,tz))))
+                  (local-time:decode-timestamp timestamp :offset 0)))
+               2 7))
+             (first test-case)))))))
 
 (deftest test/timezone/adjust-across-dst-by-days ()
   (let* ((old (parse-timestring "2014-03-09T01:00:00.000000-05:00"))
