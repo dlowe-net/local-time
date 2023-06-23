@@ -573,9 +573,9 @@ In other words:
             "timestamp-minimize-part called with invalid part ~a (expected one of ~a)"
             part
             timestamp-parts)
-    (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p offset)
+    (multiple-value-bind (nsec sec min hour day month year)
         (decode-timestamp timestamp :timezone timezone)
-      (declare (ignore nsec day-of-week daylight-saving-time-p))
+      (declare (ignore nsec))
       (encode-timestamp 0
                         (if (> part-count 0) 0 sec)
                         (if (> part-count 1) 0 min)
@@ -583,7 +583,6 @@ In other words:
                         (if (> part-count 3) 1 day)
                         (if (> part-count 4) 1 month)
                         year
-                        :offset (if timezone nil offset)
                         :timezone timezone
                         :into into))))
 
@@ -596,9 +595,9 @@ In other words:
             "timestamp-maximize-part called with invalid part ~a (expected one of ~a)"
             part
             timestamp-parts)
-    (multiple-value-bind (nsec sec min hour day month year day-of-week daylight-saving-time-p offset)
+    (multiple-value-bind (nsec sec min hour day month year)
         (decode-timestamp timestamp :timezone timezone)
-      (declare (ignore nsec day-of-week daylight-saving-time-p))
+      (declare (ignore nsec))
       (let ((month (if (> part-count 4) 12 month)))
         (encode-timestamp 999999999
                           (if (> part-count 0) 59 sec)
@@ -607,7 +606,6 @@ In other words:
                           (if (> part-count 3) (days-in-month month year) day)
                           month
                           year
-                          :offset (if timezone nil offset)
                           :timezone timezone
                           :into into)))))
 
