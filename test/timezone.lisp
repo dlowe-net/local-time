@@ -28,7 +28,7 @@
          (local-time::timezone-subzones anchorage)))
 
 (deftest transition-position/correct-position ()
-  (let ((cases '((0 #(1 2 3 4 5) 0)
+  (let ((cases '((0 #(1 2 3 4 5) -1)
                  (1 #(1 2 3 4 5) 0)
                  (2 #(1 2 3 4 5) 1)
                  (3 #(1 2 3 4 5) 2)

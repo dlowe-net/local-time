@@ -209,7 +209,7 @@
             (setf end middle)
             (setf start (1+ middle)))
      finally
-        (return (if (zerop start) 0 (1- start)))))
+        (return (1- start))))
 
 (defvar *strict-first-subzone-validity*
   nil
@@ -242,7 +242,21 @@ found."
                                             (- unix-time 86400)
                                             unix-time)
                                         transitions))
-                  (subzone (elt subzones (elt indexes transition-idx))))
+                  (subzone (elt subzones (elt indexes (max 0 transition-idx)))))
+             ;; Decide what to do when unix-time is before the first transition
+             (cond ((<= 0 transition-idx))
+                   ((and *strict-first-subzone-validity*
+                         (< (if guess-p
+                                (- unix-time (subzone-offset subzone))
+                                unix-time)
+                            (elt transitions 0)))
+                    (error "Dates before ~A are not defined in ~A"
+                           (multiple-value-list (decode-universal-time
+                                                 (timestamp-to-universal
+                                                  (unix-to-timestamp unix-time))
+                                                 0))
+                           timezone))
+                   (t (setf transition-idx 0)))
              (when (and guess-p
                         (< transition-idx (1- index-length))) ;there is a next
                (let* ((next-idx (1+ transition-idx))
