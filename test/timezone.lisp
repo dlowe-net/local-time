@@ -63,7 +63,10 @@
      ((2008 3 9 7  0) (2008 3 9 3  0))
      ((2008 3 9 7  1) (2008 3 9 3  1))
      ;; Fall back
-     ((2008 11 2 5 59) (2008 11 2 1 59))
+     ((2008 11 2 5 59) (2008 11 2 1 59)
+      ;; 01:59 EST is ambiguous on that day, the
+      ;; encoding prefers the later absolute time.
+      (2008 11 2 6 59))
      ((2008 11 2 6  0) (2008 11 2 1  0))
      ((2008 11 2 6  1) (2008 11 2 1  1))
      ((2008 11 2 6 59) (2008 11 2 1  59)))
@@ -73,9 +76,12 @@
      ((2023 3 26 1  0) (2023 3 26 3  0))
      ((2023 3 26 1  1) (2023 3 26 3  1))))
   "A list of expressions (tz test-case*).
-Each test-case consists of two time expressions:
-  (T-UTC T-TZ)
-Encoding T-UTC in UTC and decoding the result in TZ should yield T-TZ.")
+Each test-case consists of two or three time expressions:
+  (T-UTC T-TZ [T-UTC'])
+Encoding T-UTC in UTC and decoding the result in TZ should yield T-TZ.
+Ecnoding T-TZ in TZ and decoding the result in UTC should yield T-UTC;
+except for cases of ambiguous wall times during a DST fall back, where T-UTC'
+is expected instead.")
 
 (deftest test/timezone/decode-timestamp-dst ()
   ;; Testing DST calculation with a known timezone
@@ -117,7 +123,8 @@ Encoding T-UTC in UTC and decoding the result in TZ should yield T-TZ.")
                               `(0 0 ,@(reverse (second test-case)) :timezone ,tz))))
                   (local-time:decode-timestamp timestamp :offset 0)))
                2 7))
-             (first test-case)))))))
+             ;; Allow for ambiguous local times
+             (or (third test-case) (first test-case))))))))
 
 (deftest test/timezone/adjust-across-dst-by-days ()
   (let* ((old (parse-timestring "2014-03-09T01:00:00.000000-05:00"))
