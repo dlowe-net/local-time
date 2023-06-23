@@ -880,28 +880,6 @@ day given by OFFSET in the week that contains TIME."
                       (day-of time)))
       ((:month :year) (safe-adjust part offset time)))))
 
-;; TODO merge this functionality into timestamp-difference
-(defun timestamp-whole-year-difference (time-a time-b)
-  "Returns the number of whole years elapsed between time-a and time-b (hint: anniversaries)."
-  (declare (type timestamp time-b time-a))
-  (multiple-value-bind (nsec-b sec-b minute-b hour-b day-b month-b year-b day-of-week-b daylight-p-b offset-b)
-      (decode-timestamp time-b)
-    (declare (ignore day-of-week-b daylight-p-b))
-    (multiple-value-bind (nsec-a sec-a minute-a hour-a day-a month-a year-a)
-        (decode-timestamp time-a)
-      (declare (ignore nsec-a sec-a minute-a hour-a day-a month-a))
-      (let ((year-difference (- year-a year-b)))
-        (if (timestamp<= (encode-timestamp nsec-b sec-b minute-b hour-b
-                                           (if (= month-b 2)
-                                               (min 28 day-b)
-                                               day-b)
-                                           month-b
-                                           (+ year-difference year-b)
-                                           :offset offset-b)
-                         time-a)
-            year-difference
-            (1- year-difference))))))
-
 (defun timestamp-difference (time-a time-b)
   "Returns the difference between TIME-A and TIME-B in seconds"
   (let ((nsec (- (nsec-of time-a) (nsec-of time-b)))
@@ -1330,6 +1308,28 @@ The value of this variable should have the methods `local-time::clock-now', and
                    (* 4-years 4)
                    years)
                 (- remaining-days (* years 365)))))
+
+;; TODO merge this functionality into timestamp-difference
+(defun timestamp-whole-year-difference (time-a time-b)
+  "Returns the number of whole years elapsed between time-a and time-b (hint: anniversaries)."
+  (declare (type timestamp time-b time-a))
+  (multiple-value-bind (nsec-b sec-b minute-b hour-b day-b month-b year-b day-of-week-b daylight-p-b offset-b)
+      (decode-timestamp time-b)
+    (declare (ignore day-of-week-b daylight-p-b))
+    (multiple-value-bind (nsec-a sec-a minute-a hour-a day-a month-a year-a)
+        (decode-timestamp time-a)
+      (declare (ignore nsec-a sec-a minute-a hour-a day-a month-a))
+      (let ((year-difference (- year-a year-b)))
+        (if (timestamp<= (encode-timestamp nsec-b sec-b minute-b hour-b
+                                           (if (= month-b 2)
+                                               (min 28 day-b)
+                                               day-b)
+                                           month-b
+                                           (+ year-difference year-b)
+                                           :offset offset-b)
+                         time-a)
+            year-difference
+            (1- year-difference))))))
 
 (defun %timestamp-decode-date (days)
   "Returns the year, month, and day, given the number of days from the epoch."
