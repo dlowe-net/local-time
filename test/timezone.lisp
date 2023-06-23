@@ -53,29 +53,38 @@
               "(transition-position ~a ~a) got ~a, want ~a"
               needle haystack got want))))))
 
+(defparameter *dst-test-cases*
+  `((,eastern-tz
+     ;; Spring forward
+     ((2008 3 9 6 58) (2008 3 9 1 58))
+     ((2008 3 9 6 59) (2008 3 9 1 59))
+     ((2008 3 9 7  0) (2008 3 9 3  0))
+     ((2008 3 9 7  1) (2008 3 9 3  1))
+     ;; Fall back
+     ((2008 11 2 5 59) (2008 11 2 1 59))
+     ((2008 11 2 6  0) (2008 11 2 1  0))
+     ((2008 11 2 6  1) (2008 11 2 1  1))
+     ((2008 11 2 6 59) (2008 11 2 1  59))))
+  "A list of expressions (tz test-case*).
+Each test-case consists of two time expressions:
+  (T-UTC T-TZ)
+Encoding T-UTC in UTC and decoding the result in TZ should yield T-TZ.")
+
 (deftest test/timezone/decode-timestamp-dst ()
   ;; Testing DST calculation with a known timezone
-  (let ((test-cases '(
-                      ;; Spring forward
-                      ((2008 3 9 6 58) (2008 3 9 1 58))
-                      ((2008 3 9 6 59) (2008 3 9 1 59))
-                      ((2008 3 9 7  0) (2008 3 9 3  0))
-                      ((2008 3 9 7  1) (2008 3 9 3  1))
-                      ;; Fall back
-                      ((2008 11 2 5 59) (2008 11 2 1 59))
-                      ((2008 11 2 6  0) (2008 11 2 1  0))
-                      ((2008 11 2 6  1) (2008 11 2 1  1)))))
-    (dolist (test-case test-cases)
-      (is (equal
-           (reverse
-            (subseq
-             (multiple-value-list
-              (let ((timestamp
-                     (apply 'local-time:encode-timestamp
-                            `(0 0 ,@(reverse (first test-case)) :offset 0))))
-                (local-time:decode-timestamp timestamp :timezone eastern-tz)))
-             2 7)) ;min, ..., year and reversed year, ..., min
-           (second test-case))))))
+  (dolist (tz-test-cases *dst-test-cases*)
+    (destructuring-bind (tz . test-cases) tz-test-cases
+      (dolist (test-case (cdr test-cases))
+        (is (equal
+             (reverse
+              (subseq
+               (multiple-value-list
+                (let ((timestamp
+                       (apply 'local-time:encode-timestamp
+                              `(0 0 ,@(reverse (first test-case)) :offset 0))))
+                  (local-time:decode-timestamp timestamp :timezone tz)))
+               2 7))                 ;min, ..., year and reversed year, ..., min
+             (second test-case)))))))
 
 (deftest test/timzone/formatting ()
   ;; Zone Asia/Kolkata has positive fractional hour offset;
