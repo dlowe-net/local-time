@@ -35,6 +35,6 @@
 local-time uses Stefil for testing. To run the Stefil test suite, do
 the following:-
 
-    (ql:quickload :local-time.test)
-    (in-suite test)
-    (test)
+    (ql:quickload :local-time/test)
+    (hu.dwim.stefil:in-suite local-time.test::test)
+    (local-time.test::test)
