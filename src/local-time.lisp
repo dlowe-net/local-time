@@ -449,7 +449,7 @@ found."
   (let ((zone-sym (if (symbolp zone-name)
                       zone-name
                       (intern zone-name))))
-    `(prog1
+    `(progn
          (defparameter ,zone-sym
            (make-timezone :path ,zone-file
                           :name ,(if (symbolp zone-name)
