@@ -464,7 +464,8 @@ found."
                      do
                         (push timezone
                               (gethash (subzone-abbrev subzone)
-                                       *abbreviated-subzone-name->timezone-list*)))))))))
+                                       *abbreviated-subzone-name->timezone-list*))))))
+       ,zone-sym)))
 
 (eval-when (:load-toplevel :execute)
   (let ((default-timezone-file #p"/etc/localtime"))
