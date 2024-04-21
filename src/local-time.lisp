@@ -272,14 +272,18 @@ found."
 
 (defun %read-binary-integer (stream byte-count &optional (signed nil))
   "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
+  (declare (optimize (speed 3))
+           (type (integer 0 4) byte-count))
   (loop
     :with result = 0
     :for offset :from (* (1- byte-count) 8) :downto 0 :by 8
-    :do (setf (ldb (byte 8 offset) result) (read-byte stream))
+    :do (setf (ldb (byte 8 offset)
+                   (the fixnum result))
+              (the (integer 0 255) (read-byte stream)))
     :finally (if signed
                  (let ((high-bit (* byte-count 8)))
                    (if (logbitp (1- high-bit) result)
-                       (return (- result (ash 1 high-bit)))
+                       (return (the fixnum (- result (ash 1 high-bit))))
                        (return result)))
                  (return result))))
 
@@ -378,34 +382,105 @@ found."
                     :daylight-p (/= (second info) 0)
                     :abbrev (%string-from-unsigned-byte-vector abbrevs (third info))))))
 
+(defun %read-timezone (inf zone)
+  (%tz-verify-magic-number inf zone)
+
+  ;; read header values
+  (let* ((header (%tz-read-header inf))
+         (timezone-transitions (%tz-read-transitions inf (getf header :transition-count)))
+         (subzone-indexes (%tz-read-indexes inf (getf header :transition-count)))
+         (subzone-raw-info (%tz-read-subzone inf (getf header :type-count)))
+         (abbreviation-buf (%tz-read-abbrevs inf (getf header :abbrev-length)))
+         (leap-second-info (%tz-read-leap-seconds inf (getf header :leap-count)))
+         (std-indicators (%tz-read-indicators inf (getf header :wall-count)))
+         (gmt-indicators (%tz-read-indicators inf (getf header :utc-count)))
+         (subzone-info (%tz-make-subzones subzone-raw-info
+                                          abbreviation-buf
+                                          gmt-indicators
+                                          std-indicators)))
+
+    (setf (timezone-transitions zone) timezone-transitions)
+    (setf (timezone-indexes zone) subzone-indexes)
+    (setf (timezone-subzones zone) subzone-info)
+    (setf (timezone-leap-seconds zone) leap-second-info))
+  (setf (timezone-loaded zone) t))
+
 (defun %realize-timezone (zone &optional reload)
   "If timezone has not already been loaded or RELOAD is non-NIL, loads the timezone information from its associated unix file.  If the file is not a valid timezone file, the condition INVALID-TIMEZONE-FILE will be signaled."
   (when (or reload (not (timezone-loaded zone)))
     (with-open-file (inf (timezone-path zone)
                          :direction :input
                          :element-type 'unsigned-byte)
-      (%tz-verify-magic-number inf zone)
-
-      ;; read header values
-      (let* ((header (%tz-read-header inf))
-             (timezone-transitions (%tz-read-transitions inf (getf header :transition-count)))
-             (subzone-indexes (%tz-read-indexes inf (getf header :transition-count)))
-             (subzone-raw-info (%tz-read-subzone inf (getf header :type-count)))
-             (abbreviation-buf (%tz-read-abbrevs inf (getf header :abbrev-length)))
-             (leap-second-info (%tz-read-leap-seconds inf (getf header :leap-count)))
-             (std-indicators (%tz-read-indicators inf (getf header :wall-count)))
-             (gmt-indicators (%tz-read-indicators inf (getf header :utc-count)))
-             (subzone-info (%tz-make-subzones subzone-raw-info
-                                              abbreviation-buf
-                                              gmt-indicators
-                                              std-indicators)))
-
-        (setf (timezone-transitions zone) timezone-transitions)
-        (setf (timezone-indexes zone) subzone-indexes)
-        (setf (timezone-subzones zone) subzone-info)
-        (setf (timezone-leap-seconds zone) leap-second-info))
-      (setf (timezone-loaded zone) t)))
+      (%read-timezone inf zone)))
   zone)
+
+(defun %read-timezone-from-combined-file (inf)
+  (let ((name-length (read-byte inf nil nil)))
+    ;; Done reading the combined file?
+    (unless name-length
+      (return-from %read-timezone-from-combined-file nil))
+    (let ((name (make-string name-length)))
+      (dotimes (i name-length)
+        (setf (char name i) (code-char (read-byte inf))))
+      (let ((zone (make-timezone :name name)))
+        (%read-timezone inf zone)
+        ;; Read until we find the TZfi marker
+        (loop :for byte = (read-byte inf)
+              :while byte
+              :do (when (char= (code-char byte) #\f)
+                    (let ((buf (make-array 3 :element-type 'unsigned-byte)))
+                      (read-sequence buf inf :start 0 :end 3)
+                      (when (string= (map 'string #'code-char buf) "iZT")
+                        (return-from %read-timezone-from-combined-file zone)))))))))
+
+(defun %build-combined-timezone-file (&key (timezone-repository *default-timezone-repository-path*))
+  (check-type timezone-repository (or pathname string))
+  (let ((root-directory (uiop:directory-exists-p timezone-repository)))
+    (unless root-directory
+      (error "REREAD-TIMEZONE-REPOSITORY was called with invalid PROJECT-DIRECTORY (~A)."
+             timezone-repository))
+    (let ((cutoff-position (length (princ-to-string root-directory))))
+      (with-open-file (combined-file (merge-pathnames "combined" timezone-repository)
+                                     :element-type 'unsigned-byte
+                                     :direction :output
+                                     :if-exists :supersede)
+        (flet ((visitor (file)
+                 (let ((full-name (subseq (princ-to-string file) cutoff-position)))
+                   (with-open-file (timezone-file file :element-type 'unsigned-byte
+                                                       :direction :input)
+                     ;; Make sure it's a timezone file
+                     (let ((magic-buf (make-array 4 :element-type 'unsigned-byte)))
+                       (read-sequence magic-buf timezone-file :start 0 :end 4)
+                       (when (string/= (map 'string #'code-char magic-buf) "TZif" :end1 4)
+                         (return-from visitor nil)))
+                     ;; Write the name of the timezone
+                     (write-byte (length full-name) combined-file)
+                     (map nil (lambda (char) (write-byte (char-code char) combined-file))
+                          full-name)
+                     ;; Write the magic marker we just read
+                     (map nil (lambda (char) (write-byte (char-code char) combined-file))
+                          "TZif")
+                     ;; Write the rest of the timezone file
+                     (loop for byte = (read-byte timezone-file nil nil)
+                           while byte
+                           do (write-byte byte combined-file)))
+                   ;; Write an end of timezone marker so we can read until we find it
+                   (map nil (lambda (char) (write-byte (char-code char) combined-file))
+                        "fiZT"))))
+          (uiop:collect-sub*directories root-directory
+                                        (constantly t)
+                                        (constantly t)
+                                        (lambda (dir)
+                                          (dolist (file (uiop:directory-files dir))
+                                            (when (not (find "Etc" (pathname-directory file)
+                                                             :test #'string=))
+                                              (visitor file)))))
+          (uiop:collect-sub*directories (merge-pathnames "Etc/" root-directory)
+                                        (constantly t)
+                                        (constantly t)
+                                        (lambda (dir)
+                                          (dolist (file (uiop:directory-files dir))
+                                            (visitor file)))))))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun %make-simple-timezone (name abbrev offset)
@@ -522,37 +597,23 @@ In other words:
     (unless root-directory
       (error "REREAD-TIMEZONE-REPOSITORY was called with invalid PROJECT-DIRECTORY (~A)."
              timezone-repository))
-    (let ((cutoff-position (length (princ-to-string root-directory))))
-      (flet ((visitor (file)
-               (handler-case
-                   (let* ((full-name (subseq (princ-to-string file) cutoff-position))
-                          (timezone (%realize-timezone (make-timezone :path file :name full-name))))
-                     (setf (gethash full-name *location-name->timezone*) timezone)
-                     (map nil (lambda (subzone)
-                                (push timezone (gethash (subzone-abbrev subzone)
-                                                        *abbreviated-subzone-name->timezone-list*)))
-                          (timezone-subzones timezone)))
-                 (invalid-timezone-file () nil))))
-        (setf *location-name->timezone*
-          (make-hash-table :test 'equal
-                           #+sbcl :synchronized #+sbcl t)) 
-        (setf *abbreviated-subzone-name->timezone-list*
+    (setf *location-name->timezone*
           (make-hash-table :test 'equal
                            #+sbcl :synchronized #+sbcl t))
-        (uiop:collect-sub*directories root-directory
-                                      (constantly t)
-                                      (constantly t)
-                                      (lambda (dir)
-                                        (dolist (file (uiop:directory-files dir))
-                                          (when (not (find "Etc" (pathname-directory file)
-                                                           :test #'string=))
-                                            (visitor file)))))
-        (uiop:collect-sub*directories (merge-pathnames "Etc/" root-directory)
-                                      (constantly t)
-                                      (constantly t)
-                                      (lambda (dir)
-                                        (dolist (file (uiop:directory-files dir))
-                                          (visitor file))))))))
+    (setf *abbreviated-subzone-name->timezone-list*
+          (make-hash-table :test 'equal
+                           #+sbcl :synchronized #+sbcl t))
+    (with-open-file (combined-file (merge-pathnames "combined" timezone-repository)
+                                   :element-type 'unsigned-byte
+                                   :direction :input)
+      ;; call read-timezone until it returns nil
+      (loop :for zone = (%read-timezone-from-combined-file combined-file)
+            :while zone
+            :do (setf (gethash (timezone-name zone) *location-name->timezone*) zone)
+            :do (map nil (lambda (subzone)
+                           (push zone (gethash (subzone-abbrev subzone)
+                                               *abbreviated-subzone-name->timezone-list*)))
+                     (timezone-subzones zone))))))
 
 (defmacro make-timestamp (&rest args)
   `(make-instance 'timestamp ,@args))

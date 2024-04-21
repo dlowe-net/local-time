@@ -5,6 +5,11 @@
   :description "A library for manipulating dates and times, based on a paper by Erik Naggum"
   :depends-on (:uiop)
   :in-order-to ((test-op (test-op "local-time/test")))
+  ;; Create the combined timezone file after compilation
+  :perform (load-op :after (op c)
+                    (when (equal (asdf:component-name c) "local-time")
+                      (uiop:symbol-call '#:local-time
+                                        '#:%build-combined-timezone-file)))
   :components ((:module "src"
                         :serial t
                         :components ((:file "package")
