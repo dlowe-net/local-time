@@ -277,14 +277,18 @@ found."
 (declaim (ftype (function (t t &optional t) fixnum) %read-binary-integer))
 (defun %read-binary-integer (stream byte-count &optional (signed nil))
   "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
+  (declare (optimize (speed 3))
+           (type (integer 0 4) byte-count))
   (loop
     :with result = 0
     :for offset :from (* (1- byte-count) 8) :downto 0 :by 8
-    :do (setf (ldb (byte 8 offset) result) (read-byte stream))
+    :do (setf (ldb (byte 8 offset)
+                   (the fixnum result))
+              (the (integer 0 255) (read-byte stream)))
     :finally (if signed
                  (let ((high-bit (* byte-count 8)))
                    (if (logbitp (1- high-bit) result)
-                       (return (- result (ash 1 high-bit)))
+                       (return (the fixnum (- result (ash 1 high-bit))))
                        (return result)))
                  (return result))))
 
