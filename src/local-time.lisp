@@ -200,7 +200,7 @@
            (type (simple-array integer (*)) haystack)
            (optimize (speed 3)))
   (loop
-     with start fixnum = 0 
+     with start fixnum = 0
      with end fixnum = (length haystack)
      ;; Invariant: haystack[start-1] <= needle < haystack[end]
      for middle fixnum = (floor (+ end start) 2)
@@ -535,7 +535,7 @@ In other words:
                  (invalid-timezone-file () nil))))
         (setf *location-name->timezone*
           (make-hash-table :test 'equal
-                           #+sbcl :synchronized #+sbcl t)) 
+                           #+sbcl :synchronized #+sbcl t))
         (setf *abbreviated-subzone-name->timezone-list*
           (make-hash-table :test 'equal
                            #+sbcl :synchronized #+sbcl t))
@@ -810,34 +810,12 @@ using a keyword symbol name of a week-day (see
 day given by OFFSET in the week that contains TIME."
   (labels ((direct-adjust (part offset nsec sec day)
              (cond ((eq part :day-of-week)
-                    (with-decoded-timestamp (:day-of-week day-of-week
-                                                          :nsec nsec :sec sec :minute minute :hour hour
-                                                          :day day :month month :year year
-                                                          :timezone timezone :offset utc-offset)
-                      time
-                      (let ((position (position offset +day-names-as-keywords+ :test #'eq)))
-                        (assert position (position) "~S is not a valid day name" offset)
-                        (let ((offset (+ (- (if (zerop day-of-week)
-                                                7
-                                                day-of-week))
-                                         position)))
-                          (incf day offset)
-                          (cond
-                            ((< day 1)
-                             (decf month)
-                             (when (< month 1)
-                               (setf month 12)
-                               (decf year))
-                             (setf day (+ (days-in-month month year) day)))
-                            ((let ((days-in-month (days-in-month month year)))
-                               (when (< days-in-month day)
-                                 (incf month)
-                                 (when (= month 13)
-                                   (setf month 1)
-                                   (incf year))
-                                 (decf day days-in-month)))))
-                          (encode-timestamp-into-values nsec sec minute hour day month year
-                                                        :timezone timezone :offset utc-offset)))))
+                    (let ((target-dow (position offset +day-names-as-keywords+))
+                          (day-of-week (%ts-day-of-week day)))
+                      (assert target-dow (target-dow) "~S is not a valid day name" offset)
+                      (values nsec sec (if (zerop day-of-week)
+                                           (+ (- day 7) target-dow)
+                                           (+ (- day day-of-week) target-dow)))))
                    ((zerop offset)
                     ;; The offset is zero, so just return the parts of the timestamp object
                     (values nsec sec day))
