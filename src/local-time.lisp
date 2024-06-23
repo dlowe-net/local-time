@@ -131,6 +131,10 @@
 (defparameter +minimal-day-names+
   #("Su" "Mo" "Tu" "We" "Th" "Fr" "Sa"))
 
+(declaim (type (simple-array string)
+               +month-names+ +short-month-names+ +day-names+
+               +short-day-names+ +minimal-day-names+))
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defconstant +months-per-year+ 12)
   (defconstant +days-per-week+ 7)
