@@ -1,13 +1,11 @@
 (cl:in-package :cl-user)
 
-(defpackage :local-time.test
-  (:use :alexandria
-        :common-lisp
-        :hu.dwim.stefil
-        :local-time))
+(fiasco:define-test-package #:local-time.test
+  (:use #:common-lisp
+        #:alexandria
+        #:fiasco
+        #:local-time))
 
-(in-package :local-time.test)
+(in-package #:local-time.test)
 
-(defsuite* (test :in root-suite) ()
-  (local-time::reread-timezone-repository)
-  (run-child-tests))
+(local-time::reread-timezone-repository)

@@ -14,11 +14,11 @@
   :version "1.0.6"
   :author "Daniel Lowe <dlowe@dlowe.net>"
   :description "Testing code for the local-time library"
-  :depends-on (:hu.dwim.stefil
-               :local-time)
-  :perform (test-op (o s) (uiop:symbol-call '#:hu.dwim.stefil
-                                            '#:funcall-test-with-feedback-message
-                                            (uiop:find-symbol* '#:test '#:local-time.test)))
+  :depends-on (:fiasco :local-time)
+  :perform (test-op (o s) (uiop:symbol-call '#:fiasco
+                                            '#:run-package-tests
+                                            :package
+                                            (find-package '#:local-time.test)))
   :components ((:module "test"
                 :serial t
                 :components ((:file "package")

@@ -1,7 +1,5 @@
 (in-package #:local-time.test)
 
-(defsuite* (simple :in test))
-
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (local-time::define-timezone eastern-tz
       (merge-pathnames #p"US/Eastern" local-time::*default-timezone-repository-path*))
@@ -101,7 +99,7 @@
   (let ((a (parse-timestring "2006-01-01T00:00:00"))
         (b (parse-timestring "2001-01-02T00:00:00")))
     (is (= 4 (timestamp-whole-year-difference a b))))
-  
+
   (let* ((local-time::*default-timezone* amsterdam-tz)
          (a (parse-timestring "1978-10-01")))
     (is (= 0 (timestamp-whole-year-difference a a)))))

@@ -1,6 +1,5 @@
 (in-package #:local-time.test)
 
-(defsuite* (timezone :in test))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (local-time::define-timezone eastern-tz
       (merge-pathnames #p"EST5EDT" local-time::*default-timezone-repository-path*))
@@ -52,7 +51,7 @@
     (dolist (case cases)
       (destructuring-bind (needle haystack want)
           case
-        (let ((got (local-time::transition-position needle haystack)))
+        (let ((got (local-time::transition-position needle (coerce haystack '(simple-array fixnum (*))))))
           (is (= got want)
               "(transition-position ~a ~a) got ~a, want ~a"
               needle haystack got want))))))
@@ -73,7 +72,7 @@
      ((2008 11 2 6  1) (2008 11 2 1  1))
      ((2008 11 2 6 59) (2008 11 2 1  59)))
     (,cet-tz
-     ;; Spring forward 
+     ;; Spring forward
      ((2023 3 26 0 59) (2023 3 26 1 59))
      ((2023 3 26 1  0) (2023 3 26 3  0))
      ((2023 3 26 1  1) (2023 3 26 3  1))))
@@ -118,13 +117,13 @@ is expected instead.")
                1 6))                 ;min, ..., year and reversed year, ..., min
              (second test-case)))))))
 
-(deftest test/timzone/formatting ()
+(deftest test/timezone/formatting ()
   ;; Zone Asia/Kolkata has positive fractional hour offset;
   ;; zone Portugal has a negative fractional hour offset (in 1901).
-  (is (equal (format-timestring t (encode-timestamp 0 0 0 0 1 1 2000 :offset 0)
+  (is (equal (format-timestring nil (encode-timestamp 0 0 0 0 1 1 2000 :offset 0)
                                 :timezone ist)
              "2000-01-01T05:30:00.000000+05:30"))
-  (is (equal (format-timestring t (encode-timestamp 0 0 0 0 5 12 1901 :offset 0)
+  (is (equal (format-timestring nil (encode-timestamp 0 0 0 0 5 12 1901 :offset 0)
                                 :timezone portugal)
              "1901-12-04T23:23:15.000000-00:37")))
 
@@ -264,4 +263,3 @@ is expected instead.")
        "Etc/Greenwich"
        (local-time:zone-name
         (caar (local-time:timezones-matching-subzone "GMT" (unix-to-timestamp 1585906626)))))))
-

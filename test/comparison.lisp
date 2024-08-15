@@ -1,7 +1,5 @@
 (in-package #:local-time.test)
 
-(defsuite* (comparison :in simple))
-
 (defmacro defcmptest (comparator-name &body args)
   `(deftest ,(symbolicate 'test/simple/comparison/ comparator-name) ()
     (flet ((make (day &optional (sec 0) (nsec 0))

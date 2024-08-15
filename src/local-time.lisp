@@ -13,8 +13,8 @@
   (daylight-p nil))
 
 (defstruct timezone
-  (transitions #(0) :type simple-vector)
-  (indexes #(0) :type simple-vector)
+  (transitions (coerce #(0) '(simple-array fixnum (1))) :type (simple-array fixnum (*)))
+  (indexes (coerce #(0) '(simple-array fixnum (1))) :type (simple-array fixnum (*)))
   (subzones #() :type simple-vector)
   (leap-seconds nil :type list)
   (path nil)
@@ -200,8 +200,8 @@
 (defparameter +modified-julian-date-offset+ -51604)
 
 (defun transition-position (needle haystack)
-  (declare (type integer needle)
-           (type (simple-array integer (*)) haystack)
+  (declare (type fixnum needle)
+           (type (simple-array fixnum (*)) haystack)
            (optimize (speed 3)))
   (loop
      with start fixnum = 0
@@ -274,6 +274,7 @@ found."
              (values subzone
                      transition-idx))))))
 
+(declaim (ftype (function (t t &optional t) fixnum) %read-binary-integer))
 (defun %read-binary-integer (stream byte-count &optional (signed nil))
   "Read BYTE-COUNT bytes from the binary stream STREAM, and return an integer which is its representation in network byte order (MSB).  If SIGNED is true, interprets the most significant bit as a sign indicator."
   (loop
@@ -323,15 +324,17 @@ found."
 
 (defun %tz-read-transitions (inf count)
   (make-array count
+              :element-type 'fixnum
               :initial-contents
               (loop for idx from 1 upto count
                  collect (%read-binary-integer inf 4 t))))
 
 (defun %tz-read-indexes (inf count)
   (make-array count
+              :element-type 'fixnum
               :initial-contents
               (loop for idx from 1 upto count
-                 collect (%read-binary-integer inf 1))))
+                    collect (%read-binary-integer inf 1))))
 
 (defun %tz-read-subzone (inf count)
   (loop for idx from 1 upto count
@@ -349,8 +352,8 @@ found."
     (loop for idx from 1 upto count
           collect (%read-binary-integer inf 4) into sec
           collect (%read-binary-integer inf 4) into adjustment
-          finally (return (cons (make-array count :initial-contents sec)
-                                (make-array count :initial-contents adjustment))))))
+          finally (return (cons (make-array count :element-type 'fixnum :initial-contents sec)
+                                (make-array count :element-type 'fixnum :initial-contents adjustment))))))
 
 (defun %tz-read-abbrevs (inf length)
   (let ((a (make-array length :element-type '(unsigned-byte 8))))
@@ -1598,7 +1601,8 @@ The currently supported values in local-time are:
                      (passert (%list-length= 3 parts))
                      (date-fullyear (first parts))
                      (date-month (second parts))
-                     (date-mday (third parts))))
+                     (date-mday (third parts))
+                     nil))
                  (date-fullyear (start-end)
                    (parse-integer-into start-end year))
                  (date-month (start-end)
@@ -1831,6 +1835,7 @@ See the documentation of FORMAT-TIMESTRING for the structure of FORMAT."
                             (:iso-week-year iso-year)
                             (:iso-week-number iso-week)
                             (:iso-week-day iso-weekday))))
+                 (declare (fixnum val))
                  (cond
                    ((atom fmt)
                     (princ val result))

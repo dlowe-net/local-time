@@ -1,7 +1,5 @@
 (in-package #:local-time.test)
 
-(defsuite* (parsing :in test))
-
 (deftest test/parsing/parse-format-consistency/range (&key (start-day -100000) (end-day 100000))
   (declare (optimize debug))
   (without-test-progress-printing

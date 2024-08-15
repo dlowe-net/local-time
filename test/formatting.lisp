@@ -1,7 +1,5 @@
 (in-package #:local-time.test)
 
-(defsuite* (formatting :in test))
-
 (deftest test/formatting/format-timestring/1 ()
   (let ((*default-timezone* local-time:+utc-zone+)
         (test-timestamp (encode-timestamp 1000 2 3 4 5 6 2008 :offset 0)))
