@@ -49,6 +49,8 @@
              :end 15)
 
     (is (eql (day-of (parse-timestring "2006-06-06TZ")) 2288))
+    (is (eql (day-of (parse-timestring "2006-06-06T-05")) 2288))
+    (is (eql (day-of (parse-timestring "2006-06-06T+05")) 2287))
 
     (compare 20000000 3 4 5 6 7 2008 "2008-07-06T05:04:03,02")
     (compare 0 2 0 0 23 3 2000 "--23T::02" :allow-missing-elements t)
@@ -80,7 +82,9 @@
                        (local-time::%read-universal-time ins #\@ nil))))))
 
 (deftest test/parsing/error ()
-  (signals invalid-timestring (parse-timestring "2019-w2-20")))
+  (signals invalid-timestring (parse-timestring "2019-w2-20"))
+  (signals invalid-timestring (parse-timestring "T-5"))
+  (signals invalid-timestring (parse-timestring "T-29")))
 
 (deftest test/parsing/parse-rfc3339 ()
   (let ((local-time:*default-timezone* local-time:+utc-zone+))
