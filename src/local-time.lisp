@@ -1065,8 +1065,8 @@ elements."
   ;; Allegro common lisp requires some toplevel hoops through which to
   ;; jump in order to call unix's gettimeofday properly.
   (ff:def-foreign-type filetime
-      (:struct (|dwLowDateTime| :int)
-               (|dwHighDateTime| :int)))
+      (:struct (|dwLowDateTime| :unsigned-long)
+               (|dwHighDateTime| :unsigned-long)))
 
   (ff:def-foreign-call
       (allegro-ffi-get-system-time-as-file-time "GetSystemTimeAsFileTime")
