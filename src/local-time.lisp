@@ -932,6 +932,22 @@ day given by OFFSET in the week that contains TIME."
 (defun timestamp-day-of-week (timestamp &key (timezone *default-timezone*) offset)
   (%ts-day-of-week (nth-value 1 (%adjust-to-timezone timestamp timezone offset))))
 
+(declaim (inline %day-of-week-p))
+
+(defun %day-of-week-p (timestamp day-of-week-index
+                       &key (timezone *default-timezone*) offset)
+  (= day-of-week-index
+     (timestamp-day-of-week timestamp :timezone timezone
+                                      :offset offset)))
+
+(defun sunday? (timestamp) (%day-of-week-p timestamp 0))
+(defun monday? (timestamp) (%day-of-week-p timestamp 1))
+(defun tuesday? (timestamp) (%day-of-week-p timestamp 2))
+(defun wednesday? (timestamp) (%day-of-week-p timestamp 3))
+(defun thursday? (timestamp) (%day-of-week-p timestamp 4))
+(defun friday? (timestamp) (%day-of-week-p timestamp 5))
+(defun saturday? (timestamp) (%day-of-week-p timestamp 6))
+
 ;; TODO read
 ;; http://java.sun.com/j2se/1.4.2/docs/api/java/util/GregorianCalendar.html
 ;; (or something else, sorry :) this scheme only works back until

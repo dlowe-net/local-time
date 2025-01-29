@@ -94,4 +94,11 @@
            #:astronomical-modified-julian-date
            #:zone-name
            #:encode-universal-time-with-tz
-           #:decode-universal-time-with-tz))
+           #:decode-universal-time-with-tz
+           #:sunday?
+           #:monday?
+           #:tuesday?
+           #:wednesday?
+           #:thursday?
+           #:friday?
+           #:saturday?))
