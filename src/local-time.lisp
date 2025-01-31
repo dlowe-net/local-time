@@ -540,8 +540,10 @@ In other words:
       (flet ((visitor (file)
                (handler-case
                    (let* ((full-name (subseq (princ-to-string file) cutoff-position))
+                          (posix-name (concatenate 'string "posix/" full-name))
                           (timezone (%realize-timezone (make-timezone :path file :name full-name))))
                      (setf (gethash full-name *location-name->timezone*) timezone)
+                     (setf (gethash posix-name *location-name->timezone*) timezone)
                      (map nil (lambda (subzone)
                                 (push timezone (gethash (subzone-abbrev subzone)
                                                         *abbreviated-subzone-name->timezone-list*)))
