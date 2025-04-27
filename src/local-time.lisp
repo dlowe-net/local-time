@@ -103,7 +103,7 @@
              (ignore-errors
                (truename
                 (merge-pathnames "zoneinfo/"
-                                 (make-pathname :directory (pathname-directory project-home-directory))))))))
+                                 (make-pathname :name nil :type nil :defaults project-home-directory)))))))
     (or (when (find-package "ASDF")
           (let ((path (eval (read-from-string
                              "(let ((system (asdf:find-system :local-time nil)))
