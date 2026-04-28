@@ -1597,6 +1597,7 @@ The currently supported values in local-time are:
                                                             (nconc result (list (cons last-match index)))
                                                           (incf match-count)))
                                                     match-count))))
+
                     (parse ()
                       (with-parts-and-count (start end date-time-separator)
                         (cond ((= count 2)
@@ -1622,6 +1623,7 @@ The currently supported values in local-time are:
                                (full-date (first parts))
                                (done)))
                         (parse-error nil)))
+
                     (full-date (start-end)
                       (let ((parts (split (car start-end) (cdr start-end) date-separator)))
                         (passert (%list-length= 3 parts))
@@ -1629,12 +1631,16 @@ The currently supported values in local-time are:
                         (date-month (second parts))
                         (date-mday (third parts))
                         nil))
+
                     (date-fullyear (start-end)
                       (parse-integer-into start-end year))
+
                     (date-month (start-end)
                       (parse-integer-into start-end month 1 12))
+
                     (date-mday (start-end)
                       (parse-integer-into start-end day 1 31))
+
                     (full-time (start-end)
                       (let ((start (car start-end))
                             (end (cdr start-end)))
@@ -1661,16 +1667,21 @@ The currently supported values in local-time are:
                                   (passert (or zulup (> end start)))
                                   (unless zulup
                                     (time-offset (second parts) sign))))))))
+
                     (partial-time (start-end)
                       (with-parts-and-count ((car start-end) (cdr start-end) time-separator)
-                        (passert (eql count 3))
+                        (passert (or (eql count 2) (eql count 3)))
                         (time-hour (first parts))
                         (time-minute (second parts))
-                        (time-second (third parts))))
+                        (when (eql count 3)
+                          (time-second (third parts)))))
+
                     (time-hour (start-end)
                       (parse-integer-into start-end hour 0 23))
+
                     (time-minute (start-end)
                       (parse-integer-into start-end minute 0 59))
+
                     (time-second (start-end)
                       (with-parts-and-count ((car start-end) (cdr start-end) fract-time-separators)
                         (passert (<= 1 count 2))
@@ -1694,6 +1705,7 @@ The currently supported values in local-time are:
                                                               '(simple-array (integer 0 1000000000) (10)))
                                                     (- end start)))))
                               (setf nsec 0)))))
+
                     (time-offset (start-end sign)
                       (with-parts-and-count ((car start-end) (cdr start-end) time-separator)
                         (passert (or (and allow-missing-timezone-part (zerop count))
@@ -1722,10 +1734,12 @@ The currently supported values in local-time are:
 
                         (setf offset-hour (* offset-hour sign)
                               offset-minute (* offset-minute sign))))
+
                     (parse-error (failure)
                       (if fail-on-error
                           (error 'invalid-timestring :timestring time-string :failure failure)
                           (return-from %split-timestring nil)))
+
                     (done ()
                       (return-from %split-timestring (list year month day hour minute second nsec offset-hour offset-minute))))
              (parse))))))
