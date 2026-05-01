@@ -697,11 +697,12 @@ In other words:
   "Returns the number of days in the given month of the specified year."
   (assert (<= 1 month 12) nil "MONTH is ~d, which is not within 1 to 12." month)
   (let ((normal-days (aref +rotated-month-days-without-leap-day+
-                           (mod (+ month 9) 12))))
+                           (mod (+ month 9) 12)))
+        (astronomical-year (if (< year 1) (1+ year) year)))
     (if (and (= month 2)
-             (or (and (zerop (mod year 4))
-                      (plusp (mod year 100)))
-                 (zerop (mod year 400))))
+             (or (and (zerop (mod astronomical-year 4))
+                      (plusp (mod astronomical-year 100)))
+                 (zerop (mod astronomical-year 400))))
         (1+ normal-days)                ; February on a leap year
         normal-days)))
 
@@ -968,6 +969,8 @@ day given by OFFSET in the week that contains TIME."
 
 (defun encode-sec-day (sec minute hour day month year)
   (declare (type integer sec minute hour day month year))
+  (when (< year 1)
+    (incf year))
   (values (+ (* hour +seconds-per-hour+)
              (* minute +seconds-per-minute+)
              sec)
@@ -1376,13 +1379,14 @@ The currently supported values in local-time are:
     (multiple-value-bind (nsec-a sec-a minute-a hour-a day-a month-a year-a)
         (decode-timestamp time-a)
       (declare (ignore nsec-a sec-a minute-a hour-a day-a month-a))
-      (let ((year-difference (- year-a year-b)))
+      (let ((year-difference (- (if (< year-a 1) (1+ year-a) year-a)
+                                (if (< year-b 1) (1+ year-b) year-b))))
         (if (timestamp<= (encode-timestamp nsec-b sec-b minute-b hour-b
                                            (if (= month-b 2)
                                                (min 28 day-b)
                                                day-b)
                                            month-b
-                                           (+ year-difference year-b)
+                                           year-a
                                            :offset offset-b)
                          time-a)
             year-difference
@@ -1403,12 +1407,15 @@ The currently supported values in local-time are:
            (1-based-day (if leap-day-p
                             29
                             (1+ (- remaining-days (aref +rotated-month-offsets-without-leap-day+
-                                                        (1- rotated-1-based-month)))))))
+                                                        (1- rotated-1-based-month))))))
+           (astronomical-year (+ years
+                                 (if (>= rotated-1-based-month 11)
+                                     2001
+                                     2000))))
       (values
-       (+ years
-          (if (>= rotated-1-based-month 11) ; january is in the next year
-              2001
-              2000))
+       (if (< astronomical-year 1)
+           (1- astronomical-year)
+           astronomical-year)
        1-based-month
        1-based-day))))
 
